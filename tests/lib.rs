@@ -34,7 +34,7 @@ fn body_length_second_tag_test() {
     }
 
     let missing_body_length_tag_message = "8=FIX.4.2\u{1}35=A\u{1}49=SERVER\u{1}56=CLIENT\u{1}34=177\u{1}52=20090107-18:15:16\u{1}98=0\u{1}108=30\u{1}10=062\u{1}";
-    let result = fix_rs::fix::parse_message(body_length_third_tag_message);
+    let result = fix_rs::fix::parse_message(missing_body_length_tag_message);
     assert!(result.is_err());
     match result.err().unwrap() {
         fix_rs::fix::ParseError::BodyLengthNotSecondTag => {},
@@ -142,31 +142,29 @@ fn length_tag_test() {
     assert_eq!(tags.get("35").unwrap(),"A");
     assert_eq!(tags.get("212").unwrap(),"13");
     assert_eq!(tags.get("213").unwrap(),"This\u{1}is=atest");
-    assert_eq!(tags.get("10").unwrap(),"192");
+    assert_eq!(tags.get("10").unwrap(),"190");
 
     let missing_length_tag_message = "8=FIX.4.2\u{1}9=30\u{1}35=A\u{1}213=This\u{1}is=atest\u{1}10=190\u{1}";
     let result = fix_rs::fix::parse_message(missing_length_tag_message);
     assert!(result.is_err());
     match result.err().unwrap() {
-        fix_rs::fix::ParseError::MissingRequiredLengthTag => {},
+        fix_rs::fix::ParseError::MissingPrecedingLengthTag(value_tag) => assert_eq!(value_tag,"213"),
         _ => assert!(false),
     }
-    //TODO: Check that the tag where this is triggered is 213.
 
     let late_length_tag_message = "8=FIX.4.2\u{1}9=30\u{1}35=A\u{1}213=This\u{1}is=atest\u{1}212=13\u{1}10=190\u{1}";
     let result = fix_rs::fix::parse_message(late_length_tag_message);
     assert!(result.is_err());
     match result.err().unwrap() {
-        fix_rs::fix::ParseError::MissingRequiredLengthTag => {},
+        fix_rs::fix::ParseError::MissingPrecedingLengthTag(value_tag) => assert_eq!(value_tag,"213"),
         _ => assert!(false),
     }
-    //TODO: Check that the tag where this is triggered is 213.
+
     let early_length_tag_message = "8=FIX.4.2\u{1}9=30\u{1}35=A\u{1}212=13\u{1}56=CLIENT\u{1}213=This\u{1}is=atest\u{1}10=190\u{1}";
     let result = fix_rs::fix::parse_message(early_length_tag_message);
     assert!(result.is_err());
     match result.err().unwrap() {
-        fix_rs::fix::ParseError::MissingRequiredLengthTag => {},
+        fix_rs::fix::ParseError::MissingFollowingLengthTag(length_tag) => assert_eq!(length_tag,"212"),
         _ => assert!(false),
     }
-    //TODO: Check that the tag where this is triggered is 213.
 }
