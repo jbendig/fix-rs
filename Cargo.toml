@@ -1,0 +1,6 @@
+[package]
+name = "fix-rs"
+version = "0.1.0"
+authors = ["James Bendig <jbendig@starbytesoftware.com>"]
+
+[dependencies]
