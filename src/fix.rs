@@ -1,6 +1,7 @@
 use std::collections::{HashMap,HashSet};
 use std::fmt;
 use std::iter::FromIterator;
+use std::str::FromStr;
 
 const BEGINSTR_TAG: &'static str = "8";
 const BODYLENGTH_TAG: &'static str = "9";
@@ -174,6 +175,65 @@ impl ParseState {
 
         Err(ParseError::WrongFormatTag(self.previous_tag.clone()))
     }
+
+    fn fold_top_repeating_group_down(&mut self,default_tags: &mut HashMap<String,TagValue>) {
+        let mut folded_down = false;
+        {
+            let mut tag_rule_mode_stack_iter = self.tag_rule_mode_stack.iter_mut().rev();
+            if let Some(first_tag_rule_mode) = tag_rule_mode_stack_iter.next() {
+                if let &mut TagRuleMode::RepeatingGroups(ref mut prgs) = first_tag_rule_mode {
+                    for tag_rule_mode in tag_rule_mode_stack_iter {
+                        if let &mut TagRuleMode::RepeatingGroups(ref mut parent_prgs) = tag_rule_mode {
+                            parent_prgs.groups.last_mut().unwrap().insert(prgs.number_of_tag.clone(),TagValue::RepeatingGroup(prgs.groups.clone()));
+                            folded_down = true;
+                        }
+                    }
+
+                    if !folded_down {
+                        default_tags.insert(prgs.number_of_tag.clone(),TagValue::RepeatingGroup(prgs.groups.clone()));
+                        folded_down = true;
+                    }
+                }
+            }
+        }
+
+        if folded_down {
+            self.tag_rule_mode_stack.pop();
+        }
+        else {
+            unreachable!();
+        }
+    }
+
+    fn get_number_from_str_by_top_tag<T: FromStr>(&self,default_tags: &HashMap<String,TagValue>,tag: &str) -> Result<T,ParseError> {
+        //Search tag modes for the top repeating group.
+        for tag_rule_mode in self.tag_rule_mode_stack.iter().rev() {
+            if let &TagRuleMode::RepeatingGroups(ref parse_repeating_group_state) = tag_rule_mode {
+                if let Some(last_group) = parse_repeating_group_state.groups.last() {
+                    //If the most recent group has the tag, parse and return as a number.
+                    if let &TagValue::String(ref str) = last_group.get(tag).unwrap() {
+                        if let Ok(number) = T::from_str(&str) {
+                            return Ok(number);
+                        }
+                    }
+
+                    //Otherwise, tag is not found. Do not search any other repeating groups.
+                    return Err(ParseError::WrongFormatTag(String::from(tag)))
+                }
+            }
+        }
+
+        //There are no repeating groups, try the default tags instead.
+        if let &TagValue::String(ref str) = default_tags.get(tag).unwrap() {
+            if let Ok(number) = T::from_str(&str) {
+                return Ok(number);
+            }
+        }
+        
+        //TODO: Maybe we need a different error...although this is the only one that SHOULD be
+        //possible.
+        Err(ParseError::WrongFormatTag(String::from(tag)))
+    }
 }
 
 pub fn parse_message(message: &str) -> Result<HashMap<String,TagValue>,ParseError> {
@@ -184,6 +244,8 @@ pub fn parse_message(message: &str) -> Result<HashMap<String,TagValue>,ParseErro
     let mut repeating_group_tags : HashMap<String,RepeatingGroupTags> = HashMap::new();
     repeating_group_tags.insert(String::from("887"),RepeatingGroupTags::new(vec![String::from("888"),String::from("889")]));
     repeating_group_tags.insert(String::from("1445"),RepeatingGroupTags::new(vec![String::from("1446"),String::from("1447"),String::from("1448")]));
+    repeating_group_tags.insert(String::from("73"),RepeatingGroupTags::new(vec![String::from("11"),String::from("78")])); //TODO: Tag list incomplete here.
+    repeating_group_tags.insert(String::from("78"),RepeatingGroupTags::new(vec![String::from("79"),String::from("467"),String::from("80")])); //TODO: Tag list incomplete here.
 
     //Build a mapping of length tags and the value tags they are followed by.
     let mut length_to_value_tags : HashMap<String,String> = HashMap::new();
@@ -195,7 +257,6 @@ pub fn parse_message(message: &str) -> Result<HashMap<String,TagValue>,ParseErro
 
     let mut tags : HashMap<String,TagValue> = HashMap::new();
 
-    //TODO: Handle child tag groups.
     //TODO: Handle streams of data.
     let mut state = ParseState {
         current_tag: String::new(),
@@ -290,42 +351,50 @@ pub fn parse_message(message: &str) -> Result<HashMap<String,TagValue>,ParseErro
                 //Store tag with value.
                 let mut tag_in_group = false;
                 let mut group_end = false;
-                if let Some(ref mut tag_rule_mode) = state.tag_rule_mode_stack.last_mut() {
-                    if let TagRuleMode::RepeatingGroups(ref mut parse_repeating_group_state) = **tag_rule_mode {
-                        let mut prgs = parse_repeating_group_state;
-                        if state.current_tag == prgs.repeating_group_tags.first_tag {
-                            let mut group = HashMap::new();
-                            group.insert(state.current_tag.clone(),TagValue::String(state.current_string.clone()));
-                            prgs.groups.push(group);
-                            prgs.current_group_available_tags = prgs.repeating_group_tags.other_tags.clone();
+                loop {
+                    if let Some(ref mut tag_rule_mode) = state.tag_rule_mode_stack.last_mut() {
+                        if let TagRuleMode::RepeatingGroups(ref mut parse_repeating_group_state) = **tag_rule_mode {
+                            let mut prgs = parse_repeating_group_state;
+                            if state.current_tag == prgs.repeating_group_tags.first_tag {
+                                let mut group = HashMap::new();
+                                group.insert(state.current_tag.clone(),TagValue::String(state.current_string.clone()));
+                                prgs.groups.push(group);
+                                prgs.current_group_available_tags = prgs.repeating_group_tags.other_tags.clone();
 
-                            if prgs.groups.len() > prgs.group_count {
-                                return Err(ParseError::RepeatingGroupTagWithNoRepeatingGroup(state.current_tag));
+                                if prgs.groups.len() > prgs.group_count {
+                                    return Err(ParseError::RepeatingGroupTagWithNoRepeatingGroup(state.current_tag));
+                                }
+                                tag_in_group = true;
                             }
-                            tag_in_group = true;
-                        }
-                        else if prgs.current_group_available_tags.remove(&state.current_tag) {
-                            prgs.groups.last_mut().unwrap().insert(state.current_tag.clone(),TagValue::String(state.current_string.clone()));
-                            tag_in_group = true;
-                        }
-                        else {
-                            if prgs.groups.last().unwrap().contains_key(&state.current_tag) {
-                                return Err(ParseError::DuplicateTag(state.current_tag));
+                            else if prgs.current_group_available_tags.remove(&state.current_tag) {
+                                prgs.groups.last_mut().unwrap().insert(state.current_tag.clone(),TagValue::String(state.current_string.clone()));
+                                tag_in_group = true;
                             }
-                            else if prgs.groups.len() < prgs.group_count {
-                                return Err(ParseError::NonRepeatingGroupTagInRepeatingGroup(state.current_tag));
-                            }
+                            else {
+                                if prgs.groups.last().unwrap().contains_key(&state.current_tag) {
+                                    return Err(ParseError::DuplicateTag(state.current_tag));
+                                }
+                                else if prgs.groups.len() < prgs.group_count {
+                                    return Err(ParseError::NonRepeatingGroupTagInRepeatingGroup(state.current_tag));
+                                }
 
-                            //TODO: Make sure to fold down the repeating group over the number_of_ tag down the tag_rule_modes first to support nesting.
-                            tags.insert(prgs.number_of_tag.clone(),TagValue::RepeatingGroup(prgs.groups.clone()));
-                            group_end = true;
+                                //Tag does not belong in this group and all stated groups are
+                                //accounted for.
+                                group_end = true;
+                            }
                         }
                     }
+                    if group_end {
+                        //Put repeated group into next highest repeating group. If there are no
+                        //repeating groups, put into the top-level set of tags.
+                        state.fold_top_repeating_group_down(&mut tags);
+                        group_end = false;
+                    }
+                    else {
+                        break;
+                    }
                 }
-                if group_end {
-                    state.tag_rule_mode_stack.pop();
-                }
-                if !tag_in_group && tags.insert(state.current_tag.clone(),TagValue::String(state.current_string)).is_some() {
+                if !tag_in_group && tags.insert(state.current_tag.clone(),TagValue::String(state.current_string.clone())).is_some() {
                     return Err(ParseError::DuplicateTag(state.current_tag));
                 }
 
@@ -338,8 +407,8 @@ pub fn parse_message(message: &str) -> Result<HashMap<String,TagValue>,ParseErro
                     state.tag_rule_mode_stack.push(TagRuleMode::LengthThenValue(following_tag.clone()));
                 }
                 if let Some(repeating_group) = repeating_group_tags.get(&state.current_tag) {
-                    if let &TagValue::String(ref group_count_str) = tags.get(&state.current_tag).unwrap() {
-                        if let Ok(group_count) = usize::from_str_radix(&group_count_str,10) {
+                    match state.get_number_from_str_by_top_tag::<usize>(&tags,&state.current_tag) {
+                        Ok(group_count) => {
                             if group_count > 0 {
                                 state.tag_rule_mode_stack.push(TagRuleMode::RepeatingGroups(ParseRepeatingGroupState {
                                     number_of_tag: state.current_tag.clone(),
@@ -350,13 +419,8 @@ pub fn parse_message(message: &str) -> Result<HashMap<String,TagValue>,ParseErro
                                 }));
                                 state.tag_rule_mode_stack.push(TagRuleMode::RepeatingGroupStart(repeating_group.first_tag.clone()));
                             }
-                        }
-                        else {
-                            return Err(ParseError::WrongFormatTag(state.previous_tag))
-                        }
-                    }
-                    else {
-                        return Err(ParseError::WrongFormatTag(state.previous_tag))
+                        },
+                        Err(parse_error) => return Err(parse_error),
                     }
                 }
 
@@ -381,5 +445,44 @@ pub fn parse_message(message: &str) -> Result<HashMap<String,TagValue>,ParseErro
     }
 
     return Ok(tags);
+}
+
+pub fn print_group(group: &HashMap<String,TagValue>,depth: u8) {
+    //Print a new line at the beginning so it's easier to scan the output. This is also important
+    //when running tests because the stdout output of a test is prepended with a bunch of spaces.
+    if depth == 0 {
+        println!("");
+    }
+
+    for (tag,value) in group {
+        for _ in 0..depth {
+            print!("\t");
+        }
+
+        if let TagValue::RepeatingGroup(_) = *value {
+            println!("{} = {{",tag);
+        } else {
+            print!("{} = ",tag);
+        }
+        print_tag_value(value,depth);
+
+        if let TagValue::RepeatingGroup(_) = *value {
+            for _ in 0..depth {
+                print!("\t");
+            }
+            println!("}}");
+        }
+    }
+}
+
+fn print_tag_value(tag_value: &TagValue,depth: u8) {
+    match tag_value {
+        &TagValue::String(ref str) => println!("{}",str),
+        &TagValue::RepeatingGroup(ref repeating_group) => {
+            for group in repeating_group {
+                print_group(group,depth + 1);
+            }
+        }
+    }
 }
 

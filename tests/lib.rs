@@ -1,7 +1,7 @@
 extern crate fix_rs;
 
 use std::collections::HashMap;
-use fix_rs::fix::parse_message;
+use fix_rs::fix::{parse_message,print_group};
 
 fn assert_tag_matches_string(tags: &HashMap<String,fix_rs::fix::TagValue>,tag_name: &str,expected_value: &str) {
     if let &fix_rs::fix::TagValue::String(ref str) = tags.get(tag_name).unwrap() {
@@ -16,6 +16,16 @@ fn assert_repeating_group_tag_matches_string(tags: &HashMap<String,fix_rs::fix::
     if let &fix_rs::fix::TagValue::RepeatingGroup(ref repeating_group) = tags.get(group_tag_name).unwrap() {
         assert!(index < repeating_group.len());
         assert_tag_matches_string(&repeating_group[index],value_tag_name,expected_value);
+    }
+    else {
+        assert!(false); //Not a repeating group.
+    }
+}
+
+fn assert_nested_repeating_group_tag_matches_string(tags: &HashMap<String,fix_rs::fix::TagValue>,group_tag_name: &str,index: usize,nested_group_tag_name: &str,nested_index: usize,value_tag_name: &str,expected_value: &str) {
+    if let &fix_rs::fix::TagValue::RepeatingGroup(ref repeating_group) = tags.get(group_tag_name).unwrap() {
+        assert!(index < repeating_group.len());
+        assert_repeating_group_tag_matches_string(&repeating_group[index],nested_group_tag_name,nested_index,value_tag_name,expected_value);
     }
     else {
         assert!(false); //Not a repeating group.
@@ -282,3 +292,17 @@ fn repeating_groups_test() {
         _ => assert!(false),
     }
 }
+
+#[test]
+fn nested_repeating_groups_test() {
+    let one_nested_repeating_group_message = "8=FIX.4.2\u{1}9=35\u{1}35=A\u{1}73=1\u{1}11=uniqueid\u{1}78=1\u{1}79=acct\u{1}10=233\u{1}";
+    let tags = fix_rs::fix::parse_message(one_nested_repeating_group_message).unwrap();
+    print_group(&tags,0);
+    assert_tag_matches_string(&tags,"8","FIX.4.2");
+    assert_tag_matches_string(&tags,"9","35");
+    assert_tag_matches_string(&tags,"35","A");
+    assert_tag_matches_string(&tags,"10","233");
+    assert_repeating_group_tag_matches_string(&tags,"73",0,"11","uniqueid");
+    assert_nested_repeating_group_tag_matches_string(&tags,"73",0,"78",0,"79","acct");
+}
+
