@@ -5,7 +5,7 @@ use fix_rs::fix::{ParseState,TagMap,ParseError};
 const PARSE_MESSAGE_BY_STREAM : bool = true;
 
 fn assert_tag_matches_string(tags: &TagMap,tag_name: &str,expected_value: &str) {
-    if let &fix_rs::fix::TagValue::String(ref str) = tags.get(tag_name).unwrap() {
+    if let fix_rs::fix::TagValue::String(ref str) = *tags.get(tag_name).unwrap() {
         assert_eq!(str,expected_value);
     }
     else {
@@ -14,7 +14,7 @@ fn assert_tag_matches_string(tags: &TagMap,tag_name: &str,expected_value: &str) 
 }
 
 fn assert_repeating_group_tag_matches_string(tags: &TagMap,group_tag_name: &str,index: usize,value_tag_name: &str,expected_value: &str) {
-    if let &fix_rs::fix::TagValue::RepeatingGroup(ref repeating_group) = tags.get(group_tag_name).unwrap() {
+    if let fix_rs::fix::TagValue::RepeatingGroup(ref repeating_group) = *tags.get(group_tag_name).unwrap() {
         assert!(index < repeating_group.len());
         assert_tag_matches_string(&repeating_group[index],value_tag_name,expected_value);
     }
@@ -24,7 +24,7 @@ fn assert_repeating_group_tag_matches_string(tags: &TagMap,group_tag_name: &str,
 }
 
 fn assert_nested_repeating_group_tag_matches_string(tags: &TagMap,group_tag_name: &str,index: usize,nested_group_tag_name: &str,nested_index: usize,value_tag_name: &str,expected_value: &str) {
-    if let &fix_rs::fix::TagValue::RepeatingGroup(ref repeating_group) = tags.get(group_tag_name).unwrap() {
+    if let fix_rs::fix::TagValue::RepeatingGroup(ref repeating_group) = *tags.get(group_tag_name).unwrap() {
         assert!(index < repeating_group.len());
         assert_repeating_group_tag_matches_string(&repeating_group[index],nested_group_tag_name,nested_index,value_tag_name,expected_value);
     }
@@ -40,7 +40,7 @@ fn parse_message(message: &str) -> Result<TagMap,ParseError> {
     if PARSE_MESSAGE_BY_STREAM {
         //Stream in the message one byte at a time. This is a worst case scenario test to make sure all
         //everything tested works while streaming.
-        for byte in message_bytes.iter() {
+        for byte in &message_bytes {
             let mut message_bytes = Vec::new();
             message_bytes.push(*byte);
 
@@ -60,7 +60,7 @@ fn parse_message(message: &str) -> Result<TagMap,ParseError> {
     }
 
     assert_eq!(parse_state.messages.len(),1);
-    return Ok(parse_state.messages.first().unwrap().clone());
+    Ok(parse_state.messages.first().unwrap().clone())
 }
 
 #[test]
@@ -363,16 +363,16 @@ fn stream_test() {
     assert_eq!(bytes_read,garbage_before_message.len());
     assert!(result.is_ok());
     let tags = parse_state.messages.first().unwrap();
-    assert_tag_matches_string(&tags,"8","FIX.4.2");
-    assert_tag_matches_string(&tags,"9","65");
-    assert_tag_matches_string(&tags,"35","A");
-    assert_tag_matches_string(&tags,"49","SERVER");
-    assert_tag_matches_string(&tags,"56","CLIENT");
-    assert_tag_matches_string(&tags,"34","177");
-    assert_tag_matches_string(&tags,"52","20090107-18:15:16");
-    assert_tag_matches_string(&tags,"98","0");
-    assert_tag_matches_string(&tags,"108","30");
-    assert_tag_matches_string(&tags,"10","062");
+    assert_tag_matches_string(tags,"8","FIX.4.2");
+    assert_tag_matches_string(tags,"9","65");
+    assert_tag_matches_string(tags,"35","A");
+    assert_tag_matches_string(tags,"49","SERVER");
+    assert_tag_matches_string(tags,"56","CLIENT");
+    assert_tag_matches_string(tags,"34","177");
+    assert_tag_matches_string(tags,"52","20090107-18:15:16");
+    assert_tag_matches_string(tags,"98","0");
+    assert_tag_matches_string(tags,"108","30");
+    assert_tag_matches_string(tags,"10","062");
 
     let garbage_between_messages = b"8=FIX.4.2\x019=65\x0135=A\x0149=SERVER\x0156=CLIENT\x0134=177\x0152=20090107-18:15:16\x0198=0\x01108=30\x0110=062\x01garbage=before\x01m8ssage8=FIX.4.2\x019=65\x0135=A\x0149=SERVER\x0156=CLIENT\x0134=177\x0152=20090107-18:15:16\x0198=0\x01108=30\x0110=062\x01";
     let mut parse_state = ParseState::new();
@@ -406,15 +406,15 @@ fn stream_test() {
     assert_eq!(bytes_read_failure + bytes_read_success,invalid_message_before_valid_message.len());
     assert_eq!(parse_state.messages.len(),1);
     let tags = parse_state.messages.first().unwrap();
-    assert_tag_matches_string(&tags,"8","FIX.4.2");
-    assert_tag_matches_string(&tags,"9","65");
-    assert_tag_matches_string(&tags,"35","A");
-    assert_tag_matches_string(&tags,"49","SERVER");
-    assert_tag_matches_string(&tags,"56","CLIENT");
-    assert_tag_matches_string(&tags,"34","177");
-    assert_tag_matches_string(&tags,"52","20090107-18:15:16");
-    assert_tag_matches_string(&tags,"98","0");
-    assert_tag_matches_string(&tags,"108","30");
-    assert_tag_matches_string(&tags,"10","062");
+    assert_tag_matches_string(tags,"8","FIX.4.2");
+    assert_tag_matches_string(tags,"9","65");
+    assert_tag_matches_string(tags,"35","A");
+    assert_tag_matches_string(tags,"49","SERVER");
+    assert_tag_matches_string(tags,"56","CLIENT");
+    assert_tag_matches_string(tags,"34","177");
+    assert_tag_matches_string(tags,"52","20090107-18:15:16");
+    assert_tag_matches_string(tags,"98","0");
+    assert_tag_matches_string(tags,"108","30");
+    assert_tag_matches_string(tags,"10","062");
 }
 

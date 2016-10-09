@@ -4,7 +4,7 @@ use fix_rs::fix::{ParseState,print_group,TagMap};
 
 //TODO: Copy and pasted from tests/lib.rs.
 fn assert_tag_matches_string(tags: &TagMap,tag_name: &str,expected_value: &str) {
-    if let &fix_rs::fix::TagValue::String(ref str) = tags.get(tag_name).unwrap() {
+    if let fix_rs::fix::TagValue::String(ref str) = *tags.get(tag_name).unwrap() {
         assert_eq!(str,expected_value);
     }
     else {

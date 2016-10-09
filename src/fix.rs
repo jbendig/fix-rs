@@ -176,17 +176,17 @@ impl ParseState {
             return Err(ParseError::ChecksumNotLastTag);
         }
 
-        return Ok(())
+        Ok(())
     }
 
     fn validate_checksum(&self,checksum_string: &str) -> Result<(),ParseError> {
         //Remove checksum tag that should not be part of the current checksum.
-        let mut checksum = self.checksum.overflowing_sub('1' as u8 + '0' as u8 + '=' as u8 + '\u{1}' as u8).0;
+        let mut checksum = self.checksum.overflowing_sub(b'1' + b'0' + b'=' + b'\x01').0;
         for c in checksum_string.bytes() {
             checksum = checksum.overflowing_sub(c).0;
         }
 
-        match u8::from_str_radix(&checksum_string,10) {
+        match u8::from_str(checksum_string) {
             Ok(stated_checksum) => if checksum != stated_checksum {
                 return Err(ParseError::ChecksumDoesNotMatch(checksum,stated_checksum));
             },
@@ -196,7 +196,7 @@ impl ParseState {
         Ok(())
     }
 
-    fn scan_for_message(&mut self,index: &mut usize,message_bytes: &Vec<u8>) {
+    fn scan_for_message(&mut self,index: &mut usize,message_bytes: &[u8]) {
         //Scan for a message header. Bytes are read one by one and consumed until "8=" is found.
         //Where '8' is the BeginStr tag and '=' indicates the previous part is the tag. The state
         //machine here is designed to function even if given one byte at a time. In a properly
@@ -241,7 +241,7 @@ impl ParseState {
         }
     }
 
-    fn fast_track_read_bytes(&mut self,index: &mut usize,message_bytes: &Vec<u8>) -> Result<(),ParseError> {
+    fn fast_track_read_bytes(&mut self,index: &mut usize,message_bytes: &[u8]) -> Result<(),ParseError> {
         loop {
             if *index >= message_bytes.len() || self.fast_track_bytes_remaining == 0 {
                 break;
@@ -256,7 +256,7 @@ impl ParseState {
             self.fast_track_bytes_remaining -= 1;
         }
 
-        return Ok(());
+        Ok(())
     }
 
     fn fold_top_repeating_group_down(&mut self) {
@@ -264,9 +264,9 @@ impl ParseState {
         {
             let mut tag_rule_mode_stack_iter = self.tag_rule_mode_stack.iter_mut().rev();
             if let Some(first_tag_rule_mode) = tag_rule_mode_stack_iter.next() {
-                if let &mut TagRuleMode::RepeatingGroups(ref mut prgs) = first_tag_rule_mode {
+                if let TagRuleMode::RepeatingGroups(ref mut prgs) = *first_tag_rule_mode {
                     for tag_rule_mode in tag_rule_mode_stack_iter {
-                        if let &mut TagRuleMode::RepeatingGroups(ref mut parent_prgs) = tag_rule_mode {
+                        if let TagRuleMode::RepeatingGroups(ref mut parent_prgs) = *tag_rule_mode {
                             parent_prgs.groups.last_mut().unwrap().insert(prgs.number_of_tag.clone(),TagValue::RepeatingGroup(prgs.groups.clone()));
                             folded_down = true;
                         }
@@ -291,11 +291,11 @@ impl ParseState {
     fn get_number_from_str_by_top_tag<T: FromStr>(&self,tag: &str) -> Result<T,ParseError> {
         //Search tag modes for the top repeating group.
         for tag_rule_mode in self.tag_rule_mode_stack.iter().rev() {
-            if let &TagRuleMode::RepeatingGroups(ref parse_repeating_group_state) = tag_rule_mode {
+            if let TagRuleMode::RepeatingGroups(ref parse_repeating_group_state) = *tag_rule_mode {
                 if let Some(last_group) = parse_repeating_group_state.groups.last() {
                     //If the most recent group has the tag, parse and return as a number.
-                    if let &TagValue::String(ref str) = last_group.get(tag).unwrap() {
-                        if let Ok(number) = T::from_str(&str) {
+                    if let TagValue::String(ref str) = *last_group.get(tag).unwrap() {
+                        if let Ok(number) = T::from_str(str) {
                             return Ok(number);
                         }
                     }
@@ -307,8 +307,8 @@ impl ParseState {
         }
 
         //There are no repeating groups, try the current message tags instead.
-        if let &TagValue::String(ref str) = self.current_message.get(tag).unwrap() {
-            if let Ok(number) = T::from_str(&str) {
+        if let TagValue::String(ref str) = *self.current_message.get(tag).unwrap() {
+            if let Ok(number) = T::from_str(str) {
                 return Ok(number);
             }
         }
@@ -318,7 +318,7 @@ impl ParseState {
         Err(ParseError::WrongFormatTag(String::from(tag)))
     }
 
-    pub fn parse(&mut self,message_bytes: &Vec<u8>) -> (usize,Result<(),ParseError>) {
+    pub fn parse(&mut self,message_bytes: &[u8]) -> (usize,Result<(),ParseError>) {
         //Parse and bytes as possible. Either all bytes will be consumed or all bytes up until a
         //parse error is triggered -- whatever happens first.
         let mut index = 0;
@@ -331,7 +331,7 @@ impl ParseState {
         }
     }
 
-    fn parse_private(&mut self,index: &mut usize,message_bytes: &Vec<u8>) -> Result<(),ParseError> {
+    fn parse_private(&mut self,index: &mut usize,message_bytes: &[u8]) -> Result<(),ParseError> {
         //Build a mapping of repeating group No...(No = Number Of) tags and a list of child tags that
         //are part of the group. The first child tag specified is required to delimit the groups.
         let mut repeating_group_tags : HashMap<String,RepeatingGroupTags> = HashMap::new();
@@ -349,7 +349,7 @@ impl ParseState {
         }
 
         //Start by searching for the start of a message unless resuming.
-        self.scan_for_message(index,&message_bytes);
+        self.scan_for_message(index,message_bytes);
 
         //Resume loading any bytes using the fast track if we ran out in the last call.
         try!(self.fast_track_read_bytes(index,&message_bytes));
@@ -405,11 +405,9 @@ impl ParseState {
                     }
                    //Otherwise, if the current tag requires some preceding tag that wasn't found,
                     //return an error. This is a sanity check.
-                    else {
-                        if let Some(required_preceding_tag) = value_to_length_tags.get(&self.current_tag) {
-                            if required_preceding_tag != &self.previous_tag {
-                                return Err(ParseError::MissingPrecedingLengthTag(self.current_tag.clone()));
-                            }
+                    else if let Some(required_preceding_tag) = value_to_length_tags.get(&self.current_tag) {
+                        if required_preceding_tag != &self.previous_tag {
+                            return Err(ParseError::MissingPrecedingLengthTag(self.current_tag.clone()));
                         }
                     }
                 },
@@ -417,7 +415,7 @@ impl ParseState {
                 b'\x01' => { //SOH
                     //Validate that the first three tags of a message are, in order: BeginStr,
                     //BodyLength, and MsgType.
-                    if self.current_message.len() == 0 && self.current_tag != BEGINSTR_TAG {
+                    if self.current_message.is_empty() && self.current_tag != BEGINSTR_TAG {
                         return Err(ParseError::BeginStrNotFirstTag);
                     }
                     else if self.current_message.len() == 1 {
@@ -427,7 +425,7 @@ impl ParseState {
 
                         //Body length must be a valid positive number or else the rest of the message
                         //is garbage.
-                        match u64::from_str_radix(&self.current_string,10) {
+                        match u64::from_str(&self.current_string) {
                             Ok(length) => self.body_length = length,
                             Err(_) => return Err(ParseError::BodyLengthNotNumber),
                         }
@@ -437,11 +435,13 @@ impl ParseState {
                     }
 
                     //Make sure checksum checks out when done reading a message.
-                    let mut is_message_end = false;
-                    if self.current_tag == CHECKSUM_TAG {
+                    let is_message_end = if self.current_tag == CHECKSUM_TAG {
                         try!(self.validate_checksum(&self.current_string));
-                        is_message_end = true;
+                        true
                     }
+                    else {
+                        false
+                    };
 
                     //Store tag with value.
                     let mut tag_in_group = false;
@@ -511,7 +511,7 @@ impl ParseState {
 
                         //Scan to the next message in case there is garbage between the end of this
                         //one and the beginning of the next.
-                        self.scan_for_message(index,&message_bytes);
+                        self.scan_for_message(index,message_bytes);
                         continue;
                     }
 
@@ -549,7 +549,13 @@ impl ParseState {
             *index += 1;
         }
 
-        return Ok(());
+        Ok(())
+    }
+}
+
+impl Default for ParseState {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -582,9 +588,9 @@ pub fn print_group(group: &TagMap,depth: u8) {
 }
 
 fn print_tag_value(tag_value: &TagValue,depth: u8) {
-    match tag_value {
-        &TagValue::String(ref str) => println!("{}",str),
-        &TagValue::RepeatingGroup(ref repeating_group) => {
+    match *tag_value {
+        TagValue::String(ref str) => println!("{}",str),
+        TagValue::RepeatingGroup(ref repeating_group) => {
             for group in repeating_group {
                 print_group(group,depth + 1);
             }
