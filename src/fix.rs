@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::collections::{HashMap,HashSet};
 use std::fmt;
 use std::iter::FromIterator;
@@ -10,67 +11,71 @@ use message::{Meta,Message,NullMessage};
 //      MAX_TAG_LENGTH, MAX_CHECKSUM_LENGTH(might just hard code it...), the size of a "Length" and
 //      other types.
 
-const BEGINSTR_TAG: &'static str = "8";
-const BODYLENGTH_TAG: &'static str = "9";
-const MSGTYPE_TAG: &'static str = "35";
-const CHECKSUM_TAG: &'static str = "10";
+const BEGINSTR_TAG: &'static [u8] = b"8";
+const BODYLENGTH_TAG: &'static [u8] = b"9";
+const MSGTYPE_TAG: &'static [u8] = b"35";
+const CHECKSUM_TAG: &'static [u8] = b"10";
 
 #[derive(Debug)]
 pub enum ParseError {
-    MissingRequiredTag(String), //Required tag was not included in message.
+    MissingRequiredTag(Vec<u8>), //Required tag was not included in message.
     BeginStrNotFirstTag,
     BodyLengthNotSecondTag,
     BodyLengthNotNumber,
     MsgTypeNotThirdTag,
-    MsgTypeUnknown(String), //Message type not in dictionary passed to Parser::new().
+    MsgTypeUnknown(Vec<u8>), //Message type not in dictionary passed to Parser::new().
     ChecksumNotLastTag, //Checksum is not exactly where BodyLength says it should be.
     ChecksumDoesNotMatch(u8,u8), //Calculated checksum, Stated checksum
     ChecksumNotNumber,
-    DuplicateTag(String),
-    UnexpectedTag(String), //Tag found does not belong to the current message type.
-    WrongFormatTag(String),
-    MissingPrecedingLengthTag(String), //Tag was found that requires a preceding length tag which was omitted.
-    MissingFollowingLengthTag(String), //Length tag that was specified does not match the following tag.
-    NonRepeatingGroupTagInRepeatingGroup(String), //Tag that doesn't belong in a repeating group was found.
-    RepeatingGroupTagWithNoRepeatingGroup(String), //Repeating group tag was found outside of a repeating group.
-    MissingFirstRepeatingGroupTagAfterNumberOfRepeatingGroupTag(String), //Tag indicating start of a repeating group was not found immediatelly after tag indicating the number of repeating groups.
+    DuplicateTag(Vec<u8>),
+    UnexpectedTag(Vec<u8>), //Tag found does not belong to the current message type.
+    WrongFormatTag(Vec<u8>),
+    MissingPrecedingLengthTag(Vec<u8>), //Tag was found that requires a preceding length tag which was omitted.
+    MissingFollowingLengthTag(Vec<u8>), //Length tag that was specified does not match the following tag.
+    NonRepeatingGroupTagInRepeatingGroup(Vec<u8>), //Tag that doesn't belong in a repeating group was found.
+    RepeatingGroupTagWithNoRepeatingGroup(Vec<u8>), //Repeating group tag was found outside of a repeating group.
+    MissingFirstRepeatingGroupTagAfterNumberOfRepeatingGroupTag(Vec<u8>), //Tag indicating start of a repeating group was not found immediatelly after tag indicating the number of repeating groups.
+}
+
+fn tag_to_string(tag: &[u8]) -> String {
+    String::from_utf8_lossy(tag).into_owned()
 }
 
 impl fmt::Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            ParseError::MissingRequiredTag(ref tag) => write!(f,"ParseError::MissingRequiredTag({})",tag),
+            ParseError::MissingRequiredTag(ref tag) => write!(f,"ParseError::MissingRequiredTag({})",tag_to_string(tag)),
             ParseError::BeginStrNotFirstTag => write!(f,"ParseError::BeginStrNotFirstTag"),
             ParseError::BodyLengthNotSecondTag => write!(f,"ParseError::BodyLengthNotSecondTag"),
             ParseError::BodyLengthNotNumber => write!(f,"ParseError::BodyLengthNotNumber"),
             ParseError::MsgTypeNotThirdTag => write!(f,"ParseError::MsgTypeNotThirdTag"),
-            ParseError::MsgTypeUnknown(ref msg_type) => write!(f,"ParseError::MsgTypeUnknown({})",msg_type),
+            ParseError::MsgTypeUnknown(ref msg_type) => write!(f,"ParseError::MsgTypeUnknown({})",tag_to_string(msg_type)),
             ParseError::ChecksumNotLastTag => write!(f,"ParseError::ChecksumNotLastTag"),
             ParseError::ChecksumDoesNotMatch(ref calculated_checksum,ref stated_checksum) => write!(f,"ParseError::ChecksumDoesNotMatch({},{})",calculated_checksum,stated_checksum),
             ParseError::ChecksumNotNumber => write!(f,"ParseError::ChecksumNotNumber"),
-            ParseError::DuplicateTag(ref tag) => write!(f,"ParseError::DuplicateTag({})",tag),
-            ParseError::UnexpectedTag(ref tag) => write!(f,"ParseError::UnexpectedTag({})",tag),
-            ParseError::WrongFormatTag(ref tag) => write!(f,"ParseError::WrongFormatTag({})",tag),
-            ParseError::MissingPrecedingLengthTag(ref value_tag) => write!(f,"ParseError::MissingPrecedingLengthTag({})",value_tag),
-            ParseError::MissingFollowingLengthTag(ref length_tag) => write!(f,"ParseError::MissingFollowingLengthTag({})",length_tag),
-            ParseError::NonRepeatingGroupTagInRepeatingGroup(ref tag) => write!(f,"ParseError::NonRepeatingGroupTagInRepeatingGroup({})",tag),
-            ParseError::RepeatingGroupTagWithNoRepeatingGroup(ref tag) => write!(f,"ParseError::RepeatingGroupTagWithNoRepeatingGroup({})",tag),
-            ParseError::MissingFirstRepeatingGroupTagAfterNumberOfRepeatingGroupTag(ref number_of_tag) => write!(f,"ParseError::MissingFirstRepeatingGroupTagAfterNumberOfRepeatingGroupTag({})",number_of_tag),
+            ParseError::DuplicateTag(ref tag) => write!(f,"ParseError::DuplicateTag({})",tag_to_string(tag)),
+            ParseError::UnexpectedTag(ref tag) => write!(f,"ParseError::UnexpectedTag({})",tag_to_string(tag)),
+            ParseError::WrongFormatTag(ref tag) => write!(f,"ParseError::WrongFormatTag({})",tag_to_string(tag)),
+            ParseError::MissingPrecedingLengthTag(ref value_tag) => write!(f,"ParseError::MissingPrecedingLengthTag({})",tag_to_string(value_tag)),
+            ParseError::MissingFollowingLengthTag(ref length_tag) => write!(f,"ParseError::MissingFollowingLengthTag({})",tag_to_string(length_tag)),
+            ParseError::NonRepeatingGroupTagInRepeatingGroup(ref tag) => write!(f,"ParseError::NonRepeatingGroupTagInRepeatingGroup({})",tag_to_string(tag)),
+            ParseError::RepeatingGroupTagWithNoRepeatingGroup(ref tag) => write!(f,"ParseError::RepeatingGroupTagWithNoRepeatingGroup({})",tag_to_string(tag)),
+            ParseError::MissingFirstRepeatingGroupTagAfterNumberOfRepeatingGroupTag(ref number_of_tag) => write!(f,"ParseError::MissingFirstRepeatingGroupTagAfterNumberOfRepeatingGroupTag({})",tag_to_string(number_of_tag)),
         }
     }
 }
 
 struct ParseGroupState {
-    remaining_fields: HashMap<&'static str,Action>,
-    remaining_required_fields: HashSet<&'static str>,
+    remaining_fields: HashMap<&'static [u8],Action>,
+    remaining_required_fields: HashSet<&'static [u8]>,
     message: Box<Message>,
 }
 
 struct ParseRepeatingGroupState {
-    number_of_tag: String,
+    number_of_tag: Vec<u8>,
     group_count: usize,
     group_template: Box<Message>,
-    first_tag: &'static str,
+    first_tag: &'static [u8],
     groups: Vec<ParseGroupState>,
 }
 
@@ -79,7 +84,7 @@ impl ParseRepeatingGroupState {
         //Check if the last group has had all of its required fields specified.
         if let Some(last_group) = self.groups.last() {
             if let Some(tag) = last_group.remaining_required_fields.iter().next() {
-                return Err(ParseError::MissingRequiredTag(String::from(*tag)));
+                return Err(ParseError::MissingRequiredTag(Vec::from(*tag)));
             }
         }
 
@@ -88,9 +93,9 @@ impl ParseRepeatingGroupState {
 }
 
 enum TagRuleMode {
-    LengthThenValue(String,usize),
+    LengthThenValue(Vec<u8>,usize),
     RepeatingGroups(Box<ParseRepeatingGroupState>),
-    RepeatingGroupStart(&'static str),
+    RepeatingGroupStart(&'static [u8]),
 }
 
 #[derive(PartialEq)]
@@ -100,29 +105,41 @@ enum FoundMessage {
     SecondByte,
 }
 
+#[derive(PartialEq)]
+enum MessageEnd {
+    Yes,
+    No
+}
+
+fn ascii_to_integer<T: FromStr>(ascii_bytes: &Vec<u8>) -> Result<T,<T as FromStr>::Err> {
+    //Using String::from_utf8_lossy is faster than using str::from_utf8_unchecked() according to
+    //the benchmark.
+    T::from_str(String::from_utf8_lossy(ascii_bytes.as_slice()).borrow())
+}
+
 pub struct Parser {
-    message_dictionary: HashMap<&'static str,Box<Message>>,
-    value_to_length_tags: HashMap<&'static str,&'static str>,
+    message_dictionary: HashMap<&'static [u8],Box<Message>>,
+    value_to_length_tags: HashMap<&'static [u8],&'static [u8]>,
     found_message: FoundMessage,
-    current_tag: String,
-    current_string: String,
-    protocol: String,
+    current_tag: Vec<u8>, //Tag if completely parsed, otherwise empty.
+    current_bytes: Vec<u8>, //Bytes being parsed for current tag or value.
+    protocol: Vec<u8>,
     body_length: u64,
     checksum: u8,
     body_remaining_length: u64, //TODO: Do we really need this to be this long?
-    previous_tag: String,
+    previous_tag: Vec<u8>,
     next_tag_checksum: bool,
     tag_rule_mode_stack: Vec<Box<TagRuleMode>>,
     fast_track_bytes_remaining: usize,
     found_tag_count: usize,
-    remaining_fields: HashMap<&'static str,Action>,
-    remaining_required_fields: HashSet<&'static str>,
+    remaining_fields: HashMap<&'static [u8],Action>,
+    remaining_required_fields: HashSet<&'static [u8]>,
     current_message: Box<Message>,
     pub messages: Vec<Box<Message>>,
 }
 
 impl Parser {
-    pub fn new(message_dictionary: HashMap<&'static str,Box<Message>>) -> Parser {
+    pub fn new(message_dictionary: HashMap<&'static [u8],Box<Message>>) -> Parser {
         //Perform a sanity check to make sure message dictionary was defined correctly. For now,
         //validate_message_dictionary() panics on failure because dictionaries should be composed
         //using a compile time macro. Thus, there's no practical reason to try and recover.
@@ -152,13 +169,13 @@ impl Parser {
             message_dictionary: message_dictionary,
             value_to_length_tags: value_to_length_tags,
             found_message: FoundMessage::NotFound,
-            current_tag: String::new(),
-            current_string: String::new(),
-            protocol: String::new(),
+            current_tag: Vec::new(),
+            current_bytes: Vec::new(),
+            protocol: Vec::new(),
             body_length: 0,
             checksum: 0,
             body_remaining_length: 0,
-            previous_tag: String::new(),
+            previous_tag: Vec::new(),
             next_tag_checksum: false,
             tag_rule_mode_stack: Vec::new(),
             fast_track_bytes_remaining: 0,
@@ -173,7 +190,7 @@ impl Parser {
     pub fn reset_parser(&mut self) {
         self.found_message = FoundMessage::NotFound;
         self.current_tag.clear();
-        self.current_string.clear();
+        self.current_bytes.clear();
         self.protocol.clear();
         self.body_length = 0;
         self.checksum = 0;
@@ -188,7 +205,7 @@ impl Parser {
         self.current_message = Box::new(NullMessage {});
     }
 
-    pub fn validate_message_dictionary(message_dictionary: &HashMap<&'static str,Box<Message>>) {
+    pub fn validate_message_dictionary(message_dictionary: &HashMap<&'static [u8],Box<Message>>) {
         enum MessageType {
             Standard,
             RepeatingGroup,
@@ -252,30 +269,30 @@ impl Parser {
                         if let Some(bytes_action) = fields.get(bytes_tag) {
                             if let Action::ConfirmPreviousTag{ previous_tag } = *bytes_action {
                                 if previous_tag != *tag {
-                                    panic!("Found field \"{}\" that defines Action::PrepareForBytes but matching \"{}\" field's Action::ConfirmPreviousTag is not circular.",tag,bytes_tag);
+                                    panic!("Found field \"{}\" that defines Action::PrepareForBytes but matching \"{}\" field's Action::ConfirmPreviousTag is not circular.",tag_to_string(tag),tag_to_string(bytes_tag));
                                 }
                             }
                             else {
-                                panic!("Found field \"{}\" that defines Action::PrepareForBytes but matching \"{}\" field does not define Action::ConfirmPreviousTag.",tag,bytes_tag);
+                                panic!("Found field \"{}\" that defines Action::PrepareForBytes but matching \"{}\" field does not define Action::ConfirmPreviousTag.",tag_to_string(tag),tag_to_string(bytes_tag));
                             }
                         }
                         else {
-                            panic!("Found field \"{}\" that defines Action::PrepareForBytes but no matching \"{}\" field was found.",tag,bytes_tag);
+                            panic!("Found field \"{}\" that defines Action::PrepareForBytes but no matching \"{}\" field was found.",tag_to_string(tag),tag_to_string(bytes_tag));
                         }
                     },
                     Action::ConfirmPreviousTag{ previous_tag } => {
                         if let Some(previous_action) = fields.get(previous_tag) {
                             if let Action::PrepareForBytes{ bytes_tag } = *previous_action {
                                 if bytes_tag != *tag {
-                                    panic!("Found field \"{}\" that defines Action::ConfirmPreviousTag but matching \"{}\" field's Action::PrepareForBytes is not circular.",tag,previous_tag);
+                                    panic!("Found field \"{}\" that defines Action::ConfirmPreviousTag but matching \"{}\" field's Action::PrepareForBytes is not circular.",tag_to_string(tag),tag_to_string(previous_tag));
                                 }
                             }
                             else {
-                                panic!("Found field \"{}\" that defines Action::ConfirmPreviousTag but matching \"{}\" field does not define Action::PrepareForBytes.",tag,previous_tag)
+                                panic!("Found field \"{}\" that defines Action::ConfirmPreviousTag but matching \"{}\" field does not define Action::PrepareForBytes.",tag_to_string(tag),tag_to_string(previous_tag))
                             }
                         }
                         else {
-                            panic!("Found field \"{}\" that defines Action::ConfirmPreviousTag but no matching \"{}\" field was found.",tag,previous_tag);
+                            panic!("Found field \"{}\" that defines Action::ConfirmPreviousTag but no matching \"{}\" field was found.",tag_to_string(tag),tag_to_string(previous_tag));
                         }
                     },
                     _ => {},
@@ -312,12 +329,12 @@ impl Parser {
     fn validate_checksum(&mut self) -> Result<(),ParseError> {
         //Remove checksum tag that should not be part of the current checksum.
         let mut checksum = self.checksum.overflowing_sub(b'1' + b'0' + b'=' + b'\x01').0;
-        let checksum_string = self.current_string.as_str();
-        for c in checksum_string.bytes() {
-            checksum = checksum.overflowing_sub(c).0;
+        let ref checksum_bytes = self.current_bytes;
+        for c in checksum_bytes {
+            checksum = checksum.overflowing_sub(*c).0;
         }
 
-        match u8::from_str(checksum_string) {
+        match ascii_to_integer::<u8>(&checksum_bytes) {
             Ok(stated_checksum) => if checksum != stated_checksum {
                 return Err(ParseError::ChecksumDoesNotMatch(checksum,stated_checksum));
             },
@@ -362,7 +379,7 @@ impl Parser {
 
         if self.found_message == FoundMessage::SecondByte {
             //Act like the BeginStr tag was parsed so we don't duplicate work.
-            self.current_tag = String::from("8");
+            self.current_tag = b"8".to_vec();
             self.checksum = b'8' + b'=';
             *index += 1;
         }
@@ -382,7 +399,7 @@ impl Parser {
             let c = message_bytes[*index];
             try!(self.update_book_keeping(c));
 
-            self.current_string.push(c as char);
+            self.current_bytes.push(c);
 
             *index += 1;
             self.fast_track_bytes_remaining -= 1;
@@ -403,7 +420,7 @@ impl Parser {
                 unimplemented!();
             },
             Action::BeginGroup{ message: repeating_group_template } => {
-                match usize::from_str(self.current_string.as_str()) {
+                match ascii_to_integer::<usize>(&self.current_bytes) {
                     Ok(group_count) if group_count > 0 => {
                         let first_field = repeating_group_template.first_field();
                         self.tag_rule_mode_stack.push(Box::new(TagRuleMode::RepeatingGroups(Box::new(ParseRepeatingGroupState {
@@ -423,8 +440,8 @@ impl Parser {
             Action::PrepareForBytes{ bytes_tag } => {
                 //Next tag should be 'bytes_tag' and its value is made up of
                 //the number of bytes specified in this tag.
-                match usize::from_str(self.current_string.as_str()) {
-                    Ok(byte_count) => self.tag_rule_mode_stack.push(Box::new(TagRuleMode::LengthThenValue(String::from(bytes_tag),byte_count))),
+                match ascii_to_integer::<usize>(&self.current_bytes) {
+                    Ok(byte_count) => self.tag_rule_mode_stack.push(Box::new(TagRuleMode::LengthThenValue(bytes_tag.to_vec(),byte_count))),
                     Err(_) => return Err(ParseError::WrongFormatTag(self.current_tag.clone())),
                 }
                 skip_set_value = true;
@@ -445,7 +462,7 @@ impl Parser {
                         if let TagRuleMode::RepeatingGroups(ref mut parent_prgs) = **tag_rule_mode {
                             let mut groups = mem::replace(&mut prgs.groups,Vec::new());
                             parent_prgs.groups.last_mut().unwrap().message.set_groups(
-                                prgs.number_of_tag.as_str(),
+                                prgs.number_of_tag.as_slice(),
                                 &Vec::from_iter(groups.drain(0..).map(|group| { group.message }))
                             );
                             folded_down = true;
@@ -455,7 +472,7 @@ impl Parser {
                     if !folded_down {
                         let mut groups = mem::replace(&mut prgs.groups,Vec::new());
                         self.current_message.set_groups(
-                            prgs.number_of_tag.as_str(),
+                            prgs.number_of_tag.as_slice(),
                             &Vec::from_iter(groups.drain(0..).map(|group| { group.message }))
                         );
                         folded_down = true;
@@ -470,6 +487,240 @@ impl Parser {
         else {
             unreachable!();
         }
+    }
+
+    fn match_tag_end(&mut self,index: &mut usize,message_bytes: &[u8]) -> Result<(),ParseError> {
+        self.current_tag = mem::replace(&mut self.current_bytes,Vec::new());
+
+        //Make sure that iff the body of the message has already been read, this is the
+        //checksum tag.
+        try!(self.if_checksum_then_is_last_tag());
+
+        //If there is some tag ordering in effect, make sure this is the expected tag to
+        //follow the previous tag.
+        if let Some(tag_rule_mode) = self.tag_rule_mode_stack.pop() {
+            match *tag_rule_mode {
+                TagRuleMode::LengthThenValue(ref value_tag,byte_count) => {
+                    if self.current_tag != *value_tag {
+                        return Err(ParseError::MissingFollowingLengthTag(self.previous_tag.clone()));
+                    }
+
+                    //Fast track to read in the specified number of bytes.
+                    self.fast_track_bytes_remaining = byte_count;
+                    *index += 1;
+                    try!(self.fast_track_read_bytes(index,&message_bytes));
+                    *index -= 1;
+                },
+                TagRuleMode::RepeatingGroupStart(first_repeating_group_tag) => {
+                    //Sanity check that the first tag in a repeating group is what is
+                    //expected.
+                    if self.current_tag != first_repeating_group_tag {
+                        return Err(ParseError::MissingFirstRepeatingGroupTagAfterNumberOfRepeatingGroupTag(self.previous_tag.clone()));
+                    }
+                },
+                _ => self.tag_rule_mode_stack.push(tag_rule_mode),
+            }
+        }
+        //Otherwise, if the current tag requires some preceding tag that wasn't found,
+        //return an error. This is a sanity check.
+        else if let Some(required_preceding_tag) = self.value_to_length_tags.get(self.current_tag.as_slice()) {
+            if *required_preceding_tag != self.previous_tag.as_slice() {
+                return Err(ParseError::MissingPrecedingLengthTag(self.current_tag.clone()));
+            }
+        }
+
+        Ok(())
+    }
+
+    fn match_value_end(&mut self,index: &mut usize,message_bytes: &[u8]) -> Result<MessageEnd,ParseError> {
+        //Validate that the first three tags of a message are, in order: BeginStr,
+        //BodyLength, and MsgType.
+        if self.found_tag_count == 0 {
+            if self.current_tag != BEGINSTR_TAG {
+                return Err(ParseError::BeginStrNotFirstTag);
+            }
+            self.protocol = mem::replace(&mut self.current_bytes,Vec::new());
+        }
+        else if self.found_tag_count == 1 {
+            if self.current_tag != BODYLENGTH_TAG {
+                return Err(ParseError::BodyLengthNotSecondTag);
+            }
+
+            //Body length must be a valid positive number or else the rest of the message
+            //is garbage.
+            match ascii_to_integer::<u64>(&self.current_bytes) {
+                Ok(length) => {
+                    self.body_length = length;
+                    self.body_remaining_length = length;
+                },
+                Err(_) => return Err(ParseError::BodyLengthNotNumber),
+            }
+        }
+        else if self.found_tag_count == 2 {
+            if self.current_tag != MSGTYPE_TAG {
+                return Err(ParseError::MsgTypeNotThirdTag);
+            }
+            else if let Some(message) = self.message_dictionary.get(self.current_bytes.as_slice()) {
+                self.current_message = (*message).clone_into_box();
+                self.remaining_fields = message.fields();
+                self.remaining_required_fields = message.required_fields();
+            }
+            else {
+                return Err(ParseError::MsgTypeUnknown(self.current_tag.clone()));
+            }
+        }
+        else {
+            //Make sure checksum checks out when done reading a message.
+            let is_message_end = if self.current_tag == CHECKSUM_TAG {
+                try!(self.validate_checksum());
+                true
+            }
+            else {
+                false
+            };
+
+            //Store tag with value.
+            let mut tag_in_group = false;
+            let mut group_end = false;
+            loop {
+                let mut some_action = None;
+                if let Some(ref mut tag_rule_mode) = self.tag_rule_mode_stack.last_mut() {
+                    if let TagRuleMode::RepeatingGroups(ref mut prgs) = ***tag_rule_mode {
+                        if self.current_tag == prgs.first_tag {
+                            //Make sure previous group has all required tags specified
+                            //before we start a new one.
+                            try!(prgs.is_last_group_complete());
+
+                            //Begin a new group.
+                            let group = prgs.group_template.clone_into_box();
+                            let remaining_fields = prgs.group_template.fields();
+                            let remaining_required_fields = prgs.group_template.required_fields();
+                            prgs.groups.push(ParseGroupState {
+                                message: group,
+                                remaining_fields: remaining_fields,
+                                remaining_required_fields: remaining_required_fields,
+                            });
+
+                            //Make sure we haven't exceeded the number of repeating
+                            //groups originally stated.
+                            if prgs.groups.len() > prgs.group_count {
+                                return Err(ParseError::RepeatingGroupTagWithNoRepeatingGroup(self.current_tag.clone()));
+                            }
+                        }
+
+                        if let Some(group) = prgs.groups.last_mut() {
+                            if let Some(action) = group.remaining_fields.remove(self.current_tag.as_slice()) {
+                                //Try to mark the field as found in case it's required.
+                                group.remaining_required_fields.remove(self.current_tag.as_slice());
+
+                                //Apply parsed value to group.
+                                if let Action::BeginGroup{ .. } = action {} //Ignore begin group tags, they will be handled below.
+                                else {
+                                    if !group.message.set_value(self.current_tag.as_slice(),self.current_bytes.as_slice()) {
+                                        return Err(ParseError::WrongFormatTag(self.current_tag.clone()));
+                                    }
+                                }
+
+                                //Save action to handle later.
+                                some_action = Some(action);
+
+                                tag_in_group = true;
+                            }
+                        }
+
+                        if !tag_in_group {
+                            //Figure out if this is an error or the end of the group.
+                            if prgs.group_template.fields().contains_key(self.current_tag.as_slice()) {
+                                return Err(ParseError::DuplicateTag(self.current_tag.clone()));
+                            }
+                            else if prgs.groups.len() < prgs.group_count {
+                                return Err(ParseError::NonRepeatingGroupTagInRepeatingGroup(self.current_tag.clone()));
+                            }
+
+                            //Make sure all required tags have been specified.
+                            try!(prgs.is_last_group_complete());
+
+                            //Tag does not belong in this group and all stated groups are
+                            //accounted for.
+                            group_end = true;
+                        }
+                    }
+                }
+
+                //Out of the way result handling to appease the borrow checker.
+                if let Some(action) = some_action {
+                    try!(self.handle_action_after_value(action));
+                }
+                if group_end {
+                    //Put repeated group into next highest repeating group. If there are no
+                    //repeating groups, put into the top-level set of tags.
+                    self.fold_top_repeating_group_down();
+                    group_end = false;
+                }
+                else {
+                    break;
+                }
+            }
+
+            let mut skip_set_value = false;
+            if !is_message_end && !tag_in_group {
+                //Mark field as found if required so we can quickly check if all required
+                //fields were found once we are done parsing the message.
+                self.remaining_required_fields.remove(self.current_tag.as_slice());
+
+                //Mark field as found so we can quickly check if a duplicate tag was
+                //encountered. As a side effect, we also handle any tag specific
+                //actions in consequence of being encountered.
+                if let Some(action) = self.remaining_fields.remove(self.current_tag.as_slice()) {
+                    skip_set_value = try!(self.handle_action_after_value(action));
+                }
+                else {
+                    return Err(ParseError::UnexpectedTag(self.current_tag.clone()));
+                }
+            }
+
+            if !is_message_end && !tag_in_group && !skip_set_value && !self.current_message.set_value(self.current_tag.as_slice(),self.current_bytes.as_slice()) {
+                //This means either the key could not be found in the message (an
+                //internal error) or the bytes are not formatted correctly. For
+                //example, maybe it was suppose to be a number but non-digit characters
+                //were used.
+                return Err(ParseError::WrongFormatTag(self.current_tag.clone()));
+            }
+
+            if is_message_end {
+                //Make sure all required tags are specified.
+                if let Some(tag) = self.remaining_required_fields.iter().next() {
+                    return Err(ParseError::MissingRequiredTag(tag.to_vec()));
+                }
+
+                //Store meta info about the message. Mainly for debugging.
+                self.current_message.set_meta(Meta {
+                    protocol: mem::replace(&mut self.protocol,Vec::new()),
+                    body_length: self.body_length,
+                    checksum: self.checksum,
+                });
+
+                //Save message.
+                self.messages.push(mem::replace(&mut self.current_message,Box::new(NullMessage {})));
+
+                //Prepare for the next message.
+                self.reset_parser();
+                *index += 1;
+
+                //Scan to the next message in case there is garbage between the end of this
+                //one and the beginning of the next.
+                self.scan_for_message(index,message_bytes);
+
+                return Ok(MessageEnd::Yes);
+            }
+        }
+
+        //Prepare for next tag.
+        self.previous_tag = mem::replace(&mut self.current_tag,Vec::new());
+        self.current_bytes.clear();
+        self.found_tag_count += 1;
+
+        Ok(MessageEnd::No)
     }
 
     pub fn parse(&mut self,message_bytes: &[u8]) -> (usize,Result<(),ParseError>) {
@@ -504,236 +755,17 @@ impl Parser {
             match c {
                 //Byte indicates a tag has finished being read.
                 b'=' => {
-                    self.current_tag = self.current_string.clone(); //TODO: Can we move without copying here?
-                    self.current_string = String::new();
-
-                    //Make sure that iff the body of the message has already been read, this is the
-                    //checksum tag.
-                    try!(self.if_checksum_then_is_last_tag());
-
-                    //If there is some tag ordering in effect, make sure this is the expected tag to
-                    //follow the previous tag.
-                    if let Some(tag_rule_mode) = self.tag_rule_mode_stack.pop() {
-                        match *tag_rule_mode {
-                            TagRuleMode::LengthThenValue(ref value_tag,byte_count) => {
-                                if self.current_tag != *value_tag {
-                                    return Err(ParseError::MissingFollowingLengthTag(self.previous_tag.clone()));
-                                }
-
-                                //Fast track to read in the specified number of bytes.
-                                self.fast_track_bytes_remaining = byte_count;
-                                *index += 1;
-                                try!(self.fast_track_read_bytes(index,&message_bytes));
-                                *index -= 1;
-                            },
-                            TagRuleMode::RepeatingGroupStart(first_repeating_group_tag) => {
-                                //Sanity check that the first tag in a repeating group is what is
-                                //expected.
-                                if self.current_tag != *first_repeating_group_tag {
-                                    return Err(ParseError::MissingFirstRepeatingGroupTagAfterNumberOfRepeatingGroupTag(self.previous_tag.clone()));
-                                }
-                            },
-                            _ => self.tag_rule_mode_stack.push(tag_rule_mode),
-                        }
-                    }
-                    //Otherwise, if the current tag requires some preceding tag that wasn't found,
-                    //return an error. This is a sanity check.
-                    else if let Some(required_preceding_tag) = self.value_to_length_tags.get(self.current_tag.as_str()) {
-                        if required_preceding_tag != &self.previous_tag {
-                            return Err(ParseError::MissingPrecedingLengthTag(self.current_tag.clone()));
-                        }
-                    }
+                    try!(self.match_tag_end(index,message_bytes));
                 },
                 //Byte indicates a vale has finished being read. Now both the tag and value are known.
                 b'\x01' => { //SOH
-                    //Validate that the first three tags of a message are, in order: BeginStr,
-                    //BodyLength, and MsgType.
-                    if self.found_tag_count == 0 {
-                        if self.current_tag != BEGINSTR_TAG {
-                            return Err(ParseError::BeginStrNotFirstTag);
-                        }
-                        self.protocol = mem::replace(&mut self.current_string,String::new());
+                    if try!(self.match_value_end(index,message_bytes)) == MessageEnd::Yes {
+                        continue;
                     }
-                    else if self.found_tag_count == 1 {
-                        if self.current_tag != BODYLENGTH_TAG {
-                            return Err(ParseError::BodyLengthNotSecondTag);
-                        }
-
-                        //Body length must be a valid positive number or else the rest of the message
-                        //is garbage.
-                        match u64::from_str(&self.current_string) {
-                            Ok(length) => {
-                                self.body_length = length;
-                                self.body_remaining_length = length;
-                            },
-                            Err(_) => return Err(ParseError::BodyLengthNotNumber),
-                        }
-                    }
-                    else if self.found_tag_count == 2 {
-                        if self.current_tag != MSGTYPE_TAG {
-                            return Err(ParseError::MsgTypeNotThirdTag);
-                        }
-                        else if let Some(message) = self.message_dictionary.get(self.current_string.as_str()) {
-                            self.current_message = (*message).clone_into_box();
-                            self.remaining_fields = message.fields();
-                            self.remaining_required_fields = message.required_fields();
-                        }
-                        else {
-                            return Err(ParseError::MsgTypeUnknown(self.current_tag.clone()));
-                        }
-                    }
-                    else {
-                        //Make sure checksum checks out when done reading a message.
-                        let is_message_end = if self.current_tag == CHECKSUM_TAG {
-                            try!(self.validate_checksum());
-                            true
-                        }
-                        else {
-                            false
-                        };
-
-                        //Store tag with value.
-                        let mut tag_in_group = false;
-                        let mut group_end = false;
-                        loop {
-                            let mut some_action = None;
-                            if let Some(ref mut tag_rule_mode) = self.tag_rule_mode_stack.last_mut() {
-                                if let TagRuleMode::RepeatingGroups(ref mut prgs) = ***tag_rule_mode {
-                                    if self.current_tag == prgs.first_tag {
-                                        //Make sure previous group has all required tags specified
-                                        //before we start a new one.
-                                        try!(prgs.is_last_group_complete());
-
-                                        //Begin a new group.
-                                        let group = prgs.group_template.clone_into_box();
-                                        let remaining_fields = prgs.group_template.fields();
-                                        let remaining_required_fields = prgs.group_template.required_fields();
-                                        prgs.groups.push(ParseGroupState {
-                                            message: group,
-                                            remaining_fields: remaining_fields,
-                                            remaining_required_fields: remaining_required_fields,
-                                        });
-
-                                        //Make sure we haven't exceeded the number of repeating
-                                        //groups originally stated.
-                                        if prgs.groups.len() > prgs.group_count {
-                                            return Err(ParseError::RepeatingGroupTagWithNoRepeatingGroup(self.current_tag.clone()));
-                                        }
-                                    }
-
-                                    if let Some(group) = prgs.groups.last_mut() {
-                                        if let Some(action) = group.remaining_fields.remove(self.current_tag.as_str()) {
-                                            //Try to mark the field as found in case it's required.
-                                            group.remaining_required_fields.remove(self.current_tag.as_str());
-
-                                            //Apply parsed value to group.
-                                            if let Action::BeginGroup{ .. } = action {} //Ignore begin group tags, they will be handled below.
-                                            else {
-                                                if !group.message.set_value(self.current_tag.as_str(),self.current_string.as_bytes()) {
-                                                    return Err(ParseError::WrongFormatTag(self.current_tag.clone()));
-                                                }
-                                            }
-
-                                            //Save action to handle later.
-                                            some_action = Some(action);
-
-                                            tag_in_group = true;
-                                        }
-                                    }
-
-                                    if !tag_in_group {
-                                        //Figure out if this is an error or the end of the group.
-                                        if prgs.group_template.fields().contains_key(self.current_tag.as_str()) {
-                                            return Err(ParseError::DuplicateTag(self.current_tag.clone()));
-                                        }
-                                        else if prgs.groups.len() < prgs.group_count {
-                                            return Err(ParseError::NonRepeatingGroupTagInRepeatingGroup(self.current_tag.clone()));
-                                        }
-
-                                        //Make sure all required tags have been specified.
-                                        try!(prgs.is_last_group_complete());
-
-                                        //Tag does not belong in this group and all stated groups are
-                                        //accounted for.
-                                        group_end = true;
-                                    }
-                                }
-                            }
-
-                            //Out of the way result handling to appease the borrow checker.
-                            if let Some(action) = some_action {
-                                try!(self.handle_action_after_value(action));
-                            }
-                            if group_end {
-                                //Put repeated group into next highest repeating group. If there are no
-                                //repeating groups, put into the top-level set of tags.
-                                self.fold_top_repeating_group_down();
-                                group_end = false;
-                            }
-                            else {
-                                break;
-                            }
-                        }
-
-                        let mut skip_set_value = false;
-                        if !is_message_end && !tag_in_group {
-                            //Mark field as found if required so we can quickly check if all required
-                            //fields were found once we are done parsing the message.
-                            self.remaining_required_fields.remove(self.current_tag.as_str());
-
-                            //Mark field as found so we can quickly check if a duplicate tag was
-                            //encountered. As a side effect, we also handle any tag specific
-                            //actions in consequence of being encountered.
-                            if let Some(action) = self.remaining_fields.remove(self.current_tag.as_str()) {
-                                skip_set_value = try!(self.handle_action_after_value(action));
-                            }
-                            else {
-                                return Err(ParseError::UnexpectedTag(self.current_tag.clone()));
-                            }
-                        }
-
-                        if !is_message_end && !tag_in_group && !skip_set_value && !self.current_message.set_value(self.current_tag.as_str(),self.current_string.as_bytes()) {
-                            //This means either the key could not be found in the message (an
-                            //internal error) or the bytes are not formatted correctly. For
-                            //example, maybe it was suppose to be a number but non-digit characters
-                            //were used.
-                            return Err(ParseError::WrongFormatTag(self.current_tag.clone()));
-                        }
-
-                        if is_message_end {
-                            //Make sure all required tags are specified.
-                            if let Some(tag) = self.remaining_required_fields.iter().next() {
-                                return Err(ParseError::MissingRequiredTag(String::from(*tag)));
-                            }
-
-                            //Store meta info about the message. Mainly for debugging.
-                            self.current_message.set_meta(Meta {
-                                protocol: mem::replace(&mut self.protocol,String::new()),
-                                body_length: self.body_length,
-                                checksum: self.checksum,
-                            });
-
-                            //Save message.
-                            self.messages.push(mem::replace(&mut self.current_message,Box::new(NullMessage {})));
-
-                            //Prepare for the next message.
-                            self.reset_parser();
-                            *index += 1;
-
-                            //Scan to the next message in case there is garbage between the end of this
-                            //one and the beginning of the next.
-                            self.scan_for_message(index,message_bytes);
-                            continue;
-                        }
-                    }
-
-                    self.previous_tag = self.current_tag.clone();
-                    self.current_string = String::new();
-                    self.found_tag_count += 1;
-                }
+                },
                 //Byte is part of a tag or value.
                 _ => {
-                    self.current_string.push(c as char);
+                    self.current_bytes.push(c);
                 }
             }
 

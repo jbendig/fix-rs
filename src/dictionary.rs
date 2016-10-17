@@ -6,8 +6,8 @@ use message::{REQUIRED,NOT_REQUIRED,Meta,Message};
 #[macro_export]
 macro_rules! define_dictionary {
     ( $( $msg_type:expr => $msg:ty : $msg_enum:ident ),* $(),* ) => {
-        fn build_dictionary() -> HashMap<&'static str,Box<Message>> {
-            let mut message_dictionary: HashMap<&'static str,Box<Message>> = HashMap::new();
+        fn build_dictionary() -> HashMap<&'static [u8],Box<Message>> {
+            let mut message_dictionary: HashMap<&'static [u8],Box<Message>> = HashMap::new();
             $( message_dictionary.insert($msg_type,Box::new(<$msg as Default>::default())); )*
 
             message_dictionary
@@ -35,47 +35,47 @@ macro_rules! define_dictionary {
 
 //TODO: Maybe put the tag number first here. It'll be more consistent and be easier to read.
 define_field!(
-    Account: StringFieldType = "1",
-    ClOrdID: StringFieldType = "11",
-    Currency: StringFieldType = "15", //Currency
-    HandInst: StringFieldType = "21", //Char, TODO: limited choices.
-    SecurityIDSource: StringFieldType = "22", //TODO: Limited choices.
-    MsgSeqNum: StringFieldType = "34", //TODO: Special field probably should be built into the parser.
-    OrderQty: StringFieldType = "38", //Qty
-    OrdType: StringFieldType = "40", //Char, TODO: limited choices.
-    Price: StringFieldType = "44", //Price
-    SecurityID: StringFieldType = "48",
-    SenderCompID: StringFieldType = "49",
-    SendingTime: StringFieldType = "52", //UTCTimestamp
-    Side: StringFieldType = "54", //Char, TODO: limited choices.
-    Symbol: StringFieldType = "55",
-    TargetCompID: StringFieldType = "56",
-    TimeInForce: StringFieldType = "59", //Char, TODO: limited choices.
-    TransactTime: StringFieldType = "60", //UTCTimestamp
-    SettlType: StringFieldType = "63", //TODO: Limited choices.
-    SettlDate: StringFieldType = "64", //LocalMktDate
-    NoOrders: RepeatingGroupFieldType<Order> = "73",
-    NoAllocs: RepeatingGroupFieldType<Alloc> = "78",
-    AllocAccount: StringFieldType = "79",
-    RawDataLength: NoneFieldType = "95" => Action::PrepareForBytes{ bytes_tag: RawData::tag() },
-    RawData: DataFieldType = "96" => Action::ConfirmPreviousTag{ previous_tag: RawDataLength::tag() },
-    EncryptMethod: StringFieldType = "98",
-    HeartBtInt: StringFieldType = "108",
-    MinQty: StringFieldType = "110", //Qty
-    MaxFloor: StringFieldType = "111", //Qty
-    BidSize: StringFieldType = "134", //Qty
-    CashOrderQty: StringFieldType = "152", //Qty
-    RefMsgType: StringFieldType = "372",
-    NoMsgTypeGrp: RepeatingGroupFieldType<MsgTypeGrp> = "384",
-    MsgDirection: StringFieldType = "385", //Char
-    RefApplVerID: StringFieldType = "1130",
-    RefCstmApplVerID: StringFieldType = "1131",
-    RefApplExtID: StringFieldType = "1406", //int
-    DefaultVerIndicator: StringFieldType = "1410", //bool
-    NoRateSources: RepeatingGroupFieldType<RateSource> = "1445",
-    RateSourceField: StringFieldType = "1446", //int
-    RateSourceType: StringFieldType = "1447", //int
-    ReferencePage: StringFieldType = "1448",
+    Account: StringFieldType = b"1",
+    ClOrdID: StringFieldType = b"11",
+    Currency: StringFieldType = b"15", //Currency
+    HandInst: StringFieldType = b"21", //Char, TODO: limited choices.
+    SecurityIDSource: StringFieldType = b"22", //TODO: Limited choices.
+    MsgSeqNum: StringFieldType = b"34", //TODO: Special field probably should be built into the parser.
+    OrderQty: StringFieldType = b"38", //Qty
+    OrdType: StringFieldType = b"40", //Char, TODO: limited choices.
+    Price: StringFieldType = b"44", //Price
+    SecurityID: StringFieldType = b"48",
+    SenderCompID: StringFieldType = b"49",
+    SendingTime: StringFieldType = b"52", //UTCTimestamp
+    Side: StringFieldType = b"54", //Char, TODO: limited choices.
+    Symbol: StringFieldType = b"55",
+    TargetCompID: StringFieldType = b"56",
+    TimeInForce: StringFieldType = b"59", //Char, TODO: limited choices.
+    TransactTime: StringFieldType = b"60", //UTCTimestamp
+    SettlType: StringFieldType = b"63", //TODO: Limited choices.
+    SettlDate: StringFieldType = b"64", //LocalMktDate
+    NoOrders: RepeatingGroupFieldType<Order> = b"73",
+    NoAllocs: RepeatingGroupFieldType<Alloc> = b"78",
+    AllocAccount: StringFieldType = b"79",
+    RawDataLength: NoneFieldType = b"95" => Action::PrepareForBytes{ bytes_tag: RawData::tag() },
+    RawData: DataFieldType = b"96" => Action::ConfirmPreviousTag{ previous_tag: RawDataLength::tag() },
+    EncryptMethod: StringFieldType = b"98",
+    HeartBtInt: StringFieldType = b"108",
+    MinQty: StringFieldType = b"110", //Qty
+    MaxFloor: StringFieldType = b"111", //Qty
+    BidSize: StringFieldType = b"134", //Qty
+    CashOrderQty: StringFieldType = b"152", //Qty
+    RefMsgType: StringFieldType = b"372",
+    NoMsgTypeGrp: RepeatingGroupFieldType<MsgTypeGrp> = b"384",
+    MsgDirection: StringFieldType = b"385", //Char
+    RefApplVerID: StringFieldType = b"1130",
+    RefCstmApplVerID: StringFieldType = b"1131",
+    RefApplExtID: StringFieldType = b"1406", //int
+    DefaultVerIndicator: StringFieldType = b"1410", //bool
+    NoRateSources: RepeatingGroupFieldType<RateSource> = b"1445",
+    RateSourceField: StringFieldType = b"1446", //int
+    RateSourceType: StringFieldType = b"1447", //int
+    ReferencePage: StringFieldType = b"1448",
 );
 
 //TODO: all of the following messages are incomplete in one way or another right now.

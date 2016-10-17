@@ -13,8 +13,8 @@ use std::collections::{HashMap,HashSet};
 const PARSE_MESSAGE_BY_STREAM : bool = true;
 
 fn parse_message<T: Message + Default + Any + Clone>(message: &str) -> Result<T,ParseError> {
-    let mut message_dictionary: HashMap<&'static str,Box<Message>> = HashMap::new();
-    message_dictionary.insert("A",Box::new(<T as Default>::default()));
+    let mut message_dictionary: HashMap<&'static [u8],Box<Message>> = HashMap::new();
+    message_dictionary.insert(b"A",Box::new(<T as Default>::default()));
 
     let mut parser = Parser::new(message_dictionary);
 
@@ -181,7 +181,7 @@ fn length_tag_test() {
 
     let valid_length_tag_message = "8=FIX.4.2\u{1}9=28\u{1}35=A\u{1}95=13\u{1}96=This\u{1}is=atest\u{1}10=119\u{1}";
     let message = parse_message::<LengthTagTestMessage>(valid_length_tag_message).unwrap();
-    assert_eq!(message.meta.clone().unwrap().protocol,"FIX.4.2");
+    assert_eq!(message.meta.clone().unwrap().protocol,b"FIX.4.2");
     assert_eq!(message.meta.clone().unwrap().body_length,28);
     assert_eq!(message.meta.clone().unwrap().checksum,119);
     assert_eq!(*message.raw_data,b"This\x01is=atest");
@@ -190,7 +190,7 @@ fn length_tag_test() {
     let result = parse_message::<LengthTagTestMessage>(missing_length_tag_message);
     assert!(result.is_err());
     match result.err().unwrap() {
-        fix_rs::fix::ParseError::MissingPrecedingLengthTag(value_tag) => assert_eq!(value_tag,"96"),
+        fix_rs::fix::ParseError::MissingPrecedingLengthTag(value_tag) => assert_eq!(value_tag,b"96"),
         _ => assert!(false),
     }
 
@@ -198,7 +198,7 @@ fn length_tag_test() {
     let result = parse_message::<LengthTagTestMessage>(late_length_tag_message);
     assert!(result.is_err());
     match result.err().unwrap() {
-        fix_rs::fix::ParseError::MissingPrecedingLengthTag(value_tag) => assert_eq!(value_tag,"96"),
+        fix_rs::fix::ParseError::MissingPrecedingLengthTag(value_tag) => assert_eq!(value_tag,b"96"),
         _ => assert!(false),
     }
 
@@ -206,7 +206,7 @@ fn length_tag_test() {
     let result = parse_message::<LengthTagTestMessage>(early_length_tag_message);
     assert!(result.is_err());
     match result.err().unwrap() {
-        fix_rs::fix::ParseError::MissingFollowingLengthTag(length_tag) => assert_eq!(length_tag,"95"),
+        fix_rs::fix::ParseError::MissingFollowingLengthTag(length_tag) => assert_eq!(length_tag,b"95"),
         _ => assert!(false),
     }
 }
@@ -220,7 +220,7 @@ fn repeating_groups_test() {
 
     let no_repeating_groups_message = "8=FIX.4.2\u{1}9=12\u{1}35=A\u{1}1445=0\u{1}10=28\u{1}";
     let message = parse_message::<RepeatingGroupsTestMessage>(no_repeating_groups_message).unwrap();
-    assert_eq!(message.meta.clone().unwrap().protocol,"FIX.4.2");
+    assert_eq!(message.meta.clone().unwrap().protocol,b"FIX.4.2");
     assert_eq!(message.meta.clone().unwrap().body_length,12);
     assert_eq!(message.meta.clone().unwrap().checksum,28);
     assert_eq!(message.rate_sources.len(),0);
@@ -278,7 +278,7 @@ fn repeating_groups_test() {
     let result = parse_message::<RepeatingGroupsTestMessage>(missing_one_repeating_group_message);
     assert!(result.is_err());
     match result.err().unwrap() {
-        fix_rs::fix::ParseError::NonRepeatingGroupTagInRepeatingGroup(tag) => assert_eq!(tag,"55"),
+        fix_rs::fix::ParseError::NonRepeatingGroupTagInRepeatingGroup(tag) => assert_eq!(tag,b"55"),
         _ => assert!(false),
     }
 
@@ -286,7 +286,7 @@ fn repeating_groups_test() {
     let result = parse_message::<RepeatingGroupsTestMessage>(extra_one_repeating_group_message);
     assert!(result.is_err());
     match result.err().unwrap() {
-        fix_rs::fix::ParseError::RepeatingGroupTagWithNoRepeatingGroup(tag) => assert_eq!(tag,"1446"),
+        fix_rs::fix::ParseError::RepeatingGroupTagWithNoRepeatingGroup(tag) => assert_eq!(tag,b"1446"),
         _ => assert!(false),
     }
 
@@ -294,7 +294,7 @@ fn repeating_groups_test() {
     let result = parse_message::<RepeatingGroupsTestMessage>(non_repeating_group_tag_in_repeating_group_message);
     assert!(result.is_err());
     match result.err().unwrap() {
-        fix_rs::fix::ParseError::NonRepeatingGroupTagInRepeatingGroup(tag) => assert_eq!(tag,"55"),
+        fix_rs::fix::ParseError::NonRepeatingGroupTagInRepeatingGroup(tag) => assert_eq!(tag,b"55"),
         _ => assert!(false),
     }
 
@@ -302,7 +302,7 @@ fn repeating_groups_test() {
     let result = parse_message::<RepeatingGroupsTestMessage>(wrong_first_tag_in_repeating_group_message);
     assert!(result.is_err());
     match result.err().unwrap() {
-        fix_rs::fix::ParseError::MissingFirstRepeatingGroupTagAfterNumberOfRepeatingGroupTag(number_of_tag) => assert_eq!(number_of_tag,"1445"),
+        fix_rs::fix::ParseError::MissingFirstRepeatingGroupTagAfterNumberOfRepeatingGroupTag(number_of_tag) => assert_eq!(number_of_tag,b"1445"),
         _ => assert!(false),
     }
 
@@ -310,7 +310,7 @@ fn repeating_groups_test() {
     let result = parse_message::<RepeatingGroupsTestMessage>(wrong_first_tag_in_second_repeating_group_message);
     assert!(result.is_err());
     match result.err().unwrap() {
-        fix_rs::fix::ParseError::DuplicateTag(tag) => assert_eq!(tag,"1447"),
+        fix_rs::fix::ParseError::DuplicateTag(tag) => assert_eq!(tag,b"1447"),
         _ => assert!(false),
     }
 
@@ -318,7 +318,7 @@ fn repeating_groups_test() {
     let result = parse_message::<RepeatingGroupsTestMessage>(missing_required_tag_in_repeating_group_message);
     assert!(result.is_err());
     match result.err().unwrap() {
-        fix_rs::fix::ParseError::MissingRequiredTag(tag) => assert_eq!(tag,"1447"),
+        fix_rs::fix::ParseError::MissingRequiredTag(tag) => assert_eq!(tag,b"1447"),
         _ => assert!(false),
     }
 
@@ -326,7 +326,7 @@ fn repeating_groups_test() {
     let result = parse_message::<RepeatingGroupsTestMessage>(missing_required_tag_in_first_repeating_group_message);
     assert!(result.is_err());
     match result.err().unwrap() {
-        fix_rs::fix::ParseError::MissingRequiredTag(tag) => assert_eq!(tag,"1447"),
+        fix_rs::fix::ParseError::MissingRequiredTag(tag) => assert_eq!(tag,b"1447"),
         _ => assert!(false),
     }
 }
@@ -339,7 +339,7 @@ fn nested_repeating_groups_test() {
 
     let one_nested_repeating_group_message = "8=FIX.4.2\u{1}9=35\u{1}35=A\u{1}73=1\u{1}11=uniqueid\u{1}78=1\u{1}79=acct\u{1}10=233\u{1}";
     let message = parse_message::<NestedRepeatingGroupsTestMessage>(one_nested_repeating_group_message).unwrap();
-    assert_eq!(message.meta.clone().unwrap().protocol,"FIX.4.2");
+    assert_eq!(message.meta.clone().unwrap().protocol,b"FIX.4.2");
     assert_eq!(message.meta.clone().unwrap().body_length,35);
     assert_eq!(message.meta.clone().unwrap().checksum,233);
     assert_eq!(message.orders.len(),1);
@@ -351,7 +351,7 @@ fn nested_repeating_groups_test() {
 #[test]
 fn stream_test() {
     define_dictionary!(
-        "A" => Logon : Logon,
+        b"A" => Logon : Logon,
     );
 
     let two_messages = b"8=FIX.4.2\x019=65\x0135=A\x0149=SERVER\x0156=CLIENT\x0134=177\x0152=20090107-18:15:16\x0198=0\x01108=30\x0110=062\x018=FIX.4.2\x019=65\x0135=A\x0149=SERVER\x0156=CLIENT\x0134=177\x0152=20090107-18:15:16\x0198=0\x01108=30\x0110=062\x01";
@@ -362,7 +362,7 @@ fn stream_test() {
     assert_eq!(parser.messages.len(),2);
     for message in parser.messages {
         let casted_message = message.as_any().downcast_ref::<Logon>().unwrap();
-        assert_eq!(casted_message.meta.clone().unwrap().protocol,"FIX.4.2");
+        assert_eq!(casted_message.meta.clone().unwrap().protocol,b"FIX.4.2");
         assert_eq!(casted_message.meta.clone().unwrap().body_length,65);
         assert_eq!(casted_message.meta.clone().unwrap().checksum,62);
         assert_eq!(*casted_message.sender_comp_id,"SERVER");
@@ -379,7 +379,7 @@ fn stream_test() {
     assert_eq!(bytes_read,garbage_before_message.len());
     assert!(result.is_ok());
     let casted_message = parser.messages.first().unwrap().as_any().downcast_ref::<Logon>().unwrap();
-    assert_eq!(casted_message.meta.clone().unwrap().protocol,"FIX.4.2");
+    assert_eq!(casted_message.meta.clone().unwrap().protocol,b"FIX.4.2");
     assert_eq!(casted_message.meta.clone().unwrap().body_length,65);
     assert_eq!(casted_message.meta.clone().unwrap().checksum,62);
     assert_eq!(*casted_message.sender_comp_id,"SERVER");
@@ -397,7 +397,7 @@ fn stream_test() {
     assert_eq!(parser.messages.len(),2);
     for message in parser.messages {
         let casted_message = message.as_any().downcast_ref::<Logon>().unwrap();
-        assert_eq!(casted_message.meta.clone().unwrap().protocol,"FIX.4.2");
+        assert_eq!(casted_message.meta.clone().unwrap().protocol,b"FIX.4.2");
         assert_eq!(casted_message.meta.clone().unwrap().body_length,65);
         assert_eq!(casted_message.meta.clone().unwrap().checksum,62);
         assert_eq!(*casted_message.sender_comp_id,"SERVER");
@@ -421,7 +421,7 @@ fn stream_test() {
     assert_eq!(bytes_read_failure + bytes_read_success,invalid_message_before_valid_message.len());
     assert_eq!(parser.messages.len(),1);
     let casted_message = parser.messages.first().unwrap().as_any().downcast_ref::<Logon>().unwrap();
-    assert_eq!(casted_message.meta.clone().unwrap().protocol,"FIX.4.2");
+    assert_eq!(casted_message.meta.clone().unwrap().protocol,b"FIX.4.2");
     assert_eq!(casted_message.meta.clone().unwrap().body_length,65);
     assert_eq!(casted_message.meta.clone().unwrap().checksum,62);
     assert_eq!(*casted_message.sender_comp_id,"SERVER");

@@ -5,10 +5,10 @@ use std::ops::{Deref,DerefMut};
 
 pub enum Action {
     Nothing,
-    AddRequiredTags(HashSet<&'static str>),
+    AddRequiredTags(HashSet<&'static [u8]>),
     BeginGroup{message: Box<Message>},
-    PrepareForBytes{bytes_tag: &'static str},
-    ConfirmPreviousTag{previous_tag: &'static str}, //TODO: Probably redundant to the PrepareForBytes definition. Should be automatically inferred.
+    PrepareForBytes{bytes_tag: &'static [u8]},
+    ConfirmPreviousTag{previous_tag: &'static [u8]}, //TODO: Probably redundant to the PrepareForBytes definition. Should be automatically inferred.
 }
 
 pub trait FieldType {
@@ -138,7 +138,7 @@ impl<T: Message> Deref for RepeatingGroupFieldType<T> {
 pub trait Field {
     type Type;
     fn action() -> Action;
-    fn tag() -> &'static str;
+    fn tag() -> &'static [u8];
 }
 
 #[macro_export]
@@ -167,7 +167,7 @@ macro_rules! define_field {
                 }
             }
 
-            fn tag() -> &'static str {
+            fn tag() -> &'static [u8] {
                 $tag
             }
         }
