@@ -1,40 +1,63 @@
+#[macro_use]
 extern crate fix_rs;
 
-use fix_rs::fix::{ParseState,print_group,TagMap};
+use std::collections::HashMap;
+use fix_rs::fix::Parser;
+use fix_rs::message::Message;
+use fix_rs::dictionary::Logon;
 
-//TODO: Copy and pasted from tests/lib.rs.
-fn assert_tag_matches_string(tags: &TagMap,tag_name: &str,expected_value: &str) {
-    if let fix_rs::fix::TagValue::String(ref str) = *tags.get(tag_name).unwrap() {
-        assert_eq!(str,expected_value);
+//Helper function to make it easier to figure out what the body_length tag should be set to.
+fn estimate_body_length(message_bytes: &[u8]) -> usize {
+    let mut previous_byte = 0;
+    let mut found_body_length_tag = false;
+    let mut body_start = 0;
+    for (index,byte) in message_bytes.iter().enumerate() {
+        if body_start == 0 && found_body_length_tag && *byte == b'\x01' {
+            body_start = index + 1;
+        }
+        if previous_byte == b'9' && *byte == b'=' {
+            found_body_length_tag = true;
+        }
+        if previous_byte == b'0' && *byte == b'=' && message_bytes[index - 2] == b'1' && message_bytes[index - 3] == 1 {
+            return index - 2 - body_start;
+        }
+        previous_byte = *byte;
     }
-    else {
-        assert!(false); //Not a string.
-    }
+
+    panic!("Message is malformed.");
 }
 
 fn main() {
-    //let message = "8=FIX.4.2\u{1}9=251\u{1}35=D\u{1}49=AFUNDMGR\u{1}56=ABROKER\u{1}34=2\u{1}52=20030615-01:14:49\u{1}11=12345\u{1}1=111111\u{1}63=0\u{1}64=20030621\u{1}21=3\u{1}110=1000\u{1}111=50000\u{1}55=IBM\u{1}48=459200101\u{1}22=1\u{1}54=1\u{1}60=2003061501:14:49\u{1}38=5000\u{1}40=1\u{1}44=15.75\u{1}15=USD\u{1}59=0\u{1}10=221\u{1}";
-    let message = b"8=FIX.4.2\x019=65\x0135=A\x0149=SERVER\x0156=CLIENT\x0134=177\x0152=20090107-18:15:16\x0198=0\x01108=30\x0110=062\x01";
+    define_dictionary!(
+        "A" => Logon : Logon,
+    );
 
-    //let message_bytes = Vec::from(message);
-    let mut parse_state = ParseState::new();
-    for byte in message.iter() {
-        let mut message_bytes = Vec::new();
-        message_bytes.push(*byte);
-        let (bytes_read,_) = parse_state.parse(&message_bytes);
-        assert_eq!(bytes_read,1);
+    let message_bytes = b"8=FIX.4.2\x019=125\x0135=A\x0149=SERVER\x0156=CLIENT\x0134=177\x0152=20090107-18:15:16\x0198=0\x01108=30\x0195=13\x0196=This\x01is=atest\x01384=2\x01372=Test\x01385=A\x01372=Test2\x01385=B\x0110=111\x01";
+
+    let mut parser = Parser::new(build_dictionary());
+    let (bytes_read,result) = parser.parse(message_bytes);
+    assert!(result.is_ok());
+    assert_eq!(bytes_read,message_bytes.len());
+
+    match message_to_enum(&**(parser.messages.first().unwrap())) {
+        MessageEnum::Logon(message) => {
+            assert_eq!(*message.encrypt_method,"0");
+            assert_eq!(*message.heart_bt_int,"30");
+            assert_eq!(*message.msg_seq_num,"177");
+            assert_eq!(*message.sender_comp_id,"SERVER");
+            assert_eq!(*message.target_comp_id,"CLIENT");
+            assert_eq!(*message.sending_time,"20090107-18:15:16");
+            assert_eq!(*message.raw_data,b"This\x01is=atest");
+            assert_eq!(message.msg_type_grp.len(),2);
+
+            let message_type_0 = &message.msg_type_grp[0];
+            assert_eq!(*message_type_0.ref_msg_type,"Test");
+            assert_eq!(*message_type_0.msg_direction,"A");
+
+            let message_type_1 = &message.msg_type_grp[1];
+            assert_eq!(*message_type_1.ref_msg_type,"Test2");
+            assert_eq!(*message_type_1.msg_direction,"B");
+        }
     }
-
-    let message = parse_state.messages.first().unwrap();
-    print_group(message,0);
-    assert_tag_matches_string(message,"8","FIX.4.2");
-    assert_tag_matches_string(message,"9","65");
-    assert_tag_matches_string(message,"35","A");
-    assert_tag_matches_string(message,"49","SERVER");
-    assert_tag_matches_string(message,"56","CLIENT");
-    assert_tag_matches_string(message,"34","177");
-    assert_tag_matches_string(message,"52","20090107-18:15:16");
-    assert_tag_matches_string(message,"98","0");
-    assert_tag_matches_string(message,"108","30");
-    assert_tag_matches_string(message,"10","062");
 }
+
