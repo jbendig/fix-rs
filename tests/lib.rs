@@ -6,11 +6,23 @@ extern crate fix_rs;
 use fix_rs::fix::{Parser,ParseError};
 use fix_rs::message::{Meta,Message,REQUIRED,NOT_REQUIRED};
 use fix_rs::field::{Action,Field,FieldType};
-use fix_rs::dictionary::{Logon,RawData,RawDataLength,NoRateSources,Symbol,NoOrders};
+use fix_rs::dictionary::{EncryptMethod,HeartBtInt,MsgSeqNum,SendingTime,SenderCompID,TargetCompID,NoMsgTypeGrp,RawData,RawDataLength,NoRateSources,Symbol,NoOrders};
 use std::any::Any;
 use std::collections::{HashMap,HashSet};
 
 const PARSE_MESSAGE_BY_STREAM : bool = true;
+
+define_message!(LogonTest {
+    REQUIRED, encrypt_method: EncryptMethod,
+    REQUIRED, heart_bt_int: HeartBtInt,
+    REQUIRED, msg_seq_num: MsgSeqNum,
+    NOT_REQUIRED, sending_time: SendingTime,
+    NOT_REQUIRED, sender_comp_id: SenderCompID,
+    NOT_REQUIRED, target_comp_id: TargetCompID,
+    NOT_REQUIRED, raw_data_length: RawDataLength,
+    NOT_REQUIRED, raw_data: RawData,
+    NOT_REQUIRED, msg_type_grp: NoMsgTypeGrp,
+});
 
 fn parse_message<T: Message + Default + Any + Clone + PartialEq>(message: &str) -> Result<T,ParseError> {
     let mut message_dictionary: HashMap<&'static [u8],Box<Message>> = HashMap::new();
@@ -64,7 +76,7 @@ fn parse_message<T: Message + Default + Any + Clone + PartialEq>(message: &str) 
 fn simple_test() {
     let message = "8=FIX.4.2\u{1}9=65\u{1}35=A\u{1}49=SERVER\u{1}56=CLIENT\u{1}34=177\u{1}52=20090107-18:15:16\u{1}98=0\u{1}108=30\u{1}10=062\u{1}";
 
-    let message = parse_message::<Logon>(message).unwrap();
+    let message = parse_message::<LogonTest>(message).unwrap();
     assert_eq!(*message.encrypt_method,"0");
     assert_eq!(*message.heart_bt_int,"30");
     assert_eq!(*message.msg_seq_num,"177");
@@ -76,11 +88,11 @@ fn simple_test() {
 #[test]
 fn body_length_second_tag_test() {
     let body_length_second_tag_message = "8=FIX.4.2\u{1}9=65\u{1}35=A\u{1}49=SERVER\u{1}56=CLIENT\u{1}34=177\u{1}52=20090107-18:15:16\u{1}98=0\u{1}108=30\u{1}10=062\u{1}";
-    let message = parse_message::<Logon>(body_length_second_tag_message).unwrap();
+    let message = parse_message::<LogonTest>(body_length_second_tag_message).unwrap();
     assert_eq!(message.meta.unwrap().body_length,65);
 
     let body_length_third_tag_message = "8=FIX.4.2\u{1}35=A\u{1}9=65\u{1}49=SERVER\u{1}56=CLIENT\u{1}34=177\u{1}52=20090107-18:15:16\u{1}98=0\u{1}108=30\u{1}10=062\u{1}";
-    let result = parse_message::<Logon>(body_length_third_tag_message);
+    let result = parse_message::<LogonTest>(body_length_third_tag_message);
     assert!(result.is_err());
     match result.err().unwrap() {
         fix_rs::fix::ParseError::BodyLengthNotSecondTag => {},
@@ -88,7 +100,7 @@ fn body_length_second_tag_test() {
     }
 
     let missing_body_length_tag_message = "8=FIX.4.2\u{1}35=A\u{1}49=SERVER\u{1}56=CLIENT\u{1}34=177\u{1}52=20090107-18:15:16\u{1}98=0\u{1}108=30\u{1}10=062\u{1}";
-    let result = parse_message::<Logon>(missing_body_length_tag_message);
+    let result = parse_message::<LogonTest>(missing_body_length_tag_message);
     assert!(result.is_err());
     match result.err().unwrap() {
         fix_rs::fix::ParseError::BodyLengthNotSecondTag => {},
@@ -96,7 +108,7 @@ fn body_length_second_tag_test() {
     }
 
     let negative_number_body_length_tag_message = "8=FIX.4.2\u{1}9=-65\u{1}35=A\u{1}49=SERVER\u{1}56=CLIENT\u{1}34=177\u{1}52=20090107-18:15:16\u{1}98=0\u{1}108=30\u{1}10=062\u{1}";
-    let result = parse_message::<Logon>(negative_number_body_length_tag_message);
+    let result = parse_message::<LogonTest>(negative_number_body_length_tag_message);
     assert!(result.is_err());
     match result.err().unwrap() {
         fix_rs::fix::ParseError::BodyLengthNotNumber => {},
@@ -104,7 +116,7 @@ fn body_length_second_tag_test() {
     }
 
     let nonnumber_number_body_length_tag_message = "8=FIX.4.2\u{1}9=TEXT\u{1}35=A\u{1}49=SERVER\u{1}56=CLIENT\u{1}34=177\u{1}52=20090107-18:15:16\u{1}98=0\u{1}108=30\u{1}10=062\u{1}";
-    let result = parse_message::<Logon>(nonnumber_number_body_length_tag_message);
+    let result = parse_message::<LogonTest>(nonnumber_number_body_length_tag_message);
     assert!(result.is_err());
     match result.err().unwrap() {
         fix_rs::fix::ParseError::BodyLengthNotNumber => {},
@@ -115,10 +127,10 @@ fn body_length_second_tag_test() {
 #[test]
 fn msg_type_third_tag_test() {
     let msg_type_third_tag_message = "8=FIX.4.2\u{1}9=65\u{1}35=A\u{1}49=SERVER\u{1}56=CLIENT\u{1}34=177\u{1}52=20090107-18:15:16\u{1}98=0\u{1}108=30\u{1}10=062\u{1}";
-    parse_message::<Logon>(msg_type_third_tag_message).unwrap();
+    parse_message::<LogonTest>(msg_type_third_tag_message).unwrap();
 
     let msg_type_fourth_tag_message = "8=FIX.4.2\u{1}9=65\u{1}49=SERVER\u{1}35=A\u{1}56=CLIENT\u{1}34=177\u{1}52=20090107-18:15:16\u{1}98=0\u{1}108=30\u{1}10=062\u{1}";
-    let result = parse_message::<Logon>(msg_type_fourth_tag_message);
+    let result = parse_message::<LogonTest>(msg_type_fourth_tag_message);
     assert!(result.is_err());
     match result.err().unwrap() {
         fix_rs::fix::ParseError::MsgTypeNotThirdTag => {},
@@ -126,7 +138,7 @@ fn msg_type_third_tag_test() {
     }
 
     let missing_msg_type_tag_message = "8=FIX.4.2\u{1}9=65\u{1}49=SERVER\u{1}56=CLIENT\u{1}34=177\u{1}52=20090107-18:15:16\u{1}98=0\u{1}108=30\u{1}10=062\u{1}";
-    let result = parse_message::<Logon>(missing_msg_type_tag_message);
+    let result = parse_message::<LogonTest>(missing_msg_type_tag_message);
     assert!(result.is_err());
     match result.err().unwrap() {
         fix_rs::fix::ParseError::MsgTypeNotThirdTag => {},
@@ -137,11 +149,11 @@ fn msg_type_third_tag_test() {
 #[test]
 fn checksum_tag_test() {
     let valid_checksum_tag_message = "8=FIX.4.2\u{1}9=65\u{1}35=A\u{1}49=SERVER\u{1}56=CLIENT\u{1}34=177\u{1}52=20090107-18:15:16\u{1}98=0\u{1}108=30\u{1}10=062\u{1}";
-    let message = parse_message::<Logon>(valid_checksum_tag_message).unwrap();
+    let message = parse_message::<LogonTest>(valid_checksum_tag_message).unwrap();
     assert_eq!(message.meta.unwrap().checksum,62);
 
     let incorrect_checksum_tag_message = "8=FIX.4.2\u{1}9=65\u{1}35=A\u{1}49=SERVER\u{1}56=CLIENT\u{1}34=177\u{1}52=20090107-18:15:16\u{1}98=0\u{1}108=30\u{1}10=0\u{1}";
-    let result = parse_message::<Logon>(incorrect_checksum_tag_message);
+    let result = parse_message::<LogonTest>(incorrect_checksum_tag_message);
     assert!(result.is_err());
     match result.err().unwrap() {
         fix_rs::fix::ParseError::ChecksumDoesNotMatch(calculated_checksum,stated_checksum) => {
@@ -152,7 +164,7 @@ fn checksum_tag_test() {
     }
 
     let negative_checksum_tag_message = "8=FIX.4.2\u{1}9=65\u{1}35=A\u{1}49=SERVER\u{1}56=CLIENT\u{1}34=177\u{1}52=20090107-18:15:16\u{1}98=0\u{1}108=30\u{1}10=-62\u{1}";
-    let result = parse_message::<Logon>(negative_checksum_tag_message);
+    let result = parse_message::<LogonTest>(negative_checksum_tag_message);
     assert!(result.is_err());
     match result.err().unwrap() {
         fix_rs::fix::ParseError::ChecksumNotNumber => {},
@@ -160,7 +172,7 @@ fn checksum_tag_test() {
     }
 
     let nonnumber_checksum_tag_message = "8=FIX.4.2\u{1}9=65\u{1}35=A\u{1}49=SERVER\u{1}56=CLIENT\u{1}34=177\u{1}52=20090107-18:15:16\u{1}98=0\u{1}108=30\u{1}10=TST\u{1}";
-    let result = parse_message::<Logon>(nonnumber_checksum_tag_message);
+    let result = parse_message::<LogonTest>(nonnumber_checksum_tag_message);
     assert!(result.is_err());
     match result.err().unwrap() {
         fix_rs::fix::ParseError::ChecksumNotNumber => {},
@@ -168,7 +180,7 @@ fn checksum_tag_test() {
     }
 
     let early_checksum_tag_message = "8=FIX.4.2\u{1}9=65\u{1}35=A\u{1}49=SERVER\u{1}56=CLIENT\u{1}34=177\u{1}52=20090107-18:15:16\u{1}98=0\u{1}10=TST\u{1}108=30\u{1}";
-    let result = parse_message::<Logon>(early_checksum_tag_message);
+    let result = parse_message::<LogonTest>(early_checksum_tag_message);
     assert!(result.is_err());
     match result.err().unwrap() {
         fix_rs::fix::ParseError::ChecksumNotLastTag => {},
@@ -176,7 +188,7 @@ fn checksum_tag_test() {
     }
 
     let late_checksum_tag_message = "8=FIX.4.2\u{1}9=58\u{1}35=A\u{1}49=SERVER\u{1}56=CLIENT\u{1}34=177\u{1}52=20090107-18:15:16\u{1}98=0\u{1}108=30\u{1}10=TST\u{1}";
-    let result = parse_message::<Logon>(late_checksum_tag_message);
+    let result = parse_message::<LogonTest>(late_checksum_tag_message);
     assert!(result.is_err());
     match result.err().unwrap() {
         fix_rs::fix::ParseError::ChecksumNotLastTag => {},
@@ -365,7 +377,7 @@ fn nested_repeating_groups_test() {
 #[test]
 fn stream_test() {
     define_dictionary!(
-        b"A" => Logon : Logon,
+        b"A" => LogonTest : LogonTest,
     );
 
     let two_messages = b"8=FIX.4.2\x019=65\x0135=A\x0149=SERVER\x0156=CLIENT\x0134=177\x0152=20090107-18:15:16\x0198=0\x01108=30\x0110=062\x018=FIX.4.2\x019=65\x0135=A\x0149=SERVER\x0156=CLIENT\x0134=177\x0152=20090107-18:15:16\x0198=0\x01108=30\x0110=062\x01";
@@ -375,7 +387,7 @@ fn stream_test() {
     assert_eq!(bytes_read,two_messages.len());
     assert_eq!(parser.messages.len(),2);
     for message in parser.messages {
-        let casted_message = message.as_any().downcast_ref::<Logon>().unwrap();
+        let casted_message = message.as_any().downcast_ref::<LogonTest>().unwrap();
         assert_eq!(casted_message.meta.clone().unwrap().protocol,b"FIX.4.2");
         assert_eq!(casted_message.meta.clone().unwrap().body_length,65);
         assert_eq!(casted_message.meta.clone().unwrap().checksum,62);
@@ -392,7 +404,7 @@ fn stream_test() {
     let (bytes_read,result) = parser.parse(&garbage_before_message.to_vec());
     assert_eq!(bytes_read,garbage_before_message.len());
     assert!(result.is_ok());
-    let casted_message = parser.messages.first().unwrap().as_any().downcast_ref::<Logon>().unwrap();
+    let casted_message = parser.messages.first().unwrap().as_any().downcast_ref::<LogonTest>().unwrap();
     assert_eq!(casted_message.meta.clone().unwrap().protocol,b"FIX.4.2");
     assert_eq!(casted_message.meta.clone().unwrap().body_length,65);
     assert_eq!(casted_message.meta.clone().unwrap().checksum,62);
@@ -410,7 +422,7 @@ fn stream_test() {
     assert_eq!(bytes_read,garbage_between_messages.len());
     assert_eq!(parser.messages.len(),2);
     for message in parser.messages {
-        let casted_message = message.as_any().downcast_ref::<Logon>().unwrap();
+        let casted_message = message.as_any().downcast_ref::<LogonTest>().unwrap();
         assert_eq!(casted_message.meta.clone().unwrap().protocol,b"FIX.4.2");
         assert_eq!(casted_message.meta.clone().unwrap().body_length,65);
         assert_eq!(casted_message.meta.clone().unwrap().checksum,62);
@@ -434,7 +446,7 @@ fn stream_test() {
     assert!(result.is_ok());
     assert_eq!(bytes_read_failure + bytes_read_success,invalid_message_before_valid_message.len());
     assert_eq!(parser.messages.len(),1);
-    let casted_message = parser.messages.first().unwrap().as_any().downcast_ref::<Logon>().unwrap();
+    let casted_message = parser.messages.first().unwrap().as_any().downcast_ref::<LogonTest>().unwrap();
     assert_eq!(casted_message.meta.clone().unwrap().protocol,b"FIX.4.2");
     assert_eq!(casted_message.meta.clone().unwrap().body_length,65);
     assert_eq!(casted_message.meta.clone().unwrap().checksum,62);

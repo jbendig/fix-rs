@@ -32,7 +32,7 @@ fn main() {
         b"A" => Logon : Logon,
     );
 
-    let message_bytes = b"8=FIX.4.2\x019=125\x0135=A\x0149=SERVER\x0156=CLIENT\x0134=177\x0152=20090107-18:15:16\x0198=0\x01108=30\x0195=13\x0196=This\x01is=atest\x01384=2\x01372=Test\x01385=A\x01372=Test2\x01385=B\x0110=111\x01";
+    let message_bytes = b"8=FIX.4.2\x019=132\x0135=A\x0149=SERVER\x0156=CLIENT\x0134=177\x0152=20090107-18:15:16\x0198=0\x01108=30\x0195=13\x0196=This\x01is=atest\x011137=4\x01384=2\x01372=Test\x01385=A\x01372=Test2\x01385=B\x0110=171\x01";
 
     let mut parser = Parser::new(build_dictionary());
     let (bytes_read,result) = parser.parse(message_bytes);
@@ -50,6 +50,7 @@ fn main() {
             assert_eq!(*message.target_comp_id,"CLIENT");
             assert_eq!(*message.sending_time,"20090107-18:15:16");
             assert_eq!(*message.raw_data,b"This\x01is=atest");
+            assert_eq!(*message.default_appl_ver_id,"4");
             assert_eq!(message.msg_type_grp.len(),2);
 
             let message_type_0 = &message.msg_type_grp[0];
@@ -71,7 +72,7 @@ fn main() {
     println!("Compared to...");
     println!("{}",String::from_utf8_lossy(message_bytes).into_owned());
 
-    parser.parse(message_bytes);
+    let (bytes_read,result) = parser.parse(serialized_bytes.as_slice());
     assert!(result.is_ok());
     assert_eq!(bytes_read,message_bytes.len());
 
