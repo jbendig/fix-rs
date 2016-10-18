@@ -1,5 +1,7 @@
 use std::any::Any;
 use std::collections::{HashMap,HashSet};
+use std::io::Write;
+use constant::{TAG_END,VALUE_END};
 use field::{Action,FieldType,Field,StringFieldType,DataFieldType,NoneFieldType,RepeatingGroupFieldType};
 use message::{REQUIRED,NOT_REQUIRED,Meta,Message};
 

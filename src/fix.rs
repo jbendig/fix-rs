@@ -4,6 +4,7 @@ use std::fmt;
 use std::iter::FromIterator;
 use std::mem;
 use std::str::FromStr;
+use constant::{TAG_END,VALUE_END};
 use field::Action;
 use message::{Meta,Message,NullMessage};
 
@@ -309,7 +310,7 @@ impl Parser {
         //is not at the offset where it's supposed to be.
         self.body_remaining_length = self.body_remaining_length.overflowing_sub(1).0;
         if self.body_remaining_length == 0 {
-            if c != b'\x01' { //SOH
+            if c != VALUE_END {
                 return Err(ParseError::ChecksumNotLastTag);
             }
             self.next_tag_checksum = true;
@@ -328,7 +329,7 @@ impl Parser {
 
     fn validate_checksum(&mut self) -> Result<(),ParseError> {
         //Remove checksum tag that should not be part of the current checksum.
-        let mut checksum = self.checksum.overflowing_sub(b'1' + b'0' + b'=' + b'\x01').0;
+        let mut checksum = self.checksum.overflowing_sub(CHECKSUM_TAG[0] + CHECKSUM_TAG[1] + TAG_END + VALUE_END).0;
         let ref checksum_bytes = self.current_bytes;
         for c in checksum_bytes {
             checksum = checksum.overflowing_sub(*c).0;
@@ -361,14 +362,14 @@ impl Parser {
         //state.
         let mut previous_byte = match self.found_message {
             FoundMessage::NotFound => 0,
-            FoundMessage::FirstByte => b'8',
+            FoundMessage::FirstByte => BEGINSTR_TAG[0],
             _ => unreachable!(),
         };
         while *index < message_bytes.len() {
             let byte = message_bytes[*index];
 
             //Check if "8=" header has been found.
-            if byte == b'=' && previous_byte == b'8' {
+            if byte == TAG_END && previous_byte == BEGINSTR_TAG[0] {
                 self.found_message = FoundMessage::SecondByte;
                 break;
             }
@@ -379,8 +380,8 @@ impl Parser {
 
         if self.found_message == FoundMessage::SecondByte {
             //Act like the BeginStr tag was parsed so we don't duplicate work.
-            self.current_tag = b"8".to_vec();
-            self.checksum = b'8' + b'=';
+            self.current_tag = BEGINSTR_TAG.to_vec();
+            self.checksum = BEGINSTR_TAG[0] + TAG_END;
             *index += 1;
         }
         else if previous_byte == b'8' && *index == message_bytes.len() {

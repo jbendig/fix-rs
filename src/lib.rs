@@ -1,5 +1,6 @@
 #![allow(unknown_lints)]
 
+pub mod constant;
 pub mod fix;
 #[macro_use]
 pub mod message;

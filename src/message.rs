@@ -1,8 +1,9 @@
 use std::any::Any;
 use std::collections::{HashMap,HashSet};
+use std::io::Write;
 use field::Action;
 
-#[derive(Clone,Default)]
+#[derive(Clone,Default,PartialEq)]
 pub struct Meta {
     pub protocol: Vec<u8>,
     pub body_length: u64,
@@ -18,6 +19,44 @@ pub trait Message {
     fn set_groups(&mut self,key: &[u8],groups: &[Box<Message>]) -> bool;
     fn as_any(&self) -> &Any;
     fn clone_into_box(&self) -> Box<Message>;
+    fn read_body(&self,buf: &mut Vec<u8>) -> usize;
+    fn read(&self,buf: &mut Vec<u8>) -> usize {
+        //TODO: Try and avoid reallocations by providing a start offset and then inserting
+        //the header in a reserved space at the beginning.
+
+        //Read entire body first so we can get the body length.
+        let mut body = Vec::new();
+        self.read_body(&mut body);
+
+        //Prepare header.
+        let protocol_header = b"8=FIX.4.2\x01"; //TODO: Make the protocol version adjustable.
+        let message_type = b"35=A\x01"; //TODO: Make the message type adjustable.
+        let message_type_len = message_type.len();
+        let body_length_str = (body.len() + message_type_len).to_string();
+
+        //Write header and body of message.
+        let write_start_offset = buf.len();
+        let mut byte_count = buf.write(protocol_header).unwrap();
+        byte_count += buf.write(b"9=").unwrap();
+        byte_count += buf.write(body_length_str.as_bytes()).unwrap();
+        byte_count += buf.write(b"\x01").unwrap();
+        byte_count += buf.write(message_type).unwrap();
+        byte_count += buf.write(body.as_slice()).unwrap();
+
+        //Calculate checksum.
+        let mut checksum: u8 = 0;
+        for byte in buf.iter().skip(write_start_offset) {
+            checksum = checksum.overflowing_add(*byte).0;
+        }
+        let checksum_str = checksum.to_string();
+
+        //Write checksum.
+        byte_count += buf.write(b"10=").unwrap();
+        byte_count += buf.write(checksum_str.as_bytes()).unwrap();
+        byte_count += buf.write(b"\x01").unwrap();
+
+        byte_count
+    }
 }
 
 pub struct NullMessage {
@@ -53,6 +92,10 @@ impl Message for NullMessage {
     }
 
     fn clone_into_box(&self) -> Box<Message> {
+        unimplemented!();
+    }
+
+    fn read_body(&self,_buf: &mut Vec<u8>) -> usize {
         unimplemented!();
     }
 }
@@ -129,6 +172,24 @@ macro_rules! define_message {
 
             fn clone_into_box(&self) -> Box<Message> {
                 Box::new($message_name::new())
+            }
+
+            fn read_body(&self,buf: &mut Vec<u8>) -> usize {
+                let mut byte_count: usize = 0;
+                $( byte_count += <$field_type as Field>::read(buf,&self.$field_name); )*
+
+                byte_count
+            }
+        }
+
+        impl PartialEq for $message_name {
+            fn eq(&self,other: &$message_name) -> bool {
+                //Note: Meta is not compared here because the resulting body length and checksum
+                //can be different for messages that should be treated the same. For example, when
+                //a repeating group count is specified with 0, the field could have been optionally
+                //(and recommended to be) left out.
+                $( self.$field_name == other.$field_name && )*
+                true
             }
         }
     };

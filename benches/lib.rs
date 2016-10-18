@@ -10,19 +10,38 @@ use fix_rs::dictionary::NewOrderSingle;
 use fix_rs::fix::Parser;
 use test::Bencher;
 
+const MESSAGE_BYTES: &'static [u8] = b"8=FIX.4.2\x019=197\x0135=D\x0149=AFUNDMGR\x0156=ABROKER\x0134=2\x0152=20030615-01:14:49\x0111=12345\x011=111111\x0163=0\x0164=20030621\x0121=3\x01110=1000\x01111=50000\x0155=IBM\x0148=459200101\x0122=1\x0154=1\x0160=2003061501:14:49\x0138=5000\x0140=1\x0144=15.75\x0115=USD\x0159=0\x0110=230\x01";
+
 #[bench]
 fn parse_simple_message_bench(b: &mut Bencher) {
     define_dictionary!(
         b"D" => NewOrderSingle : NewOrderSingle,
     );
 
-    let message = "8=FIX.4.2\u{1}9=197\u{1}35=D\u{1}49=AFUNDMGR\u{1}56=ABROKER\u{1}34=2\u{1}52=20030615-01:14:49\u{1}11=12345\u{1}1=111111\u{1}63=0\u{1}64=20030621\u{1}21=3\u{1}110=1000\u{1}111=50000\u{1}55=IBM\u{1}48=459200101\u{1}22=1\u{1}54=1\u{1}60=2003061501:14:49\u{1}38=5000\u{1}40=1\u{1}44=15.75\u{1}15=USD\u{1}59=0\u{1}10=230\u{1}";
-    let message_bytes = Vec::from(message);
-
     let mut parser = Parser::new(build_dictionary());
     b.iter(|| {
-        let (bytes_read,result) = parser.parse(&message_bytes);
+        let (bytes_read,result) = parser.parse(MESSAGE_BYTES);
         assert!(result.is_ok());
-        assert!(bytes_read == message_bytes.len());
+        assert!(bytes_read == MESSAGE_BYTES.len());
     });
+}
+
+#[bench]
+fn serialize_simple_message_bench(b: &mut Bencher) {
+    define_dictionary!(
+        b"D" => NewOrderSingle : NewOrderSingle,
+    );
+
+    let mut parser = Parser::new(build_dictionary());
+    let (bytes_read,result) = parser.parse(MESSAGE_BYTES);
+    assert!(result.is_ok());
+    assert!(bytes_read == MESSAGE_BYTES.len());
+    match message_to_enum(&**(parser.messages.first().unwrap())) {
+        MessageEnum::NewOrderSingle(message) => {
+            b.iter(|| {
+                let mut data = Vec::new();
+                message.read(&mut data);
+            });
+        },
+    }
 }

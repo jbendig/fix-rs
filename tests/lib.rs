@@ -12,7 +12,7 @@ use std::collections::{HashMap,HashSet};
 
 const PARSE_MESSAGE_BY_STREAM : bool = true;
 
-fn parse_message<T: Message + Default + Any + Clone>(message: &str) -> Result<T,ParseError> {
+fn parse_message<T: Message + Default + Any + Clone + PartialEq>(message: &str) -> Result<T,ParseError> {
     let mut message_dictionary: HashMap<&'static [u8],Box<Message>> = HashMap::new();
     message_dictionary.insert(b"A",Box::new(<T as Default>::default()));
 
@@ -42,8 +42,22 @@ fn parse_message<T: Message + Default + Any + Clone>(message: &str) -> Result<T,
     }
 
     assert_eq!(parser.messages.len(),1);
-    let casted_message = parser.messages.first().unwrap().as_any().downcast_ref::<T>().unwrap();
-    Ok(casted_message.clone())
+    let casted_message = parser.messages.first().unwrap().as_any().downcast_ref::<T>().unwrap().clone();
+
+    //Serialize and parse again to help check for potential bugs in the serialization system.
+    {
+        let mut new_message_bytes = Vec::new();
+        casted_message.read(&mut new_message_bytes);
+        parser.messages.clear();
+        let(_,result) = parser.parse(&new_message_bytes);
+        assert!(result.is_ok());
+        assert_eq!(parser.messages.len(),1);
+
+        let new_casted_message = parser.messages.first().unwrap().as_any().downcast_ref::<T>().unwrap();
+        assert!(casted_message == *new_casted_message);
+    }
+
+    Ok(casted_message)
 }
 
 #[test]
@@ -214,7 +228,7 @@ fn length_tag_test() {
 #[test]
 fn repeating_groups_test() {
     define_message!(RepeatingGroupsTestMessage {
-        REQUIRED, rate_sources: NoRateSources,
+        NOT_REQUIRED, rate_sources: NoRateSources,
         NOT_REQUIRED, symbol: Symbol,
     });
 

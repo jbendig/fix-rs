@@ -39,6 +39,8 @@ fn main() {
     assert!(result.is_ok());
     assert_eq!(bytes_read,message_bytes.len());
 
+    let message1;
+    let mut serialized_bytes = Vec::new();
     match message_to_enum(&**(parser.messages.first().unwrap())) {
         MessageEnum::Logon(message) => {
             assert_eq!(*message.encrypt_method,"0");
@@ -57,6 +59,25 @@ fn main() {
             let message_type_1 = &message.msg_type_grp[1];
             assert_eq!(*message_type_1.ref_msg_type,"Test2");
             assert_eq!(*message_type_1.msg_direction,"B");
+
+            message1 = Some(message.clone());
+        }
+    }
+
+    let message1 = message1.unwrap();
+    message1.read(&mut serialized_bytes);
+
+    println!("{}",String::from_utf8_lossy(serialized_bytes.as_slice()).into_owned());
+    println!("Compared to...");
+    println!("{}",String::from_utf8_lossy(message_bytes).into_owned());
+
+    parser.parse(message_bytes);
+    assert!(result.is_ok());
+    assert_eq!(bytes_read,message_bytes.len());
+
+    match message_to_enum(&**(parser.messages.first().unwrap())) {
+        MessageEnum::Logon(message) => {
+            assert!(message1 == message);
         }
     }
 }
