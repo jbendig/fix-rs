@@ -54,23 +54,23 @@ fn main() {
     let mut serialized_bytes = Vec::new();
     match message_to_enum(&**(parser.messages.first().unwrap())) {
         MessageEnum::Logon(message) => {
-            assert_eq!(*message.encrypt_method,"0");
-            assert_eq!(*message.heart_bt_int,"30");
-            assert_eq!(*message.msg_seq_num,"177");
-            assert_eq!(*message.sender_comp_id,"SERVER");
-            assert_eq!(*message.target_comp_id,"CLIENT");
-            assert_eq!(*message.sending_time,"20090107-18:15:16");
-            assert_eq!(*message.raw_data,b"This\x01is=atest");
-            assert_eq!(*message.default_appl_ver_id,"4");
+            assert_eq!(message.encrypt_method,"0");
+            assert_eq!(message.heart_bt_int,"30");
+            assert_eq!(message.msg_seq_num,"177");
+            assert_eq!(message.sender_comp_id,"SERVER");
+            assert_eq!(message.target_comp_id,"CLIENT");
+            assert_eq!(message.sending_time,"20090107-18:15:16");
+            assert_eq!(message.raw_data,b"This\x01is=atest");
+            assert_eq!(message.default_appl_ver_id,"4");
             assert_eq!(message.msg_type_grp.len(),2);
 
             let message_type_0 = &message.msg_type_grp[0];
-            assert_eq!(*message_type_0.ref_msg_type,"Test");
-            assert_eq!(*message_type_0.msg_direction,"A");
+            assert_eq!(message_type_0.ref_msg_type,"Test");
+            assert_eq!(message_type_0.msg_direction,"A");
 
             let message_type_1 = &message.msg_type_grp[1];
-            assert_eq!(*message_type_1.ref_msg_type,"Test2");
-            assert_eq!(*message_type_1.msg_direction,"B");
+            assert_eq!(message_type_1.ref_msg_type,"Test2");
+            assert_eq!(message_type_1.msg_direction,"B");
 
             message1 = Some(message.clone());
         }

@@ -13,8 +13,8 @@ use message::Message;
 use constant::VALUE_END;
 use std::any::Any;
 use std::collections::HashSet;
+use std::marker::PhantomData;
 use std::io::Write;
-use std::ops::{Deref,DerefMut};
 
 pub enum Action {
     Nothing,
@@ -25,137 +25,111 @@ pub enum Action {
 }
 
 pub trait FieldType {
-    fn new() -> Self;
+    type Type;
 
     fn action() -> Option<Action> {
         None
     }
 
-    fn set_value(&mut self,_bytes: &[u8]) -> bool {
+    fn set_value(_field: &mut Self::Type,_bytes: &[u8]) -> bool {
         false
     }
 
-    fn set_groups(&mut self,_groups: &[Box<Message>]) -> bool {
+    fn set_groups(_field: &mut Self::Type,_groups: &[Box<Message>]) -> bool {
         false
     }
 
-    fn read(&self,buf: &mut Vec<u8>) -> usize;
+    fn is_empty(field: &Self::Type) -> bool;
+    fn len(field: &Self::Type) -> usize;
+    fn read(field: &Self::Type,buf: &mut Vec<u8>) -> usize;
 }
 
-#[derive(Clone,Default,PartialEq)]
 pub struct NoneFieldType {
 }
 
-impl NoneFieldType {
-    pub fn is_empty(&self) -> bool {
+impl FieldType for NoneFieldType {
+    type Type = PhantomData<()>;
+
+    fn is_empty(_field: &Self::Type) -> bool {
         true
     }
 
-    pub fn len(&self) -> usize {
+    fn len(_field: &Self::Type) -> usize {
+        0
+    }
+
+    fn read(_field: &Self::Type,_buf: &mut Vec<u8>) -> usize {
         0
     }
 }
 
-impl FieldType for NoneFieldType {
-    fn new() -> Self {
-        NoneFieldType {}
-    }
-
-    fn read(&self,_buf: &mut Vec<u8>) -> usize {
-        0
-    }
-}
-
-#[derive(Clone,Default,PartialEq)]
 pub struct StringFieldType {
-    value: String,
 }
 
 impl FieldType for StringFieldType {
-    fn new() -> Self {
-        StringFieldType {
-            value: String::new(),
-        }
-    }
+    type Type = String;
 
-    fn set_value(&mut self,bytes: &[u8]) -> bool {
-        self.value = String::from_utf8_lossy(bytes).into_owned();
+    fn set_value(field: &mut Self::Type,bytes: &[u8]) -> bool {
+        *field = String::from_utf8_lossy(bytes).into_owned();
         true
     }
 
-    fn read(&self,buf: &mut Vec<u8>) -> usize {
-        buf.write(self.value.as_bytes()).unwrap()
+    fn is_empty(field: &Self::Type) -> bool {
+        field.is_empty()
+    }
+
+    fn len(field: &Self::Type) -> usize {
+        field.len()
+    }
+
+    fn read(field: &Self::Type,buf: &mut Vec<u8>) -> usize {
+        buf.write(field.as_bytes()).unwrap()
     }
 }
 
-impl Deref for StringFieldType {
-    type Target = String;
-
-    fn deref(&self) -> &String {
-        &self.value
-    }
-}
-
-impl DerefMut for StringFieldType {
-    fn deref_mut(&mut self) -> &mut String {
-        &mut self.value
-    }
-}
-
-#[derive(Clone,Default,PartialEq)]
 pub struct DataFieldType {
-    value: Vec<u8>,
 }
 
 impl FieldType for DataFieldType {
-    fn new() -> Self {
-        DataFieldType {
-            value: Vec::new(),
-        }
-    }
+    type Type = Vec<u8>;
 
-    fn set_value(&mut self,bytes: &[u8]) -> bool {
-        self.value.resize(bytes.len(),0);
-        self.value.copy_from_slice(bytes);
+    fn set_value(field: &mut Self::Type,bytes: &[u8]) -> bool {
+        field.resize(bytes.len(),0);
+        field.copy_from_slice(bytes);
         true
     }
 
-    fn read(&self,buf: &mut Vec<u8>) -> usize {
-        buf.write(&self.value).unwrap()
+    fn is_empty(field: &Self::Type) -> bool {
+        field.is_empty()
+    }
+
+    fn len(field: &Self::Type) -> usize {
+        field.len()
+    }
+
+    fn read(field: &Self::Type,buf: &mut Vec<u8>) -> usize {
+        buf.write(field).unwrap()
     }
 }
 
-impl Deref for DataFieldType {
-    type Target = Vec<u8>;
-
-    fn deref(&self) -> &Vec<u8> {
-        &self.value
-    }
-}
-
-#[derive(Clone,Default,PartialEq)]
 pub struct RepeatingGroupFieldType<T: Message + PartialEq> {
-    groups: Vec<Box<T>>,
+    message_type: PhantomData<T>,
 }
 
 impl<T: Message + Any + Clone + Default + PartialEq> FieldType for RepeatingGroupFieldType<T> {
-    fn new() -> Self {
-        RepeatingGroupFieldType {
-            groups: Vec::new(),
-        }
-    }
+    type Type = Vec<Box<T>>;
 
     fn action() -> Option<Action> {
         Some(Action::BeginGroup{ message: Box::new(<T as Default>::default()) })
     }
 
-    fn set_groups(&mut self,groups: &[Box<Message>]) -> bool {
-        self.groups.clear();
+    fn set_groups(field: &mut Self::Type,groups: &[Box<Message>]) -> bool {
+        field.clear();
 
         for group in groups {
             match group.as_any().downcast_ref::<T>() {
                 //TODO: Avoid the clone below.
-                Some(casted_group) => self.groups.push(Box::new(casted_group.clone())),
+                Some(casted_group) => field.push(Box::new(casted_group.clone())),
                 None => return false,
             }
         }
@@ -163,14 +137,22 @@ impl<T: Message + Any + Clone + Default + PartialEq> FieldType for RepeatingGrou
         true
     }
 
-    fn read(&self,buf: &mut Vec<u8>) -> usize {
-        let group_count_str = self.groups.len().to_string();
+    fn is_empty(field: &Self::Type) -> bool {
+        field.is_empty()
+    }
+
+    fn len(field: &Self::Type) -> usize {
+        field.len()
+    }
+
+    fn read(field: &Self::Type,buf: &mut Vec<u8>) -> usize {
+        let group_count_str = field.len().to_string();
         let mut result = 1;
 
         result += buf.write(group_count_str.as_bytes()).unwrap();
         buf.push(VALUE_END);
 
-        for group in &self.groups {
+        for group in field {
             result += group.read_body(buf);
         }
 
@@ -178,19 +160,12 @@ impl<T: Message + Any + Clone + Default + PartialEq> FieldType for RepeatingGrou
     }
 }
 
-impl<T: Message + PartialEq> Deref for RepeatingGroupFieldType<T> {
-    type Target = Vec<Box<T>>;
-
-    fn deref(&self) -> &Vec<Box<T>> {
-        &self.groups
-    }
-}
-
 pub trait Field {
     type Type;
     fn action() -> Action;
     fn tag() -> &'static [u8];
-    fn read(buf: &mut Vec<u8>,field: &Self::Type) -> usize;
+    fn read(field: &<<Self as Field>::Type as FieldType>::Type,buf: &mut Vec<u8>) -> usize
+        where <Self as Field>::Type: FieldType;
 }
 
 #[macro_export]
@@ -223,8 +198,8 @@ macro_rules! define_field {
                 $tag
             }
 
-            fn read(buf: &mut Vec<u8>,field: &Self::Type) -> usize {
-                if field.is_empty() {
+            fn read(field: &<<Self as Field>::Type as FieldType>::Type,buf: &mut Vec<u8>) -> usize {
+                if <$field_type as FieldType>::is_empty(field) {
                     return 0;
                 }
 
@@ -236,14 +211,14 @@ macro_rules! define_field {
                     result += 2;
                     result += buf.write(previous_tag).unwrap();
                     buf.push(TAG_END);
-                    result += buf.write(field.len().to_string().as_bytes()).unwrap();
+                    result += buf.write(<$field_type as FieldType>::len(field).to_string().as_bytes()).unwrap();
                     buf.push(VALUE_END);
                 }
 
                 //Write tag and value.
                 result += buf.write($tag).unwrap();
                 buf.push(TAG_END);
-                result += field.read(buf);
+                result += <$field_type as FieldType>::read(field,buf);
 
                 //Avoid the VALUE_END symbol iff this is not a repeating group field. This is a
                 //hack, under the assumption that the field itself adds this symbol, so the field

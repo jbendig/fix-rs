@@ -120,7 +120,7 @@ macro_rules! define_message {
         #[derive(Clone,Default)]
         pub struct $message_name {
             pub meta: Option<Meta>,
-            $( pub $field_name: <$field_type as Field>::Type, )*
+            $( pub $field_name: <<$field_type as Field>::Type as FieldType>::Type, )*
         }
 
         impl $message_name {
@@ -161,7 +161,7 @@ macro_rules! define_message {
                 if false {
                     false
                 }
-                $( else if key == <$field_type as Field>::tag() { self.$field_name.set_value(value) } )*
+                $( else if key == <$field_type as Field>::tag() { <$field_type as Field>::Type::set_value(&mut self.$field_name,value) } )*
                 else {
                     false
                 }
@@ -171,7 +171,7 @@ macro_rules! define_message {
                 if false {
                     false
                 }
-                $( else if key == <$field_type as Field>::tag() { self.$field_name.set_groups(groups) } )*
+                $( else if key == <$field_type as Field>::tag() { <$field_type as Field>::Type::set_groups(&mut self.$field_name,groups) } )*
                 else {
                     false
                 }
@@ -187,7 +187,7 @@ macro_rules! define_message {
 
             fn read_body(&self,buf: &mut Vec<u8>) -> usize {
                 let mut byte_count: usize = 0;
-                $( byte_count += <$field_type as Field>::read(buf,&self.$field_name); )*
+                $( byte_count += <$field_type as Field>::read(&self.$field_name,buf); )*
 
                 byte_count
             }
