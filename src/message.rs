@@ -29,7 +29,7 @@ pub trait Message {
     fn set_value(&mut self,key: &[u8],value: &[u8]) -> bool;
     fn set_groups(&mut self,key: &[u8],groups: &[Box<Message>]) -> bool;
     fn as_any(&self) -> &Any;
-    fn clone_into_box(&self) -> Box<Message>;
+    fn new_into_box(&self) -> Box<Message>;
     fn read_body(&self,buf: &mut Vec<u8>) -> usize;
     fn read(&self,buf: &mut Vec<u8>) -> usize {
         //TODO: Try and avoid reallocations by providing a start offset and then inserting
@@ -102,7 +102,7 @@ impl Message for NullMessage {
         unimplemented!();
     }
 
-    fn clone_into_box(&self) -> Box<Message> {
+    fn new_into_box(&self) -> Box<Message> {
         unimplemented!();
     }
 
@@ -181,7 +181,7 @@ macro_rules! define_message {
                 self
             }
 
-            fn clone_into_box(&self) -> Box<Message> {
+            fn new_into_box(&self) -> Box<Message> {
                 Box::new($message_name::new())
             }
 

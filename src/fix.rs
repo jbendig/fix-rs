@@ -162,7 +162,7 @@ impl Parser {
         //the previous tag matches the required tag. This is an optional sanity check that's
         //provided for better error messages but probably isn't needed in practice.
         let mut value_to_length_tags = HashMap::new();
-        let mut message_stack = Vec::from_iter(message_dictionary.iter().map(|(_,message)| { message.clone_into_box() }));
+        let mut message_stack = Vec::from_iter(message_dictionary.iter().map(|(_,message)| { message.new_into_box() }));
         while let Some(message) = message_stack.pop() {
             for (tag,action) in message.fields() {
                 match action {
@@ -170,7 +170,7 @@ impl Parser {
                         value_to_length_tags.insert(tag,previous_tag);
                     },
                     Action::BeginGroup{ message } => {
-                        message_stack.push(message.clone_into_box());
+                        message_stack.push(message.new_into_box());
                     },
                     _ => {}
                 }
@@ -226,11 +226,11 @@ impl Parser {
         //Start by walking the message_dictionary and collecting every possible message format --
         //including repeating and nested repeating groups.
         let mut all_messages = Vec::new();
-        let mut message_stack = Vec::from_iter(message_dictionary.iter().map(|(_,message)| { (MessageType::Standard,message.clone_into_box()) }));
+        let mut message_stack = Vec::from_iter(message_dictionary.iter().map(|(_,message)| { (MessageType::Standard,message.new_into_box()) }));
         while let Some((message_type,message)) = message_stack.pop() {
             for action in message.fields().values() {
                 if let Action::BeginGroup{ ref message } = *action {
-                    message_stack.push((MessageType::RepeatingGroup,message.clone_into_box()));
+                    message_stack.push((MessageType::RepeatingGroup,message.new_into_box()));
                 }
             }
             all_messages.push((message_type,message));
@@ -573,7 +573,7 @@ impl Parser {
                 return Err(ParseError::MsgTypeNotThirdTag);
             }
             else if let Some(message) = self.message_dictionary.get(self.current_bytes.as_slice()) {
-                self.current_message = (*message).clone_into_box();
+                self.current_message = (*message).new_into_box();
                 self.remaining_fields = message.fields();
                 self.remaining_required_fields = message.required_fields();
             }
@@ -604,7 +604,7 @@ impl Parser {
                             try!(prgs.is_last_group_complete());
 
                             //Begin a new group.
-                            let group = prgs.group_template.clone_into_box();
+                            let group = prgs.group_template.new_into_box();
                             let remaining_fields = prgs.group_template.fields();
                             let remaining_required_fields = prgs.group_template.required_fields();
                             prgs.groups.push(ParseGroupState {
