@@ -50,7 +50,7 @@ macro_rules! define_dictionary {
 }
 
 //TODO: Maybe put the tag number first here. It'll be more consistent and be easier to read.
-define_field!(
+define_fields!(
     Account: StringFieldType = b"1",
     BeginSeqNo: StringFieldType = b"7", //SeqNum
     ClOrdID: StringFieldType = b"11",

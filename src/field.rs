@@ -21,7 +21,7 @@ pub trait Field {
 }
 
 #[macro_export]
-macro_rules! define_field {
+macro_rules! define_fields {
     ( $( $field_name:ident : $field_type:ty = $tag:expr $( => $rule:expr )* ),* $(),* ) => { $(
         pub struct $field_name;
         impl Field for $field_name {
