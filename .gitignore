@@ -1,0 +1,8 @@
+*.swp
+*.pdf
+*.doc
+*.txt
+target/*
+callgrind.out.*
+cachegrind.out.*
+Cargo.lock
