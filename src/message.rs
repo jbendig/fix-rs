@@ -133,10 +133,11 @@ macro_rules! define_message {
         }
 
         impl Message for $message_name {
-            #[allow(needless_return)]
+            #[allow(unreachable_code)]
             fn first_field(&self) -> &'static [u8] {
-                //TODO: Make sure this reduces to a single statement when compiled for release.
-                return vec![$( <$field_type as Field>::tag(), )*][0];
+                $( return { <$field_type as Field>::tag() }; )*
+
+                b"";
             }
 
             fn fields(&self) -> HashMap<&'static [u8],Action> {
