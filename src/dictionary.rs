@@ -1,9 +1,23 @@
+// Copyright 2016 James Bendig. See the COPYRIGHT file at the top-level
+// directory of this distribution.
+//
+// Licensed under:
+//   the MIT license
+//     <LICENSE-MIT or https://opensource.org/licenses/MIT>
+//   or the Apache License, Version 2.0
+//     <LICENSE-APACHE or https://www.apache.org/licenses/LICENSE-2.0>,
+// at your option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
 use std::any::Any;
 use std::collections::{HashMap,HashSet};
 use std::io::Write;
+
 use constant::{TAG_END,VALUE_END};
-use field::{Rule,FieldType,Field,StringFieldType,DataFieldType,NoneFieldType,RepeatingGroupFieldType};
+use field::Field;
+use field_type::{FieldType,StringFieldType,DataFieldType,NoneFieldType,RepeatingGroupFieldType};
 use message::{REQUIRED,NOT_REQUIRED,Meta,Message};
+use rule::Rule;
 
 #[macro_export]
 macro_rules! define_dictionary {

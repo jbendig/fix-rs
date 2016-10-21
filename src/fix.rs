@@ -15,9 +15,10 @@ use std::fmt;
 use std::iter::FromIterator;
 use std::mem;
 use std::str::FromStr;
+
 use constant::{TAG_END,VALUE_END};
-use field::Rule;
 use message::{Meta,Message,NullMessage};
+use rule::Rule;
 
 //TODO: Support configuration settings for things like MAX_VALUE_LENGTH, MAX_BODY_LENGTH,
 //      MAX_TAG_LENGTH, MAX_CHECKSUM_LENGTH(might just hard code it...), the size of a "Length" and

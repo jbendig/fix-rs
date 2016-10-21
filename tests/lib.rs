@@ -14,12 +14,15 @@
 #[macro_use]
 extern crate fix_rs;
 
-use fix_rs::fix::{Parser,ParseError};
-use fix_rs::message::{Meta,Message,REQUIRED,NOT_REQUIRED};
-use fix_rs::field::{Rule,Field,FieldType};
-use fix_rs::dictionary::{EncryptMethod,HeartBtInt,MsgSeqNum,SendingTime,SenderCompID,TargetCompID,NoMsgTypeGrp,RawData,RawDataLength,NoRateSources,Symbol,NoOrders};
 use std::any::Any;
 use std::collections::{HashMap,HashSet};
+
+use fix_rs::dictionary::{EncryptMethod,HeartBtInt,MsgSeqNum,SendingTime,SenderCompID,TargetCompID,NoMsgTypeGrp,RawData,RawDataLength,NoRateSources,Symbol,NoOrders};
+use fix_rs::field::Field;
+use fix_rs::field_type::FieldType;
+use fix_rs::fix::{Parser,ParseError};
+use fix_rs::message::{Meta,Message,REQUIRED,NOT_REQUIRED};
+use fix_rs::rule::Rule;
 
 const PARSE_MESSAGE_BY_STREAM : bool = true;
 

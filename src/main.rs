@@ -13,6 +13,7 @@
 extern crate fix_rs;
 
 use std::collections::HashMap;
+
 use fix_rs::fix::Parser;
 use fix_rs::message::Message;
 use fix_rs::dictionary::Logon;

@@ -12,7 +12,8 @@
 use std::any::Any;
 use std::collections::{HashMap,HashSet};
 use std::io::Write;
-use field::Rule;
+
+use rule::Rule;
 
 #[derive(Clone,Default,PartialEq)]
 pub struct Meta {

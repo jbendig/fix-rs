@@ -12,9 +12,13 @@
 #![allow(unknown_lints)]
 
 pub mod constant;
+#[macro_use]
+pub mod field;
+pub mod field_type;
 pub mod fix;
 #[macro_use]
 pub mod message;
-#[macro_use]
-pub mod field;
+pub mod rule;
+
+//Dictionary is put last because it needs the above macros.
 pub mod dictionary;
