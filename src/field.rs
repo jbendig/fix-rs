@@ -16,7 +16,7 @@ use std::collections::HashSet;
 use std::marker::PhantomData;
 use std::io::Write;
 
-pub enum Action {
+pub enum Rule {
     Nothing,
     AddRequiredTags(HashSet<&'static [u8]>),
     BeginGroup{message: Box<Message>},
@@ -27,7 +27,7 @@ pub enum Action {
 pub trait FieldType {
     type Type;
 
-    fn action() -> Option<Action> {
+    fn rule() -> Option<Rule> {
         None
     }
 
@@ -119,8 +119,8 @@ pub struct RepeatingGroupFieldType<T: Message + PartialEq> {
 impl<T: Message + Any + Clone + Default + PartialEq> FieldType for RepeatingGroupFieldType<T> {
     type Type = Vec<Box<T>>;
 
-    fn action() -> Option<Action> {
-        Some(Action::BeginGroup{ message: Box::new(<T as Default>::default()) })
+    fn rule() -> Option<Rule> {
+        Some(Rule::BeginGroup{ message: Box::new(<T as Default>::default()) })
     }
 
     fn set_groups(field: &mut Self::Type,groups: &[Box<Message>]) -> bool {
@@ -162,7 +162,7 @@ impl<T: Message + Any + Clone + Default + PartialEq> FieldType for RepeatingGrou
 
 pub trait Field {
     type Type;
-    fn action() -> Action;
+    fn rule() -> Rule;
     fn tag() -> &'static [u8];
     fn read(field: &<<Self as Field>::Type as FieldType>::Type,buf: &mut Vec<u8>) -> usize
         where <Self as Field>::Type: FieldType;
@@ -170,27 +170,27 @@ pub trait Field {
 
 #[macro_export]
 macro_rules! define_field {
-    ( $( $field_name:ident : $field_type:ty = $tag:expr $( => $action:expr )* ),* $(),* ) => { $(
+    ( $( $field_name:ident : $field_type:ty = $tag:expr $( => $rule:expr )* ),* $(),* ) => { $(
         pub struct $field_name;
         impl Field for $field_name {
             type Type = $field_type;
 
             #[allow(unreachable_code)]
-            fn action() -> Action {
-                //If an action is provided, prefer it first.
+            fn rule() -> Rule {
+                //If a rule is provided, prefer it first.
                 $(
-                    return $action;
+                    return $rule;
                 )*
 
-                //Next, check if the field type provides an action. This way the BeginGroup action
+                //Next, check if the field type provides a rule. This way the BeginGroup rule
                 //can be specified automatically instead of using a nasty boilerplate in each field
                 //definition.
-                if let Some(action) = <$field_type as FieldType>::action() {
-                    action
+                if let Some(rule) = <$field_type as FieldType>::rule() {
+                    rule
                 }
-                //Otherwise, no action was specified.
+                //Otherwise, no rule was specified.
                 else {
-                    Action::Nothing
+                    Rule::Nothing
                 }
             }
 
@@ -205,9 +205,9 @@ macro_rules! define_field {
 
                 let mut result = 1;
 
-                //If this is part of a Action::PrepareForBytes and Action::ConfirmPreviousTag pair,
+                //If this is part of a Rule::PrepareForBytes and Rule::ConfirmPreviousTag pair,
                 //insert the length tag first.
-                if let Action::ConfirmPreviousTag{ previous_tag } = <$field_name as Field>::action() {
+                if let Rule::ConfirmPreviousTag{ previous_tag } = <$field_name as Field>::rule() {
                     result += 2;
                     result += buf.write(previous_tag).unwrap();
                     buf.push(TAG_END);
@@ -223,7 +223,7 @@ macro_rules! define_field {
                 //Avoid the VALUE_END symbol iff this is not a repeating group field. This is a
                 //hack, under the assumption that the field itself adds this symbol, so the field
                 //can append the remaining groups.
-                if let Action::BeginGroup{ .. } = <$field_name as Field>::action() {}
+                if let Rule::BeginGroup{ .. } = <$field_name as Field>::rule() {}
                 else {
                     result += 1;
                     buf.push(VALUE_END);

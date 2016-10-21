@@ -12,7 +12,7 @@
 use std::any::Any;
 use std::collections::{HashMap,HashSet};
 use std::io::Write;
-use field::Action;
+use field::Rule;
 
 #[derive(Clone,Default,PartialEq)]
 pub struct Meta {
@@ -23,7 +23,7 @@ pub struct Meta {
 
 pub trait Message {
     fn first_field(&self) -> &'static [u8];
-    fn fields(&self) -> HashMap<&'static [u8],Action>;
+    fn fields(&self) -> HashMap<&'static [u8],Rule>;
     fn required_fields(&self) -> HashSet<&'static [u8]>;
     fn set_meta(&mut self,meta: Meta);
     fn set_value(&mut self,key: &[u8],value: &[u8]) -> bool;
@@ -78,7 +78,7 @@ impl Message for NullMessage {
         unimplemented!();
     }
 
-    fn fields(&self) -> HashMap<&'static [u8],Action> {
+    fn fields(&self) -> HashMap<&'static [u8],Rule> {
         unimplemented!();
     }
 
@@ -140,9 +140,9 @@ macro_rules! define_message {
                 b"";
             }
 
-            fn fields(&self) -> HashMap<&'static [u8],Action> {
+            fn fields(&self) -> HashMap<&'static [u8],Rule> {
                 let mut result = HashMap::new();
-                $( result.insert(<$field_type as Field>::tag(),<$field_type as Field>::action()); )*
+                $( result.insert(<$field_type as Field>::tag(),<$field_type as Field>::rule()); )*
 
                 result
             }

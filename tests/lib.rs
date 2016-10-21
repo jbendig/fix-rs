@@ -16,7 +16,7 @@ extern crate fix_rs;
 
 use fix_rs::fix::{Parser,ParseError};
 use fix_rs::message::{Meta,Message,REQUIRED,NOT_REQUIRED};
-use fix_rs::field::{Action,Field,FieldType};
+use fix_rs::field::{Rule,Field,FieldType};
 use fix_rs::dictionary::{EncryptMethod,HeartBtInt,MsgSeqNum,SendingTime,SenderCompID,TargetCompID,NoMsgTypeGrp,RawData,RawDataLength,NoRateSources,Symbol,NoOrders};
 use std::any::Any;
 use std::collections::{HashMap,HashSet};

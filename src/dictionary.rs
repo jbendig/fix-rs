@@ -2,7 +2,7 @@ use std::any::Any;
 use std::collections::{HashMap,HashSet};
 use std::io::Write;
 use constant::{TAG_END,VALUE_END};
-use field::{Action,FieldType,Field,StringFieldType,DataFieldType,NoneFieldType,RepeatingGroupFieldType};
+use field::{Rule,FieldType,Field,StringFieldType,DataFieldType,NoneFieldType,RepeatingGroupFieldType};
 use message::{REQUIRED,NOT_REQUIRED,Meta,Message};
 
 #[macro_export]
@@ -67,12 +67,12 @@ define_field!(
     NoOrders: RepeatingGroupFieldType<Order> = b"73",
     NoAllocs: RepeatingGroupFieldType<Alloc> = b"78",
     AllocAccount: StringFieldType = b"79",
-    Signature: DataFieldType = b"89" => Action::ConfirmPreviousTag{ previous_tag: SignatureLength::tag() },
-    SecureDataLen: NoneFieldType = b"90" => Action::PrepareForBytes{ bytes_tag: SecureData::tag() },
-    SecureData: DataFieldType = b"91" => Action::ConfirmPreviousTag{ previous_tag: SecureDataLen::tag() },
-    SignatureLength: NoneFieldType = b"93" => Action::PrepareForBytes{ bytes_tag: Signature::tag() },
-    RawDataLength: NoneFieldType = b"95" => Action::PrepareForBytes{ bytes_tag: RawData::tag() },
-    RawData: DataFieldType = b"96" => Action::ConfirmPreviousTag{ previous_tag: RawDataLength::tag() },
+    Signature: DataFieldType = b"89" => Rule::ConfirmPreviousTag{ previous_tag: SignatureLength::tag() },
+    SecureDataLen: NoneFieldType = b"90" => Rule::PrepareForBytes{ bytes_tag: SecureData::tag() },
+    SecureData: DataFieldType = b"91" => Rule::ConfirmPreviousTag{ previous_tag: SecureDataLen::tag() },
+    SignatureLength: NoneFieldType = b"93" => Rule::PrepareForBytes{ bytes_tag: Signature::tag() },
+    RawDataLength: NoneFieldType = b"95" => Rule::PrepareForBytes{ bytes_tag: RawData::tag() },
+    RawData: DataFieldType = b"96" => Rule::ConfirmPreviousTag{ previous_tag: RawDataLength::tag() },
     PossResend: StringFieldType = b"97", //Bool
     EncryptMethod: StringFieldType = b"98",
     HeartBtInt: StringFieldType = b"108",
@@ -92,11 +92,11 @@ define_field!(
     OnBehalfOfLocationID: StringFieldType = b"144",
     DeliverToLocationID: StringFieldType = b"145",
     CashOrderQty: StringFieldType = b"152", //Qty
-    XmlDataLen: NoneFieldType = b"212" => Action::PrepareForBytes{ bytes_tag: XmlData::tag() },
-    XmlData: DataFieldType = b"213" => Action::ConfirmPreviousTag{ previous_tag: XmlDataLen::tag() },
+    XmlDataLen: NoneFieldType = b"212" => Rule::PrepareForBytes{ bytes_tag: XmlData::tag() },
+    XmlData: DataFieldType = b"213" => Rule::ConfirmPreviousTag{ previous_tag: XmlDataLen::tag() },
     MessageEncoding: StringFieldType = b"347",
-    EncodedTextLen: NoneFieldType = b"354" => Action::PrepareForBytes{ bytes_tag: EncodedText::tag() },
-    EncodedText: DataFieldType = b"355" => Action::ConfirmPreviousTag{ previous_tag: EncodedTextLen::tag() },
+    EncodedTextLen: NoneFieldType = b"354" => Rule::PrepareForBytes{ bytes_tag: EncodedText::tag() },
+    EncodedText: DataFieldType = b"355" => Rule::ConfirmPreviousTag{ previous_tag: EncodedTextLen::tag() },
     LastMsgSeqNumProcessed: StringFieldType = b"369", //SeqNum
     RefTagID: StringFieldType = b"371", //int
     RefMsgType: StringFieldType = b"372",
@@ -120,10 +120,10 @@ define_field!(
     DefaultApplVerID: StringFieldType = b"1137", //TODO: limited choices.
     ApplExtID: StringFieldType = b"1156", //int
     EncryptedPasswordMethod: StringFieldType = b"1400", //int
-    EncryptedPasswordLen: NoneFieldType = b"1401" => Action::PrepareForBytes{ bytes_tag: EncryptedPassword::tag() },
-    EncryptedPassword: DataFieldType = b"1402" => Action::ConfirmPreviousTag{ previous_tag: EncryptedPasswordLen::tag() },
-    EncryptedNewPasswordLen: NoneFieldType = b"1403" => Action::PrepareForBytes{ bytes_tag: EncryptedNewPassword::tag() },
-    EncryptedNewPassword: DataFieldType = b"1404" => Action::ConfirmPreviousTag{ previous_tag: EncryptedNewPasswordLen::tag() },
+    EncryptedPasswordLen: NoneFieldType = b"1401" => Rule::PrepareForBytes{ bytes_tag: EncryptedPassword::tag() },
+    EncryptedPassword: DataFieldType = b"1402" => Rule::ConfirmPreviousTag{ previous_tag: EncryptedPasswordLen::tag() },
+    EncryptedNewPasswordLen: NoneFieldType = b"1403" => Rule::PrepareForBytes{ bytes_tag: EncryptedNewPassword::tag() },
+    EncryptedNewPassword: DataFieldType = b"1404" => Rule::ConfirmPreviousTag{ previous_tag: EncryptedNewPasswordLen::tag() },
     RefApplExtID: StringFieldType = b"1406", //int
     DefaultApplExtID: StringFieldType = b"1407", //int
     DefaultCstmApplVerID: StringFieldType = b"1408",

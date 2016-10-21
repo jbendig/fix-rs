@@ -16,7 +16,7 @@ use std::iter::FromIterator;
 use std::mem;
 use std::str::FromStr;
 use constant::{TAG_END,VALUE_END};
-use field::Action;
+use field::Rule;
 use message::{Meta,Message,NullMessage};
 
 //TODO: Support configuration settings for things like MAX_VALUE_LENGTH, MAX_BODY_LENGTH,
@@ -78,7 +78,7 @@ impl fmt::Display for ParseError {
 }
 
 struct ParseGroupState {
-    remaining_fields: HashMap<&'static [u8],Action>,
+    remaining_fields: HashMap<&'static [u8],Rule>,
     remaining_required_fields: HashSet<&'static [u8]>,
     message: Box<Message>,
 }
@@ -144,7 +144,7 @@ pub struct Parser {
     tag_rule_mode_stack: Vec<Box<TagRuleMode>>,
     fast_track_bytes_remaining: usize,
     found_tag_count: usize,
-    remaining_fields: HashMap<&'static [u8],Action>,
+    remaining_fields: HashMap<&'static [u8],Rule>,
     remaining_required_fields: HashSet<&'static [u8]>,
     current_message: Box<Message>,
     pub messages: Vec<Box<Message>>,
@@ -158,18 +158,18 @@ impl Parser {
         Parser::validate_message_dictionary(&message_dictionary);
 
         //Walk every type of message provided and find any fields that define a
-        //Action::ConfirmPreviousTag and add it to this map. This way we can check while parsing if
+        //Rule::ConfirmPreviousTag and add it to this map. This way we can check while parsing if
         //the previous tag matches the required tag. This is an optional sanity check that's
         //provided for better error messages but probably isn't needed in practice.
         let mut value_to_length_tags = HashMap::new();
         let mut message_stack = Vec::from_iter(message_dictionary.iter().map(|(_,message)| { message.new_into_box() }));
         while let Some(message) = message_stack.pop() {
-            for (tag,action) in message.fields() {
-                match action {
-                    Action::ConfirmPreviousTag{ previous_tag } => {
+            for (tag,rule) in message.fields() {
+                match rule {
+                    Rule::ConfirmPreviousTag{ previous_tag } => {
                         value_to_length_tags.insert(tag,previous_tag);
                     },
-                    Action::BeginGroup{ message } => {
+                    Rule::BeginGroup{ message } => {
                         message_stack.push(message.new_into_box());
                     },
                     _ => {}
@@ -228,8 +228,8 @@ impl Parser {
         let mut all_messages = Vec::new();
         let mut message_stack = Vec::from_iter(message_dictionary.iter().map(|(_,message)| { (MessageType::Standard,message.new_into_box()) }));
         while let Some((message_type,message)) = message_stack.pop() {
-            for action in message.fields().values() {
-                if let Action::BeginGroup{ ref message } = *action {
+            for rule in message.fields().values() {
+                if let Rule::BeginGroup{ ref message } = *rule {
                     message_stack.push((MessageType::RepeatingGroup,message.new_into_box()));
                 }
             }
@@ -270,41 +270,41 @@ impl Parser {
             }
         }
 
-        //Fields that specify Action::PrepareForBytes have exactly one matching field that
-        //specifies Action::ConfirmPreviousTag within the same message.
+        //Fields that specify Rule::PrepareForBytes have exactly one matching field that
+        //specifies Rule::ConfirmPreviousTag within the same message.
         for &(_,ref message) in &all_messages {
             let fields = message.fields();
 
-            for (tag,action) in &fields {
-                match *action {
-                    Action::PrepareForBytes{ bytes_tag } => {
-                        if let Some(bytes_action) = fields.get(bytes_tag) {
-                            if let Action::ConfirmPreviousTag{ previous_tag } = *bytes_action {
+            for (tag,rule) in &fields {
+                match *rule {
+                    Rule::PrepareForBytes{ bytes_tag } => {
+                        if let Some(bytes_tag_rule) = fields.get(bytes_tag) {
+                            if let Rule::ConfirmPreviousTag{ previous_tag } = *bytes_tag_rule {
                                 if previous_tag != *tag {
-                                    panic!("Found field \"{}\" that defines Action::PrepareForBytes but matching \"{}\" field's Action::ConfirmPreviousTag is not circular.",tag_to_string(tag),tag_to_string(bytes_tag));
+                                    panic!("Found field \"{}\" that defines Rule::PrepareForBytes but matching \"{}\" field's Rule::ConfirmPreviousTag is not circular.",tag_to_string(tag),tag_to_string(bytes_tag));
                                 }
                             }
                             else {
-                                panic!("Found field \"{}\" that defines Action::PrepareForBytes but matching \"{}\" field does not define Action::ConfirmPreviousTag.",tag_to_string(tag),tag_to_string(bytes_tag));
+                                panic!("Found field \"{}\" that defines Rule::PrepareForBytes but matching \"{}\" field does not define Rule::ConfirmPreviousTag.",tag_to_string(tag),tag_to_string(bytes_tag));
                             }
                         }
                         else {
-                            panic!("Found field \"{}\" that defines Action::PrepareForBytes but no matching \"{}\" field was found.",tag_to_string(tag),tag_to_string(bytes_tag));
+                            panic!("Found field \"{}\" that defines Rule::PrepareForBytes but no matching \"{}\" field was found.",tag_to_string(tag),tag_to_string(bytes_tag));
                         }
                     },
-                    Action::ConfirmPreviousTag{ previous_tag } => {
-                        if let Some(previous_action) = fields.get(previous_tag) {
-                            if let Action::PrepareForBytes{ bytes_tag } = *previous_action {
+                    Rule::ConfirmPreviousTag{ previous_tag } => {
+                        if let Some(previous_tag_rule) = fields.get(previous_tag) {
+                            if let Rule::PrepareForBytes{ bytes_tag } = *previous_tag_rule {
                                 if bytes_tag != *tag {
-                                    panic!("Found field \"{}\" that defines Action::ConfirmPreviousTag but matching \"{}\" field's Action::PrepareForBytes is not circular.",tag_to_string(tag),tag_to_string(previous_tag));
+                                    panic!("Found field \"{}\" that defines Rule::ConfirmPreviousTag but matching \"{}\" field's Rule::PrepareForBytes is not circular.",tag_to_string(tag),tag_to_string(previous_tag));
                                 }
                             }
                             else {
-                                panic!("Found field \"{}\" that defines Action::ConfirmPreviousTag but matching \"{}\" field does not define Action::PrepareForBytes.",tag_to_string(tag),tag_to_string(previous_tag))
+                                panic!("Found field \"{}\" that defines Rule::ConfirmPreviousTag but matching \"{}\" field does not define Rule::PrepareForBytes.",tag_to_string(tag),tag_to_string(previous_tag))
                             }
                         }
                         else {
-                            panic!("Found field \"{}\" that defines Action::ConfirmPreviousTag but no matching \"{}\" field was found.",tag_to_string(tag),tag_to_string(previous_tag));
+                            panic!("Found field \"{}\" that defines Rule::ConfirmPreviousTag but no matching \"{}\" field was found.",tag_to_string(tag),tag_to_string(previous_tag));
                         }
                     },
                     _ => {},
@@ -421,17 +421,17 @@ impl Parser {
     }
 
     #[allow(match_same_arms)]
-    fn handle_action_after_value(&mut self,action: Action) -> Result<bool,ParseError> {
+    fn handle_rule_after_value(&mut self,rule: Rule) -> Result<bool,ParseError> {
         let mut skip_set_value = false;
 
-        match action {
-            Action::Nothing => {}, //Nothing special to be done
-            Action::AddRequiredTags(_) => { //Make the stated tags required.
+        match rule {
+            Rule::Nothing => {}, //Nothing special to be done
+            Rule::AddRequiredTags(_) => { //Make the stated tags required.
                 //TODO: Need to make sure these new tags have not already been
                 //found before adding them to the required tag set.
                 unimplemented!();
             },
-            Action::BeginGroup{ message: repeating_group_template } => {
+            Rule::BeginGroup{ message: repeating_group_template } => {
                 match ascii_to_integer::<usize>(&self.current_bytes) {
                     Ok(group_count) if group_count > 0 => {
                         let first_field = repeating_group_template.first_field();
@@ -449,7 +449,7 @@ impl Parser {
                 }
                 skip_set_value = true;
             },
-            Action::PrepareForBytes{ bytes_tag } => {
+            Rule::PrepareForBytes{ bytes_tag } => {
                 //Next tag should be 'bytes_tag' and its value is made up of
                 //the number of bytes specified in this tag.
                 match ascii_to_integer::<usize>(&self.current_bytes) {
@@ -458,7 +458,7 @@ impl Parser {
                 }
                 skip_set_value = true;
             },
-            Action::ConfirmPreviousTag{ .. } => {}, //Must be checked after parsing tag and before parsing value.
+            Rule::ConfirmPreviousTag{ .. } => {}, //Must be checked after parsing tag and before parsing value.
         }
 
        Ok(skip_set_value)
@@ -595,7 +595,7 @@ impl Parser {
             let mut tag_in_group = false;
             let mut group_end = false;
             loop {
-                let mut some_action = None;
+                let mut some_rule = None;
                 if let Some(ref mut tag_rule_mode) = self.tag_rule_mode_stack.last_mut() {
                     if let TagRuleMode::RepeatingGroups(ref mut prgs) = ***tag_rule_mode {
                         if self.current_tag == prgs.first_tag {
@@ -621,20 +621,20 @@ impl Parser {
                         }
 
                         if let Some(group) = prgs.groups.last_mut() {
-                            if let Some(action) = group.remaining_fields.remove(self.current_tag.as_slice()) {
+                            if let Some(rule) = group.remaining_fields.remove(self.current_tag.as_slice()) {
                                 //Try to mark the field as found in case it's required.
                                 group.remaining_required_fields.remove(self.current_tag.as_slice());
 
                                 //Apply parsed value to group.
-                                if let Action::BeginGroup{ .. } = action {} //Ignore begin group tags, they will be handled below.
+                                if let Rule::BeginGroup{ .. } = rule {} //Ignore begin group tags, they will be handled below.
                                 else {
                                     if !group.message.set_value(self.current_tag.as_slice(),self.current_bytes.as_slice()) {
                                         return Err(ParseError::WrongFormatTag(self.current_tag.clone()));
                                     }
                                 }
 
-                                //Save action to handle later.
-                                some_action = Some(action);
+                                //Save rule to handle later.
+                                some_rule = Some(rule);
 
                                 tag_in_group = true;
                             }
@@ -660,8 +660,8 @@ impl Parser {
                 }
 
                 //Out of the way result handling to appease the borrow checker.
-                if let Some(action) = some_action {
-                    try!(self.handle_action_after_value(action));
+                if let Some(rule) = some_rule {
+                    try!(self.handle_rule_after_value(rule));
                 }
                 if group_end {
                     //Put repeated group into next highest repeating group. If there are no
@@ -682,9 +682,9 @@ impl Parser {
 
                 //Mark field as found so we can quickly check if a duplicate tag was
                 //encountered. As a side effect, we also handle any tag specific
-                //actions in consequence of being encountered.
-                if let Some(action) = self.remaining_fields.remove(self.current_tag.as_slice()) {
-                    skip_set_value = try!(self.handle_action_after_value(action));
+                //rules in consequence of being encountered.
+                if let Some(rule) = self.remaining_fields.remove(self.current_tag.as_slice()) {
+                    skip_set_value = try!(self.handle_rule_after_value(rule));
                 }
                 else {
                     return Err(ParseError::UnexpectedTag(self.current_tag.clone()));
