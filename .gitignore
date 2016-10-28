@@ -1,8 +1,4 @@
+_site
+.sass-cache
+.jekyll-metadata
 *.swp
-*.pdf
-*.doc
-*.txt
-target/*
-callgrind.out.*
-cachegrind.out.*
-Cargo.lock
