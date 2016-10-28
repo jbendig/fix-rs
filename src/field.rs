@@ -31,8 +31,8 @@ macro_rules! define_fields {
             fn rule() -> Rule {
                 //If a rule is provided, prefer it first.
                 $(
-                    return $rule;
-                )*
+                    return $rule //A maximum of one rule may be specified.
+                )*;
 
                 //Next, check if the field type provides a rule. This way the BeginGroup rule
                 //can be specified automatically instead of using a nasty boilerplate in each field
