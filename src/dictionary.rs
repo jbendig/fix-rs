@@ -9,21 +9,15 @@
 // at your option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::any::Any;
-use std::collections::{HashMap,HashSet};
-use std::io::Write;
-
-use constant::{TAG_END,VALUE_END};
-use field::Field;
-use field_type::{FieldType,StringFieldType,DataFieldType,NoneFieldType,RepeatingGroupFieldType};
-use message::{REQUIRED,NOT_REQUIRED,Meta,Message};
+use field_type::{StringFieldType,DataFieldType,NoneFieldType,RepeatingGroupFieldType};
+use message::{REQUIRED,NOT_REQUIRED};
 use rule::Rule;
 
 #[macro_export]
 macro_rules! define_dictionary {
     ( $( $msg_type:expr => $msg:ty : $msg_enum:ident ),* $(),* ) => {
-        fn build_dictionary() -> HashMap<&'static [u8],Box<Message>> {
-            let mut message_dictionary: HashMap<&'static [u8],Box<Message>> = HashMap::new();
+        fn build_dictionary() -> std::collections::HashMap<&'static [u8],Box<$crate::message::Message>> {
+            let mut message_dictionary: std::collections::HashMap<&'static [u8],Box<$crate::message::Message>> = std::collections::HashMap::new();
             $( message_dictionary.insert($msg_type,Box::new(<$msg as Default>::default())); )*
 
             message_dictionary
@@ -36,7 +30,7 @@ macro_rules! define_dictionary {
         };
 
         #[allow(dead_code)]
-        fn message_to_enum(message: &Message) -> MessageEnum {
+        fn message_to_enum(message: &$crate::message::Message) -> MessageEnum {
             if false {
             }
             $( else if message.as_any().is::<$msg>() {

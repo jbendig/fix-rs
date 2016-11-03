@@ -24,11 +24,11 @@ pub trait Field {
 macro_rules! define_fields {
     ( $( $field_name:ident : $field_type:ty = $tag:expr $( => $rule:expr )* ),* $(),* ) => { $(
         pub struct $field_name;
-        impl Field for $field_name {
+        impl $crate::field::Field for $field_name {
             type Type = $field_type;
 
             #[allow(unreachable_code)]
-            fn rule() -> Rule {
+            fn rule() -> $crate::rule::Rule {
                 //If a rule is provided, prefer it first.
                 $(
                     return $rule //A maximum of one rule may be specified.
@@ -37,12 +37,12 @@ macro_rules! define_fields {
                 //Next, check if the field type provides a rule. This way the BeginGroup rule
                 //can be specified automatically instead of using a nasty boilerplate in each field
                 //definition.
-                if let Some(rule) = <$field_type as FieldType>::rule() {
+                if let Some(rule) = <$field_type as $crate::field_type::FieldType>::rule() {
                     rule
                 }
                 //Otherwise, no rule was specified.
                 else {
-                    Rule::Nothing
+                    $crate::rule::Rule::Nothing
                 }
             }
 
@@ -50,8 +50,10 @@ macro_rules! define_fields {
                 $tag
             }
 
-            fn read(field: &<<Self as Field>::Type as FieldType>::Type,buf: &mut Vec<u8>) -> usize {
-                if <$field_type as FieldType>::is_empty(field) {
+            fn read(field: &<<Self as $crate::field::Field>::Type as $crate::field_type::FieldType>::Type,buf: &mut Vec<u8>) -> usize {
+                use ::std::io::Write;
+
+                if <$field_type as $crate::field_type::FieldType>::is_empty(field) {
                     return 0;
                 }
 
@@ -59,26 +61,26 @@ macro_rules! define_fields {
 
                 //If this is part of a Rule::PrepareForBytes and Rule::ConfirmPreviousTag pair,
                 //insert the length tag first.
-                if let Rule::ConfirmPreviousTag{ previous_tag } = <$field_name as Field>::rule() {
+                if let $crate::rule::Rule::ConfirmPreviousTag{ previous_tag } = <$field_name as $crate::field::Field>::rule() {
                     result += 2;
                     result += buf.write(previous_tag).unwrap();
-                    buf.push(TAG_END);
-                    result += buf.write(<$field_type as FieldType>::len(field).to_string().as_bytes()).unwrap();
-                    buf.push(VALUE_END);
+                    buf.push($crate::constant::TAG_END);
+                    result += buf.write(<$field_type as $crate::field_type::FieldType>::len(field).to_string().as_bytes()).unwrap();
+                    buf.push($crate::constant::VALUE_END);
                 }
 
                 //Write tag and value.
                 result += buf.write($tag).unwrap();
-                buf.push(TAG_END);
-                result += <$field_type as FieldType>::read(field,buf);
+                buf.push($crate::constant::TAG_END);
+                result += <$field_type as $crate::field_type::FieldType>::read(field,buf);
 
                 //Avoid the VALUE_END symbol iff this is not a repeating group field. This is a
                 //hack, under the assumption that the field itself adds this symbol, so the field
                 //can append the remaining groups.
-                if let Rule::BeginGroup{ .. } = <$field_name as Field>::rule() {}
+                if let $crate::rule::Rule::BeginGroup{ .. } = <$field_name as $crate::field::Field>::rule() {}
                 else {
                     result += 1;
-                    buf.push(VALUE_END);
+                    buf.push($crate::constant::VALUE_END);
                 }
 
                 result

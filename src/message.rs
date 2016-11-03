@@ -120,8 +120,8 @@ macro_rules! define_message {
     ( $message_name:ident { $( $field_required:expr, $field_name:ident : $field_type:ty),* $(),* } ) => {
         #[derive(Clone,Default)]
         pub struct $message_name {
-            pub meta: Option<Meta>,
-            $( pub $field_name: <<$field_type as Field>::Type as FieldType>::Type, )*
+            pub meta: Option<$crate::message::Meta>,
+            $( pub $field_name: <<$field_type as $crate::field::Field>::Type as $crate::field_type::FieldType>::Type, )*
         }
 
         impl $message_name {
@@ -133,33 +133,36 @@ macro_rules! define_message {
             }
         }
 
-        impl Message for $message_name {
+        impl $crate::message::Message for $message_name {
             #[allow(unreachable_code)]
             fn first_field(&self) -> &'static [u8] {
-                $( return { <$field_type as Field>::tag() }; )*
+                $( return { <$field_type as $crate::field::Field>::tag() }; )*
 
                 b"";
             }
 
-            fn fields(&self) -> HashMap<&'static [u8],Rule> {
-                let mut result = HashMap::new();
-                $( result.insert(<$field_type as Field>::tag(),<$field_type as Field>::rule()); )*
+            fn fields(&self) -> ::std::collections::HashMap<&'static [u8],$crate::rule::Rule> {
+                let mut result = ::std::collections::HashMap::new();
+                $( result.insert(<$field_type as $crate::field::Field>::tag(),<$field_type as $crate::field::Field>::rule()); )*
 
                 result
             }
 
-            fn required_fields(&self) -> HashSet<&'static [u8]> {
-                let mut result = HashSet::new();
-                $( if $field_required { result.insert(<$field_type as Field>::tag()); } )*
+            fn required_fields(&self) -> ::std::collections::HashSet<&'static [u8]> {
+                let mut result = ::std::collections::HashSet::new();
+                $( if $field_required { result.insert(<$field_type as $crate::field::Field>::tag()); } )*
 
                 result
             }
 
-            fn set_meta(&mut self,meta: Meta) {
+            fn set_meta(&mut self,meta: $crate::message::Meta) {
                 self.meta = Some(meta);
             }
 
             fn set_value(&mut self,key: &[u8],value: &[u8]) -> bool {
+                use $crate::field::Field;
+                use $crate::field_type::FieldType;
+
                 if false {
                     false
                 }
@@ -169,7 +172,10 @@ macro_rules! define_message {
                 }
             }
 
-            fn set_groups(&mut self,key: &[u8],groups: &[Box<Message>]) -> bool {
+            fn set_groups(&mut self,key: &[u8],groups: &[Box<$crate::message::Message>]) -> bool {
+                use $crate::field::Field;
+                use $crate::field_type::FieldType;
+
                 if false {
                     false
                 }
@@ -179,17 +185,17 @@ macro_rules! define_message {
                 }
             }
 
-            fn as_any(&self) -> &Any {
+            fn as_any(&self) -> &::std::any::Any {
                 self
             }
 
-            fn new_into_box(&self) -> Box<Message> {
+            fn new_into_box(&self) -> Box<$crate::message::Message> {
                 Box::new($message_name::new())
             }
 
             fn read_body(&self,buf: &mut Vec<u8>) -> usize {
                 let mut byte_count: usize = 0;
-                $( byte_count += <$field_type as Field>::read(&self.$field_name,buf); )*
+                $( byte_count += <$field_type as $crate::field::Field>::read(&self.$field_name,buf); )*
 
                 byte_count
             }

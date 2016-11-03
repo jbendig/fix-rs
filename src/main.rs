@@ -12,11 +12,9 @@
 #[macro_use]
 extern crate fix_rs;
 
-use std::collections::HashMap;
-
+use fix_rs::dictionary::Logon;
 use fix_rs::fix::Parser;
 use fix_rs::message::Message;
-use fix_rs::dictionary::Logon;
 
 //Helper function to make it easier to figure out what the body_length tag should be set to.
 fn estimate_body_length(message_bytes: &[u8]) -> usize {
