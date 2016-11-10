@@ -35,7 +35,7 @@ enum MessageValue {
     Groups(Vec<Message>),
 }
 
-type HashMap<String,MessageValue> Message;
+type Message = HashMap<String,MessageValue>;
 ```
 
 Building a message then looks like this:
@@ -715,3 +715,7 @@ As of this writing:
 
   - The most recent version of Rust is [1.12.1](https://blog.rust-lang.org/2016/10/20/Rust-1.12.1.html).
   - The most recent commit of *fix-rs* is [c5d1406](https://github.com/jbendig/fix-rs/tree/c5d140615c9374a79143e86aba5f79d924727192).
+
+Edit(s):
+
+  - Fixed typo pointed out by [MCGG_Phys](https://www.reddit.com/user/MCGG_Phys) on [Reddit](https://www.reddit.com/r/rust/comments/5c9esz/implementing_fix_messages_with_rust/d9uqmy4/).
