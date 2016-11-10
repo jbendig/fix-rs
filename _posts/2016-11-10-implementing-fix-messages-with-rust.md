@@ -13,7 +13,7 @@ A FIX message is composed as a set of fields. Each field has a tag and a value. 
 
 A field can be used in more than one message. The message determines if the field is optional, required, or only required under various conditions like when another field has a specific value. There are also special fields used to indicate repeating groups of fields -- which is the only time a field can appear more than once in a single message.
 
-![Messages are made up of fields. A single field might be used in more than one message.]({{ site.url }}/images/fields_and_messages.svg)
+![Messages are made up of fields. A single field might be used in more than one message.]({{ site.github.url }}/images/fields_and_messages.svg)
 
 As of the newest spec, version 5.0 Server Pack 2, there are over 100 messages that share from over 1500 fields. End users can also pre-negotiate private messages, fields, and custom types.
 
