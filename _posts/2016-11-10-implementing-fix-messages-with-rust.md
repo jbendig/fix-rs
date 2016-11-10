@@ -4,7 +4,7 @@ title: Implementing FIX Messages with Rust
 date: 2016-11-10 17:06:40
 ---
 
-In **[fix-rs](http://github.com/pages/jbendig/fix-rs/about/)**, we need a way for users of the library to work with messages that are sent and received over a network. These messages must be serializable and deserializable into different formats. They also must be easy to create, read and modify by code. But most importantly, they must follow various rules defined by the FIX specification. This post covers the thought process used to design an efficient implementation. The result is an approach that is simple to use and maintainable as *fix-rs* grows.
+In **[fix-rs]({{ site.github.url }}/about/)**, we need a way for users of the library to work with messages that are sent and received over a network. These messages must be serializable and deserializable into different formats. They also must be easy to create, read and modify by code. But most importantly, they must follow various rules defined by the FIX specification. This post covers the thought process used to design an efficient implementation. The result is an approach that is simple to use and maintainable as *fix-rs* grows.
 
 About FIX Messages
 ------------------
