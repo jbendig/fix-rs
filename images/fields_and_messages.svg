@@ -1,0 +1,2535 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   version="1.1"
+   id="svg2"
+   viewBox="0 0 739.99995 407"
+   height="407"
+   width="740">
+  <defs
+     id="defs4">
+    <marker
+       style="overflow:visible"
+       id="marker8958"
+       refX="0"
+       refY="0"
+       orient="auto">
+      <path
+         transform="matrix(-0.8,0,0,-0.8,-10,0)"
+         style="fill:#666666;fill-opacity:1;fill-rule:evenodd;stroke:#666666;stroke-width:1pt;stroke-opacity:1"
+         d="M 0,0 5,-5 -12.5,0 5,5 0,0 Z"
+         id="path8960" />
+    </marker>
+    <marker
+       style="overflow:visible"
+       id="marker7506"
+       refX="0"
+       refY="0"
+       orient="auto">
+      <path
+         transform="matrix(-0.8,0,0,-0.8,-10,0)"
+         style="fill:#333333;fill-opacity:1;fill-rule:evenodd;stroke:#333333;stroke-width:1pt;stroke-opacity:1"
+         d="M 0,0 5,-5 -12.5,0 5,5 0,0 Z"
+         id="path7508" />
+    </marker>
+    <marker
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="marker7472"
+       style="overflow:visible">
+      <path
+         id="path7474"
+         d="M 0,0 5,-5 -12.5,0 5,5 0,0 Z"
+         style="fill:#666666;fill-opacity:1;fill-rule:evenodd;stroke:#666666;stroke-width:1pt;stroke-opacity:1"
+         transform="matrix(-0.8,0,0,-0.8,-10,0)" />
+    </marker>
+    <marker
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="marker5478"
+       style="overflow:visible">
+      <path
+         id="path5480"
+         d="M 0,0 5,-5 -12.5,0 5,5 0,0 Z"
+         style="fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:1pt;stroke-opacity:1"
+         transform="matrix(-0.8,0,0,-0.8,-10,0)" />
+    </marker>
+    <marker
+       style="overflow:visible"
+       id="Arrow1Lend"
+       refX="0"
+       refY="0"
+       orient="auto">
+      <path
+         transform="matrix(-0.8,0,0,-0.8,-10,0)"
+         style="fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:1pt;stroke-opacity:1"
+         d="M 0,0 5,-5 -12.5,0 5,5 0,0 Z"
+         id="path4267" />
+    </marker>
+  </defs>
+  <metadata
+     id="metadata7">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     style="display:none"
+     transform="translate(0,-645.36216)"
+     id="layer1">
+    <g
+       transform="translate(0,282.53071)"
+       id="g5031">
+      <rect
+         style="opacity:1;fill:#87cdde;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect4136"
+         width="342"
+         height="46"
+         x="-3.0517578e-05"
+         y="867.64789" />
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         x="8.1542664"
+         y="898.60278"
+         id="text4138-3-9"><tspan
+           id="tspan4140-7-3"
+           x="8.1542664"
+           y="898.60278">NoMsgTypeGrp</tspan></text>
+      <rect
+         y="874.64789"
+         x="259.99997"
+         height="32"
+         width="72"
+         id="rect4198"
+         style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         x="289.74326"
+         y="898.68988"
+         id="text4138-3"><tspan
+           id="tspan4140-7"
+           x="289.74326"
+           y="898.68988">2</tspan></text>
+      <rect
+         style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect4196"
+         width="72"
+         height="32"
+         x="177.99997"
+         y="874.64789" />
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         x="195.11996"
+         y="898.68988"
+         id="text4138"><tspan
+           id="tspan4140"
+           x="195.11996"
+           y="898.68988">384</tspan></text>
+    </g>
+    <text
+       id="text4138-3-9-7"
+       y="859.13721"
+       x="541.9292"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       xml:space="preserve"><tspan
+         y="859.13721"
+         x="541.9292"
+         id="tspan4140-7-3-8">Messages</tspan></text>
+    <text
+       id="text4221"
+       y="793.79077"
+       x="37.857113"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       xml:space="preserve"><tspan
+         id="tspan4540"
+         y="793.79077"
+         x="37.857113">Tag (Number Unique to Field)</tspan></text>
+    <text
+       id="text4225"
+       y="1240.7648"
+       x="1025.61"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       xml:space="preserve"><tspan
+         y="1240.7648"
+         x="1025.61"
+         id="tspan4227">Repeating Groups</tspan></text>
+    <g
+       transform="translate(0,-3.4403608)"
+       id="g5020">
+      <rect
+         y="929.07648"
+         x="-3.0517578e-05"
+         height="46"
+         width="342"
+         id="rect4849"
+         style="opacity:1;fill:#87cdde;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      <text
+         id="text4851"
+         y="960.03137"
+         x="8.1542664"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         xml:space="preserve"><tspan
+           y="960.03137"
+           x="8.1542664"
+           id="tspan4853">RawDataLength</tspan></text>
+      <rect
+         style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect4855"
+         width="72"
+         height="32"
+         x="259.99997"
+         y="936.07648" />
+      <text
+         id="text4857"
+         y="960.11847"
+         x="289.81467"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         xml:space="preserve"><tspan
+           y="960.11847"
+           x="289.81467"
+           id="tspan4859">4</tspan></text>
+      <rect
+         y="936.07648"
+         x="177.99997"
+         height="32"
+         width="72"
+         id="rect4861"
+         style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      <text
+         id="text4863"
+         y="960.11847"
+         x="201.42612"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         xml:space="preserve"><tspan
+           y="960.11847"
+           x="201.42612"
+           id="tspan4865">95</tspan></text>
+    </g>
+    <g
+       transform="translate(0,-1.5904462)"
+       id="g5009">
+      <rect
+         style="opacity:1;fill:#87cdde;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect4867"
+         width="342"
+         height="46"
+         x="-3.0517578e-05"
+         y="983.36218" />
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         x="8.1542664"
+         y="1014.3171"
+         id="text4869"><tspan
+           id="tspan4871"
+           x="8.1542664"
+           y="1014.3171">RawData</tspan></text>
+      <rect
+         y="990.36218"
+         x="259.99997"
+         height="32"
+         width="72"
+         id="rect4873"
+         style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         x="271.3082"
+         y="1014.4042"
+         id="text4875"><tspan
+           id="tspan4877"
+           x="271.3082"
+           y="1014.4042">Data</tspan></text>
+      <rect
+         style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect4879"
+         width="72"
+         height="32"
+         x="177.99997"
+         y="990.36218" />
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         x="201.44809"
+         y="1014.4042"
+         id="text4881"><tspan
+           id="tspan4883"
+           x="201.44809"
+           y="1014.4042">96</tspan></text>
+    </g>
+    <g
+       transform="translate(0,-1.1690595)"
+       id="g4998">
+      <rect
+         y="1039.0764"
+         x="-3.0517578e-05"
+         height="46"
+         width="342"
+         id="rect4885"
+         style="opacity:1;fill:#87cdde;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      <text
+         id="text4887"
+         y="1070.0314"
+         x="8.1542664"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         xml:space="preserve"><tspan
+           y="1070.0314"
+           x="8.1542664"
+           id="tspan4889">HeartBtInt</tspan></text>
+      <rect
+         style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect4891"
+         width="72"
+         height="32"
+         x="259.99997"
+         y="1046.0764" />
+      <text
+         id="text4893"
+         y="1070.1184"
+         x="283.49203"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         xml:space="preserve"><tspan
+           y="1070.1184"
+           x="283.49203"
+           id="tspan4895">30</tspan></text>
+      <rect
+         y="1046.0764"
+         x="177.99997"
+         height="32"
+         width="72"
+         id="rect4897"
+         style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      <text
+         id="text4899"
+         y="1070.1184"
+         x="194.8508"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         xml:space="preserve"><tspan
+           y="1070.1184"
+           x="194.8508"
+           id="tspan4901">108</tspan></text>
+    </g>
+    <g
+       transform="translate(0,167.65919)"
+       id="g4987">
+      <rect
+         style="opacity:1;fill:#87cdde;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect4903"
+         width="342"
+         height="46"
+         x="-3.0517578e-05"
+         y="1094.7906" />
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         x="8.1542664"
+         y="1125.7456"
+         id="text4905"><tspan
+           id="tspan4907"
+           x="8.1542664"
+           y="1125.7456">Username</tspan></text>
+      <rect
+         y="1101.7906"
+         x="259.99997"
+         height="32"
+         width="72"
+         id="rect4909"
+         style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         x="268.07272"
+         y="1125.8326"
+         id="text4911"><tspan
+           id="tspan4913"
+           x="268.07272"
+           y="1125.8326">guest</tspan></text>
+      <rect
+         style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect4915"
+         width="72"
+         height="32"
+         x="177.99997"
+         y="1101.7906" />
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         x="195.26279"
+         y="1125.8326"
+         id="text4917"><tspan
+           id="tspan4919"
+           x="195.26279"
+           y="1125.8326">553</tspan></text>
+    </g>
+    <g
+       transform="translate(0,-55.747673)"
+       id="g4976">
+      <rect
+         y="1149.7906"
+         x="-3.0517578e-05"
+         height="46"
+         width="342"
+         id="rect4921"
+         style="opacity:1;fill:#87cdde;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      <text
+         id="text4923"
+         y="1180.7456"
+         x="8.1542664"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         xml:space="preserve"><tspan
+           y="1180.7456"
+           x="8.1542664"
+           id="tspan4925">RefMsgType</tspan></text>
+      <rect
+         style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect4927"
+         width="72"
+         height="32"
+         x="259.99997"
+         y="1156.7906" />
+      <text
+         id="text4929"
+         y="1180.8326"
+         x="288.49631"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         xml:space="preserve"><tspan
+           y="1180.8326"
+           x="288.49631"
+           id="tspan4931">A</tspan></text>
+      <rect
+         y="1156.7906"
+         x="177.99997"
+         height="32"
+         width="72"
+         id="rect4933"
+         style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      <text
+         id="text4935"
+         y="1180.8326"
+         x="195.35617"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         xml:space="preserve"><tspan
+           y="1180.8326"
+           x="195.35617"
+           id="tspan4937">372</tspan></text>
+    </g>
+    <g
+       transform="translate(0,2.2378009)"
+       id="g4965">
+      <rect
+         style="opacity:1;fill:#87cdde;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect4939"
+         width="342"
+         height="46"
+         x="-3.0517578e-05"
+         y="1204.0764" />
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         x="8.1542664"
+         y="1235.0314"
+         id="text4941"><tspan
+           id="tspan4943"
+           x="8.1542664"
+           y="1235.0314">MsgDirection</tspan></text>
+      <rect
+         y="1211.0764"
+         x="259.99997"
+         height="32"
+         width="72"
+         id="rect4945"
+         style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         x="288.5018"
+         y="1235.1184"
+         id="text4947"><tspan
+           id="tspan4949"
+           x="288.5018"
+           y="1235.1184">S</tspan></text>
+      <rect
+         style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect4951"
+         width="72"
+         height="32"
+         x="177.99997"
+         y="1211.0764" />
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         x="195.26279"
+         y="1235.1184"
+         id="text4953"><tspan
+           id="tspan4955"
+           x="195.26279"
+           y="1235.1184">385</tspan></text>
+    </g>
+    <text
+       id="text4957"
+       y="848.79077"
+       x="7.1428256"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       xml:space="preserve"><tspan
+         y="848.79077"
+         x="7.1428256"
+         id="tspan4959">Fields</tspan></text>
+    <text
+       id="text4961"
+       y="1333.7864"
+       x="148.49997"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       xml:space="preserve"><tspan
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:60px;font-family:'Liberation Serif';-inkscape-font-specification:'Liberation Serif'"
+         y="1333.7864"
+         x="148.49997"
+         id="tspan4963">...</tspan></text>
+    <g
+       transform="translate(0,7.9003908e-6)"
+       id="g5413">
+      <rect
+         y="869.50049"
+         x="-3.0517578e-05"
+         height="46"
+         width="342"
+         id="rect5252"
+         style="opacity:1;fill:#87cdde;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      <text
+         id="text5254"
+         y="900.45544"
+         x="8.1542664"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         xml:space="preserve"><tspan
+           y="900.45544"
+           x="8.1542664"
+           id="tspan5256">SendingTime</tspan></text>
+      <rect
+         style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect5258"
+         width="72"
+         height="32"
+         x="259.99997"
+         y="876.50049" />
+      <text
+         id="text5260"
+         y="900.54248"
+         x="286.63412"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         xml:space="preserve"><tspan
+           y="900.54248"
+           x="286.63412"
+           id="tspan5262">...</tspan></text>
+      <rect
+         y="876.50049"
+         x="177.99997"
+         height="32"
+         width="72"
+         id="rect5264"
+         style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      <text
+         id="text5266"
+         y="900.54248"
+         x="201.59641"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         xml:space="preserve"><tspan
+           y="900.54248"
+           x="201.59641"
+           id="tspan5268">52</tspan></text>
+    </g>
+    <path
+       id="path4258"
+       d="m 187.85711,798.79073 11.42857,77.85714"
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-end:url(#Arrow1Lend)" />
+    <g
+       id="g6084">
+      <rect
+         y="869.30994"
+         x="964"
+         height="131.0522"
+         width="362"
+         id="rect5322"
+         style="opacity:1;fill:#ffd840;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         x="1094.7156"
+         y="894.69299"
+         id="text5324"><tspan
+           id="tspan5326"
+           x="1094.7156"
+           y="894.69299">Heartbeat</tspan></text>
+      <g
+         id="g5424"
+         transform="translate(0.21292114,3.4961322)">
+        <rect
+           y="905.86603"
+           x="973.78705"
+           height="46"
+           width="342"
+           id="rect5330"
+           style="opacity:1;fill:#87cdde;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+        <text
+           id="text5332"
+           y="936.82098"
+           x="981.94135"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           xml:space="preserve"><tspan
+             y="936.82098"
+             x="981.94135"
+             id="tspan5334">SendingTime</tspan></text>
+        <rect
+           style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           id="rect5336"
+           width="72"
+           height="32"
+           x="1233.787"
+           y="912.86603" />
+        <text
+           id="text5338"
+           y="936.90802"
+           x="1260.4211"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           xml:space="preserve"><tspan
+             y="936.90802"
+             x="1260.4211"
+             id="tspan5340">...</tspan></text>
+        <rect
+           y="912.86603"
+           x="1151.787"
+           height="32"
+           width="72"
+           id="rect5342"
+           style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+        <text
+           id="text5344"
+           y="936.90802"
+           x="1175.3834"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           xml:space="preserve"><tspan
+             y="936.90802"
+             x="1175.3834"
+             id="tspan5346">52</tspan></text>
+      </g>
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         x="1122.5"
+         y="980.51257"
+         id="text5348"><tspan
+           id="tspan5350"
+           x="1122.5"
+           y="980.51257"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:60px;font-family:'Liberation Serif';-inkscape-font-specification:'Liberation Serif'">...</tspan></text>
+    </g>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       x="1122.5"
+       y="1481.4857"
+       id="text5352"><tspan
+         id="tspan5354"
+         x="1122.5"
+         y="1481.4857"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:60px;font-family:'Liberation Serif';-inkscape-font-specification:'Liberation Serif'">...</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       x="342.14282"
+       y="815.93359"
+       id="text5466"><tspan
+         id="tspan5468"
+         x="342.14282"
+         y="815.93359">Value</tspan></text>
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-end:url(#marker5478)"
+       d="m 357.85711,821.64788 -52.85715,66.42856"
+       id="path5476" />
+    <g
+       id="g6622">
+      <rect
+         style="opacity:1;fill:#ffd840;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect4200"
+         width="392"
+         height="635.0271"
+         x="550"
+         y="866.33508" />
+      <text
+         id="text5054"
+         y="891.69299"
+         x="714.5022"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         xml:space="preserve"><tspan
+           y="891.69299"
+           x="714.5022"
+           id="tspan5056">Logon</tspan></text>
+      <g
+         transform="translate(560,-188.42849)"
+         id="g5058">
+        <rect
+           style="opacity:1;fill:#87cdde;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           id="rect5060"
+           width="342"
+           height="46"
+           x="-3.0517578e-05"
+           y="1094.7906" />
+        <text
+           xml:space="preserve"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           x="8.1542664"
+           y="1125.7456"
+           id="text5062"><tspan
+             id="tspan5064"
+             x="8.1542664"
+             y="1125.7456">Username</tspan></text>
+        <rect
+           y="1101.7906"
+           x="259.99997"
+           height="32"
+           width="72"
+           id="rect5066"
+           style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+        <text
+           xml:space="preserve"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           x="268.07272"
+           y="1125.8326"
+           id="text5068"><tspan
+             id="tspan5070"
+             x="268.07272"
+             y="1125.8326">guest</tspan></text>
+        <rect
+           style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           id="rect5072"
+           width="72"
+           height="32"
+           x="177.99997"
+           y="1101.7906" />
+        <text
+           xml:space="preserve"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           x="195.26279"
+           y="1125.8326"
+           id="text5074"><tspan
+             id="tspan5076"
+             x="195.26279"
+             y="1125.8326">553</tspan></text>
+      </g>
+      <g
+         transform="translate(560,-20.714256)"
+         id="g5078">
+        <rect
+           y="1039.0764"
+           x="-3.0517578e-05"
+           height="46"
+           width="342"
+           id="rect5080"
+           style="opacity:1;fill:#87cdde;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+        <text
+           id="text5082"
+           y="1070.0314"
+           x="8.1542664"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           xml:space="preserve"><tspan
+             y="1070.0314"
+             x="8.1542664"
+             id="tspan5084">HeartBtInt</tspan></text>
+        <rect
+           style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           id="rect5086"
+           width="72"
+           height="32"
+           x="259.99997"
+           y="1046.0764" />
+        <text
+           id="text5088"
+           y="1070.1184"
+           x="283.49203"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           xml:space="preserve"><tspan
+             y="1070.1184"
+             x="283.49203"
+             id="tspan5090">30</tspan></text>
+        <rect
+           y="1046.0764"
+           x="177.99997"
+           height="32"
+           width="72"
+           id="rect5092"
+           style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+        <text
+           id="text5094"
+           y="1070.1184"
+           x="194.8508"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           xml:space="preserve"><tspan
+             y="1070.1184"
+             x="194.8508"
+             id="tspan5096">108</tspan></text>
+      </g>
+      <g
+         transform="translate(560,206.71427)"
+         id="g5098">
+        <rect
+           style="opacity:1;fill:#87cdde;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           id="rect5100"
+           width="342"
+           height="46"
+           x="-3.0517578e-05"
+           y="867.64789" />
+        <text
+           xml:space="preserve"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           x="8.1542664"
+           y="898.60278"
+           id="text5102"><tspan
+             id="tspan5104"
+             x="8.1542664"
+             y="898.60278">NoMsgTypeGrp</tspan></text>
+        <rect
+           y="874.64789"
+           x="259.99997"
+           height="32"
+           width="72"
+           id="rect5106"
+           style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+        <text
+           xml:space="preserve"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           x="289.74326"
+           y="898.68988"
+           id="text5108"><tspan
+             id="tspan5110"
+             x="289.74326"
+             y="898.68988">2</tspan></text>
+        <rect
+           style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           id="rect5112"
+           width="72"
+           height="32"
+           x="177.99997"
+           y="874.64789" />
+        <text
+           xml:space="preserve"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           x="195.11996"
+           y="898.68988"
+           id="text5114"><tspan
+             id="tspan5116"
+             x="195.11996"
+             y="898.68988">384</tspan></text>
+      </g>
+      <g
+         id="g5972">
+        <g
+           id="g5118"
+           transform="translate(590,-19.428489)">
+          <rect
+             style="opacity:1;fill:#87cdde;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+             id="rect5120"
+             width="342"
+             height="46"
+             x="-3.0517578e-05"
+             y="1149.7906" />
+          <text
+             xml:space="preserve"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+             x="8.1542664"
+             y="1180.7456"
+             id="text5122"><tspan
+               id="tspan5124"
+               x="8.1542664"
+               y="1180.7456">RefMsgType</tspan></text>
+          <rect
+             y="1156.7906"
+             x="259.99997"
+             height="32"
+             width="72"
+             id="rect5126"
+             style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+          <text
+             xml:space="preserve"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+             x="288.49631"
+             y="1180.8326"
+             id="text5128"><tspan
+               id="tspan5130"
+               x="288.49631"
+               y="1180.8326">A</tspan></text>
+          <rect
+             style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+             id="rect5132"
+             width="72"
+             height="32"
+             x="177.99997"
+             y="1156.7906" />
+          <text
+             xml:space="preserve"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+             x="195.35617"
+             y="1180.8326"
+             id="text5134"><tspan
+               id="tspan5136"
+               x="195.35617"
+               y="1180.8326">372</tspan></text>
+        </g>
+        <g
+           id="g5138"
+           transform="translate(590,-17.714256)">
+          <rect
+             y="1204.0764"
+             x="-3.0517578e-05"
+             height="46"
+             width="342"
+             id="rect5140"
+             style="opacity:1;fill:#87cdde;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+          <text
+             id="text5142"
+             y="1235.0314"
+             x="8.1542664"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+             xml:space="preserve"><tspan
+               y="1235.0314"
+               x="8.1542664"
+               id="tspan5144">MsgDirection</tspan></text>
+          <rect
+             style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+             id="rect5146"
+             width="72"
+             height="32"
+             x="259.99997"
+             y="1211.0764" />
+          <text
+             id="text5148"
+             y="1235.1184"
+             x="288.5018"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+             xml:space="preserve"><tspan
+               y="1235.1184"
+               x="288.5018"
+               id="tspan5150">S</tspan></text>
+          <rect
+             y="1211.0764"
+             x="177.99997"
+             height="32"
+             width="72"
+             id="rect5152"
+             style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+          <text
+             id="text5154"
+             y="1235.1184"
+             x="195.26279"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+             xml:space="preserve"><tspan
+               y="1235.1184"
+               x="195.26279"
+               id="tspan5156">385</tspan></text>
+        </g>
+      </g>
+      <g
+         transform="translate(560,426.99998)"
+         id="g5198">
+        <rect
+           style="opacity:1;fill:#87cdde;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           id="rect5200"
+           width="342"
+           height="46"
+           x="-3.0517578e-05"
+           y="983.36218" />
+        <text
+           xml:space="preserve"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           x="8.1542664"
+           y="1014.3171"
+           id="text5202"><tspan
+             id="tspan5204"
+             x="8.1542664"
+             y="1014.3171">RawData</tspan></text>
+        <rect
+           y="990.36218"
+           x="259.99997"
+           height="32"
+           width="72"
+           id="rect5206"
+           style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+        <text
+           xml:space="preserve"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           x="271.3082"
+           y="1014.4042"
+           id="text5208"><tspan
+             id="tspan5210"
+             x="271.3082"
+             y="1014.4042">Data</tspan></text>
+        <rect
+           style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           id="rect5212"
+           width="72"
+           height="32"
+           x="177.99997"
+           y="990.36218" />
+        <text
+           xml:space="preserve"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           x="201.44809"
+           y="1014.4042"
+           id="text5214"><tspan
+             id="tspan5216"
+             x="201.44809"
+             y="1014.4042">96</tspan></text>
+      </g>
+      <g
+         transform="translate(560,425.28568)"
+         id="g5218">
+        <rect
+           y="929.07648"
+           x="-3.0517578e-05"
+           height="46"
+           width="342"
+           id="rect5220"
+           style="opacity:1;fill:#87cdde;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+        <text
+           id="text5222"
+           y="960.03137"
+           x="8.1542664"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           xml:space="preserve"><tspan
+             y="960.03137"
+             x="8.1542664"
+             id="tspan5224">RawDataLength</tspan></text>
+        <rect
+           style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           id="rect5226"
+           width="72"
+           height="32"
+           x="259.99997"
+           y="936.07648" />
+        <text
+           id="text5228"
+           y="960.11847"
+           x="289.81467"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           xml:space="preserve"><tspan
+             y="960.11847"
+             x="289.81467"
+             id="tspan5230">4</tspan></text>
+        <rect
+           y="936.07648"
+           x="177.99997"
+           height="32"
+           width="72"
+           id="rect5232"
+           style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+        <text
+           id="text5234"
+           y="960.11847"
+           x="201.42612"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           xml:space="preserve"><tspan
+             y="960.11847"
+             x="201.42612"
+             id="tspan5236">95</tspan></text>
+      </g>
+      <text
+         id="text5238"
+         y="1481.5126"
+         x="708.49994"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         xml:space="preserve"><tspan
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:60px;font-family:'Liberation Serif';-inkscape-font-specification:'Liberation Serif'"
+           y="1481.5126"
+           x="708.49994"
+           id="tspan5240">...</tspan></text>
+      <g
+         id="g5455"
+         transform="translate(8.4566956,1.9479144)">
+        <rect
+           y="960.41425"
+           x="551.54327"
+           height="46"
+           width="342"
+           id="rect5304"
+           style="opacity:1;fill:#87cdde;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+        <text
+           id="text5306"
+           y="991.3692"
+           x="559.69757"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           xml:space="preserve"><tspan
+             y="991.3692"
+             x="559.69757"
+             id="tspan5308">SendingTime</tspan></text>
+        <rect
+           style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           id="rect5310"
+           width="72"
+           height="32"
+           x="811.54327"
+           y="967.41425" />
+        <text
+           id="text5312"
+           y="991.45624"
+           x="838.17743"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           xml:space="preserve"><tspan
+             y="991.45624"
+             x="838.17743"
+             id="tspan5314">...</tspan></text>
+        <rect
+           y="967.41425"
+           x="729.54327"
+           height="32"
+           width="72"
+           id="rect5316"
+           style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+        <text
+           id="text5318"
+           y="991.45624"
+           x="753.13971"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           xml:space="preserve"><tspan
+             y="991.45624"
+             x="753.13971"
+             id="tspan5320">52</tspan></text>
+      </g>
+      <path
+         style="opacity:1;fill:none;fill-opacity:1;stroke:#000000;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         d="m 931.87486,1208.3622 c 14.91169,0 27,-12.0883 27,-27 0,-14.9117 -12.08831,-27 -27,-27"
+         id="path5970" />
+      <g
+         id="g5997"
+         transform="translate(0,112)">
+        <g
+           transform="translate(590,-19.428489)"
+           id="g5999">
+          <rect
+             y="1149.7906"
+             x="-3.0517578e-05"
+             height="46"
+             width="342"
+             id="rect6001"
+             style="opacity:1;fill:#87cdde;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+          <text
+             id="text6003"
+             y="1180.7456"
+             x="8.1542664"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+             xml:space="preserve"><tspan
+               y="1180.7456"
+               x="8.1542664"
+               id="tspan6005">RefMsgType</tspan></text>
+          <rect
+             style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+             id="rect6007"
+             width="72"
+             height="32"
+             x="259.99997"
+             y="1156.7906" />
+          <text
+             id="text6009"
+             y="1180.8326"
+             x="288.49631"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+             xml:space="preserve"><tspan
+               y="1180.8326"
+               x="288.49631"
+               id="tspan6011">A</tspan></text>
+          <rect
+             y="1156.7906"
+             x="177.99997"
+             height="32"
+             width="72"
+             id="rect6013"
+             style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+          <text
+             id="text6015"
+             y="1180.8326"
+             x="195.35617"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+             xml:space="preserve"><tspan
+               y="1180.8326"
+               x="195.35617"
+               id="tspan6017">372</tspan></text>
+        </g>
+        <g
+           transform="translate(590,-17.714256)"
+           id="g6019">
+          <rect
+             style="opacity:1;fill:#87cdde;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+             id="rect6021"
+             width="342"
+             height="46"
+             x="-3.0517578e-05"
+             y="1204.0764" />
+          <text
+             xml:space="preserve"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+             x="8.1542664"
+             y="1235.0314"
+             id="text6023"><tspan
+               id="tspan6025"
+               x="8.1542664"
+               y="1235.0314">MsgDirection</tspan></text>
+          <rect
+             y="1211.0764"
+             x="259.99997"
+             height="32"
+             width="72"
+             id="rect6027"
+             style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+          <text
+             xml:space="preserve"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+             x="288.5018"
+             y="1235.1184"
+             id="text6029"><tspan
+               id="tspan6031"
+               x="288.5018"
+               y="1235.1184">S</tspan></text>
+          <rect
+             style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+             id="rect6033"
+             width="72"
+             height="32"
+             x="177.99997"
+             y="1211.0764" />
+          <text
+             xml:space="preserve"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+             x="195.26279"
+             y="1235.1184"
+             id="text6035"><tspan
+               id="tspan6037"
+               x="195.26279"
+               y="1235.1184">385</tspan></text>
+        </g>
+      </g>
+      <path
+         id="path6039"
+         d="m 931.87486,1320.3622 c 14.91169,0 27,-12.0883 27,-27 0,-14.9117 -12.08831,-27 -27,-27"
+         style="opacity:1;fill:none;fill-opacity:1;stroke:#000000;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      <path
+         style="opacity:1;fill:none;fill-opacity:1;stroke:#000000;stroke-width:1.99999988;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         d="m 960.28846,1292.2123 c 30.37566,0 55.00004,-24.6243 55.00004,-55 0,-30.3757 -24.62438,-55 -55.00004,-55"
+         id="path6047" />
+    </g>
+    <g
+       id="g6101">
+      <rect
+         style="opacity:1;fill:#ffd840;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect6054"
+         width="362"
+         height="131.0522"
+         x="964"
+         y="1018.8125" />
+      <text
+         id="text6056"
+         y="1044.1956"
+         x="1109.7229"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         xml:space="preserve"><tspan
+           y="1044.1956"
+           x="1109.7229"
+           id="tspan6058">Logout</tspan></text>
+      <g
+         transform="translate(0.21292114,152.99871)"
+         id="g6060">
+        <rect
+           style="opacity:1;fill:#87cdde;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           id="rect6062"
+           width="342"
+           height="46"
+           x="973.78705"
+           y="905.86603" />
+        <text
+           xml:space="preserve"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           x="981.94135"
+           y="936.82098"
+           id="text6064"><tspan
+             id="tspan6066"
+             x="981.94135"
+             y="936.82098">SendingTime</tspan></text>
+        <rect
+           y="912.86603"
+           x="1233.787"
+           height="32"
+           width="72"
+           id="rect6068"
+           style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+        <text
+           xml:space="preserve"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           x="1260.4211"
+           y="936.90802"
+           id="text6070"><tspan
+             id="tspan6072"
+             x="1260.4211"
+             y="936.90802">...</tspan></text>
+        <rect
+           style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           id="rect6074"
+           width="72"
+           height="32"
+           x="1151.787"
+           y="912.86603" />
+        <text
+           xml:space="preserve"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           x="1175.3834"
+           y="936.90802"
+           id="text6076"><tspan
+             id="tspan6078"
+             x="1175.3834"
+             y="936.90802">52</tspan></text>
+      </g>
+      <text
+         id="text6080"
+         y="1130.0151"
+         x="1122.5"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         xml:space="preserve"><tspan
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:60px;font-family:'Liberation Serif';-inkscape-font-specification:'Liberation Serif'"
+           y="1130.0151"
+           x="1122.5"
+           id="tspan6082">...</tspan></text>
+    </g>
+  </g>
+  <g
+     id="g6738"
+     transform="translate(0,-645.36216)">
+    <g
+       id="g6740"
+       transform="matrix(0.70175439,0,0,0.70175439,9.9999909,302.27417)">
+      <rect
+         y="867.64789"
+         x="-3.0517578e-05"
+         height="46"
+         width="342"
+         id="rect6742"
+         style="opacity:1;fill:#87cdde;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      <text
+         id="text6744"
+         y="898.60278"
+         x="8.1542664"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         xml:space="preserve"><tspan
+           y="898.60278"
+           x="8.1542664"
+           id="tspan6746">NoMsgTypeGrp</tspan></text>
+      <rect
+         style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect6748"
+         width="72"
+         height="32"
+         x="259.99997"
+         y="874.64789" />
+      <text
+         id="text6750"
+         y="898.68988"
+         x="289.74326"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         xml:space="preserve"><tspan
+           y="898.68988"
+           x="289.74326"
+           id="tspan6752">2</tspan></text>
+      <rect
+         y="874.64789"
+         x="177.99997"
+         height="32"
+         width="72"
+         id="rect6754"
+         style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      <text
+         id="text6756"
+         y="898.68988"
+         x="195.11996"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         xml:space="preserve"><tspan
+           y="898.68988"
+           x="195.11996"
+           id="tspan6758">384</tspan></text>
+    </g>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       x="478.17746"
+       y="701.73096"
+       id="text6760"><tspan
+         id="tspan6762"
+         x="478.17746"
+         y="701.73096">Messages</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:17.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#666666;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       x="205.149"
+       y="667.91144"
+       id="text6764"><tspan
+         x="205.149"
+         y="667.91144"
+         id="tspan6766">Tag (Number Unique to Field)</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:17.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#666666;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       x="576.19574"
+       y="909.53009"
+       id="text6768"><tspan
+         id="tspan6770"
+         x="576.19574"
+         y="909.53009">Repeating Groups</tspan></text>
+    <g
+       id="g6772"
+       transform="matrix(0.70175439,0,0,0.70175439,9.9999909,101.59271)">
+      <rect
+         style="opacity:1;fill:#87cdde;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect6774"
+         width="342"
+         height="46"
+         x="-3.0517578e-05"
+         y="929.07648" />
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         x="8.1542664"
+         y="960.03137"
+         id="text6776"><tspan
+           id="tspan6778"
+           x="8.1542664"
+           y="960.03137">RawDataLength</tspan></text>
+      <rect
+         y="936.07648"
+         x="259.99997"
+         height="32"
+         width="72"
+         id="rect6780"
+         style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         x="289.81467"
+         y="960.11847"
+         id="text6782"><tspan
+           id="tspan6784"
+           x="289.81467"
+           y="960.11847">4</tspan></text>
+      <rect
+         style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect6786"
+         width="72"
+         height="32"
+         x="177.99997"
+         y="936.07648" />
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         x="201.42612"
+         y="960.11847"
+         id="text6788"><tspan
+           id="tspan6790"
+           x="201.42612"
+           y="960.11847">95</tspan></text>
+    </g>
+    <g
+       id="g6792"
+       transform="matrix(0.70175439,0,0,0.70175439,9.9999909,102.8909)">
+      <rect
+         y="983.36218"
+         x="-3.0517578e-05"
+         height="46"
+         width="342"
+         id="rect6794"
+         style="opacity:1;fill:#87cdde;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      <text
+         id="text6796"
+         y="1014.3171"
+         x="8.1542664"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         xml:space="preserve"><tspan
+           y="1014.3171"
+           x="8.1542664"
+           id="tspan6798">RawData</tspan></text>
+      <rect
+         style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect6800"
+         width="72"
+         height="32"
+         x="259.99997"
+         y="990.36218" />
+      <text
+         id="text6802"
+         y="1014.4042"
+         x="271.3082"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         xml:space="preserve"><tspan
+           y="1014.4042"
+           x="271.3082"
+           id="tspan6804">Data</tspan></text>
+      <rect
+         y="990.36218"
+         x="177.99997"
+         height="32"
+         width="72"
+         id="rect6806"
+         style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      <text
+         id="text6808"
+         y="1014.4042"
+         x="201.44809"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         xml:space="preserve"><tspan
+           y="1014.4042"
+           x="201.44809"
+           id="tspan6810">96</tspan></text>
+    </g>
+    <g
+       id="g6812"
+       transform="matrix(0.70175439,0,0,0.70175439,9.9999909,103.18661)">
+      <rect
+         style="opacity:1;fill:#87cdde;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect6814"
+         width="342"
+         height="46"
+         x="-3.0517578e-05"
+         y="1039.0764" />
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         x="8.1542664"
+         y="1070.0314"
+         id="text6816"><tspan
+           id="tspan6818"
+           x="8.1542664"
+           y="1070.0314">HeartBtInt</tspan></text>
+      <rect
+         y="1046.0764"
+         x="259.99997"
+         height="32"
+         width="72"
+         id="rect6820"
+         style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         x="283.49203"
+         y="1070.1184"
+         id="text6822"><tspan
+           id="tspan6824"
+           x="283.49203"
+           y="1070.1184">30</tspan></text>
+      <rect
+         style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect6826"
+         width="72"
+         height="32"
+         x="177.99997"
+         y="1046.0764" />
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         x="194.8508"
+         y="1070.1184"
+         id="text6828"><tspan
+           id="tspan6830"
+           x="194.8508"
+           y="1070.1184">108</tspan></text>
+    </g>
+    <g
+       id="g6832"
+       transform="matrix(0.70175439,0,0,0.70175439,9.9999909,221.66258)">
+      <rect
+         y="1094.7906"
+         x="-3.0517578e-05"
+         height="46"
+         width="342"
+         id="rect6834"
+         style="opacity:1;fill:#87cdde;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      <text
+         id="text6836"
+         y="1125.7456"
+         x="8.1542664"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         xml:space="preserve"><tspan
+           y="1125.7456"
+           x="8.1542664"
+           id="tspan6838">Username</tspan></text>
+      <rect
+         style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect6840"
+         width="72"
+         height="32"
+         x="259.99997"
+         y="1101.7906" />
+      <text
+         id="text6842"
+         y="1125.8326"
+         x="268.07272"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         xml:space="preserve"><tspan
+           y="1125.8326"
+           x="268.07272"
+           id="tspan6844">guest</tspan></text>
+      <rect
+         y="1101.7906"
+         x="177.99997"
+         height="32"
+         width="72"
+         id="rect6846"
+         style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      <text
+         id="text6848"
+         y="1125.8326"
+         x="195.26279"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         xml:space="preserve"><tspan
+           y="1125.8326"
+           x="195.26279"
+           id="tspan6850">553</tspan></text>
+    </g>
+    <g
+       id="g6852"
+       transform="matrix(0.70175439,0,0,0.70175439,9.9999909,64.885833)">
+      <rect
+         style="opacity:1;fill:#87cdde;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect6854"
+         width="342"
+         height="46"
+         x="-3.0517578e-05"
+         y="1149.7906" />
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         x="8.1542664"
+         y="1180.7456"
+         id="text6856"><tspan
+           id="tspan6858"
+           x="8.1542664"
+           y="1180.7456">RefMsgType</tspan></text>
+      <rect
+         y="1156.7906"
+         x="259.99997"
+         height="32"
+         width="72"
+         id="rect6860"
+         style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         x="288.49631"
+         y="1180.8326"
+         id="text6862"><tspan
+           id="tspan6864"
+           x="288.49631"
+           y="1180.8326">A</tspan></text>
+      <rect
+         style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect6866"
+         width="72"
+         height="32"
+         x="177.99997"
+         y="1156.7906" />
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         x="195.35617"
+         y="1180.8326"
+         id="text6868"><tspan
+           id="tspan6870"
+           x="195.35617"
+           y="1180.8326">372</tspan></text>
+    </g>
+    <g
+       id="g6872"
+       transform="matrix(0.70175439,0,0,0.70175439,9.9999909,105.57739)">
+      <rect
+         y="1204.0764"
+         x="-3.0517578e-05"
+         height="46"
+         width="342"
+         id="rect6874"
+         style="opacity:1;fill:#87cdde;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      <text
+         id="text6876"
+         y="1235.0314"
+         x="8.1542664"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         xml:space="preserve"><tspan
+           y="1235.0314"
+           x="8.1542664"
+           id="tspan6878">MsgDirection</tspan></text>
+      <rect
+         style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect6880"
+         width="72"
+         height="32"
+         x="259.99997"
+         y="1211.0764" />
+      <text
+         id="text6882"
+         y="1235.1184"
+         x="288.5018"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         xml:space="preserve"><tspan
+           y="1235.1184"
+           x="288.5018"
+           id="tspan6884">S</tspan></text>
+      <rect
+         y="1211.0764"
+         x="177.99997"
+         height="32"
+         width="72"
+         id="rect6886"
+         style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      <text
+         id="text6888"
+         y="1235.1184"
+         x="195.26279"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         xml:space="preserve"><tspan
+           y="1235.1184"
+           x="195.26279"
+           id="tspan6890">385</tspan></text>
+    </g>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       x="99.446991"
+       y="701.73096"
+       id="text6892"><tspan
+         id="tspan6894"
+         x="99.446991"
+         y="701.73096">Fields</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:15.78947353px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       x="114.21049"
+       y="1039.9974"
+       id="text6896"><tspan
+         id="tspan6898"
+         x="114.21049"
+         y="1039.9974"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:42.10526276px;font-family:'Liberation Serif';-inkscape-font-specification:'Liberation Serif'">...</tspan></text>
+    <g
+       id="g6900"
+       transform="matrix(0.70175439,0,0,0.70175439,9.9999909,104.00701)">
+      <rect
+         style="opacity:1;fill:#87cdde;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect6902"
+         width="342"
+         height="46"
+         x="-3.0517578e-05"
+         y="869.50049" />
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         x="8.1542664"
+         y="900.45544"
+         id="text6904"><tspan
+           id="tspan6906"
+           x="8.1542664"
+           y="900.45544">SendingTime</tspan></text>
+      <rect
+         y="876.50049"
+         x="259.99997"
+         height="32"
+         width="72"
+         id="rect6908"
+         style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         x="286.63412"
+         y="900.54248"
+         id="text6910"><tspan
+           id="tspan6912"
+           x="286.63412"
+           y="900.54248">...</tspan></text>
+      <rect
+         style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect6914"
+         width="72"
+         height="32"
+         x="177.99997"
+         y="876.50049" />
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         x="201.59641"
+         y="900.54248"
+         id="text6916"><tspan
+           id="tspan6918"
+           x="201.59641"
+           y="900.54248">52</tspan></text>
+    </g>
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#666666;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-end:url(#marker7472)"
+       d="m 203.41345,668.9616 -40.12777,51.64394"
+       id="path6920" />
+    <text
+       id="text6958"
+       y="687.65472"
+       x="298.25446"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:17.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#666666;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       xml:space="preserve"><tspan
+         y="687.65472"
+         x="298.25446"
+         id="tspan6960">Value</tspan></text>
+    <g
+       transform="matrix(0.51679587,0,0,0.51679587,44.72863,264.92701)"
+       id="g6922">
+      <rect
+         style="opacity:1;fill:#ffd840;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect6924"
+         width="362"
+         height="131.0522"
+         x="964"
+         y="869.30994" />
+      <text
+         id="text6926"
+         y="894.69299"
+         x="1094.7156"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         xml:space="preserve"><tspan
+           y="894.69299"
+           x="1094.7156"
+           id="tspan6928">Heartbeat</tspan></text>
+      <g
+         transform="translate(0.21292114,3.4961322)"
+         id="g6930">
+        <rect
+           style="opacity:1;fill:#87cdde;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           id="rect6932"
+           width="342"
+           height="46"
+           x="973.78705"
+           y="905.86603" />
+        <text
+           xml:space="preserve"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           x="981.94135"
+           y="936.82098"
+           id="text6934"><tspan
+             id="tspan6936"
+             x="981.94135"
+             y="936.82098">SendingTime</tspan></text>
+        <rect
+           y="912.86603"
+           x="1233.787"
+           height="32"
+           width="72"
+           id="rect6938"
+           style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+        <text
+           xml:space="preserve"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           x="1260.4211"
+           y="936.90802"
+           id="text6940"><tspan
+             id="tspan6942"
+             x="1260.4211"
+             y="936.90802">...</tspan></text>
+        <rect
+           style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           id="rect6944"
+           width="72"
+           height="32"
+           x="1151.787"
+           y="912.86603" />
+        <text
+           xml:space="preserve"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           x="1175.3834"
+           y="936.90802"
+           id="text6946"><tspan
+             id="tspan6948"
+             x="1175.3834"
+             y="936.90802">52</tspan></text>
+      </g>
+      <text
+         id="text6950"
+         y="980.51257"
+         x="1122.5"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         xml:space="preserve"><tspan
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:60px;font-family:'Liberation Serif';-inkscape-font-specification:'Liberation Serif'"
+           y="980.51257"
+           x="1122.5"
+           id="tspan6952">...</tspan></text>
+    </g>
+    <text
+       id="text6954"
+       y="1030.5527"
+       x="624.83203"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11.6279068px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       xml:space="preserve"><tspan
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:31.00775146px;font-family:'Liberation Serif';-inkscape-font-specification:'Liberation Serif'"
+         y="1030.5527"
+         x="624.83203"
+         id="tspan6956">...</tspan></text>
+    <rect
+       style="opacity:1;fill:#ffd840;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       id="rect6966"
+       width="202.58398"
+       height="328.17938"
+       x="329.99997"
+       y="714.1828" />
+    <text
+       id="text6968"
+       y="727.28772"
+       x="415.01404"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11.6279068px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       xml:space="preserve"><tspan
+         y="727.28772"
+         x="415.01404"
+         id="tspan6970">Logon</tspan></text>
+    <g
+       transform="matrix(0.51679587,0,0,0.51679587,335.16793,169.08533)"
+       id="g6972">
+      <rect
+         style="opacity:1;fill:#87cdde;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect6974"
+         width="342"
+         height="46"
+         x="-3.0517578e-05"
+         y="1094.7906" />
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         x="8.1542664"
+         y="1125.7456"
+         id="text6976"><tspan
+           id="tspan6978"
+           x="8.1542664"
+           y="1125.7456">Username</tspan></text>
+      <rect
+         y="1101.7906"
+         x="259.99997"
+         height="32"
+         width="72"
+         id="rect6980"
+         style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         x="268.07272"
+         y="1125.8326"
+         id="text6982"><tspan
+           id="tspan6984"
+           x="268.07272"
+           y="1125.8326">guest</tspan></text>
+      <rect
+         style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect6986"
+         width="72"
+         height="32"
+         x="177.99997"
+         y="1101.7906" />
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         x="195.26279"
+         y="1125.8326"
+         id="text6988"><tspan
+           id="tspan6990"
+           x="195.26279"
+           y="1125.8326">553</tspan></text>
+    </g>
+    <g
+       transform="matrix(0.51679587,0,0,0.51679587,335.16793,255.75936)"
+       id="g6992">
+      <rect
+         y="1039.0764"
+         x="-3.0517578e-05"
+         height="46"
+         width="342"
+         id="rect6994"
+         style="opacity:1;fill:#87cdde;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      <text
+         id="text6996"
+         y="1070.0314"
+         x="8.1542664"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         xml:space="preserve"><tspan
+           y="1070.0314"
+           x="8.1542664"
+           id="tspan6998">HeartBtInt</tspan></text>
+      <rect
+         style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect7000"
+         width="72"
+         height="32"
+         x="259.99997"
+         y="1046.0764" />
+      <text
+         id="text7002"
+         y="1070.1184"
+         x="283.49203"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         xml:space="preserve"><tspan
+           y="1070.1184"
+           x="283.49203"
+           id="tspan7004">30</tspan></text>
+      <rect
+         y="1046.0764"
+         x="177.99997"
+         height="32"
+         width="72"
+         id="rect7006"
+         style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      <text
+         id="text7008"
+         y="1070.1184"
+         x="194.8508"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         xml:space="preserve"><tspan
+           y="1070.1184"
+           x="194.8508"
+           id="tspan7010">108</tspan></text>
+    </g>
+    <g
+       transform="matrix(0.51679587,0,0,0.51679587,335.16793,373.29348)"
+       id="g7012">
+      <rect
+         style="opacity:1;fill:#87cdde;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect7014"
+         width="342"
+         height="46"
+         x="-3.0517578e-05"
+         y="867.64789" />
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         x="8.1542664"
+         y="898.60278"
+         id="text7016"><tspan
+           id="tspan7018"
+           x="8.1542664"
+           y="898.60278">NoMsgTypeGrp</tspan></text>
+      <rect
+         y="874.64789"
+         x="259.99997"
+         height="32"
+         width="72"
+         id="rect7020"
+         style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         x="289.74326"
+         y="898.68988"
+         id="text7022"><tspan
+           id="tspan7024"
+           x="289.74326"
+           y="898.68988">2</tspan></text>
+      <rect
+         style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect7026"
+         width="72"
+         height="32"
+         x="177.99997"
+         y="874.64789" />
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         x="195.11996"
+         y="898.68988"
+         id="text7028"><tspan
+           id="tspan7030"
+           x="195.11996"
+           y="898.68988">384</tspan></text>
+    </g>
+    <g
+       transform="matrix(0.51679587,0,0,0.51679587,45.762241,266.4644)"
+       id="g7032">
+      <g
+         id="g7034"
+         transform="translate(590,-19.428489)">
+        <rect
+           style="opacity:1;fill:#87cdde;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           id="rect7036"
+           width="342"
+           height="46"
+           x="-3.0517578e-05"
+           y="1149.7906" />
+        <text
+           xml:space="preserve"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           x="8.1542664"
+           y="1180.7456"
+           id="text7038"><tspan
+             id="tspan7040"
+             x="8.1542664"
+             y="1180.7456">RefMsgType</tspan></text>
+        <rect
+           y="1156.7906"
+           x="259.99997"
+           height="32"
+           width="72"
+           id="rect7042"
+           style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+        <text
+           xml:space="preserve"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           x="288.49631"
+           y="1180.8326"
+           id="text7044"><tspan
+             id="tspan7046"
+             x="288.49631"
+             y="1180.8326">A</tspan></text>
+        <rect
+           style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           id="rect7048"
+           width="72"
+           height="32"
+           x="177.99997"
+           y="1156.7906" />
+        <text
+           xml:space="preserve"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           x="195.35617"
+           y="1180.8326"
+           id="text7050"><tspan
+             id="tspan7052"
+             x="195.35617"
+             y="1180.8326">372</tspan></text>
+      </g>
+      <g
+         id="g7054"
+         transform="translate(590,-17.714256)">
+        <rect
+           y="1204.0764"
+           x="-3.0517578e-05"
+           height="46"
+           width="342"
+           id="rect7056"
+           style="opacity:1;fill:#87cdde;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+        <text
+           id="text7058"
+           y="1235.0314"
+           x="8.1542664"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           xml:space="preserve"><tspan
+             y="1235.0314"
+             x="8.1542664"
+             id="tspan7060">MsgDirection</tspan></text>
+        <rect
+           style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           id="rect7062"
+           width="72"
+           height="32"
+           x="259.99997"
+           y="1211.0764" />
+        <text
+           id="text7064"
+           y="1235.1184"
+           x="288.5018"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           xml:space="preserve"><tspan
+             y="1235.1184"
+             x="288.5018"
+             id="tspan7066">S</tspan></text>
+        <rect
+           y="1211.0764"
+           x="177.99997"
+           height="32"
+           width="72"
+           id="rect7068"
+           style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+        <text
+           id="text7070"
+           y="1235.1184"
+           x="195.26279"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           xml:space="preserve"><tspan
+             y="1235.1184"
+             x="195.26279"
+             id="tspan7072">385</tspan></text>
+      </g>
+    </g>
+    <g
+       transform="matrix(0.51679587,0,0,0.51679587,335.16793,487.13623)"
+       id="g7074">
+      <rect
+         style="opacity:1;fill:#87cdde;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect7076"
+         width="342"
+         height="46"
+         x="-3.0517578e-05"
+         y="983.36218" />
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         x="8.1542664"
+         y="1014.3171"
+         id="text7078"><tspan
+           id="tspan7080"
+           x="8.1542664"
+           y="1014.3171">RawData</tspan></text>
+      <rect
+         y="990.36218"
+         x="259.99997"
+         height="32"
+         width="72"
+         id="rect7082"
+         style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         x="271.3082"
+         y="1014.4042"
+         id="text7084"><tspan
+           id="tspan7086"
+           x="271.3082"
+           y="1014.4042">Data</tspan></text>
+      <rect
+         style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect7088"
+         width="72"
+         height="32"
+         x="177.99997"
+         y="990.36218" />
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         x="201.44809"
+         y="1014.4042"
+         id="text7090"><tspan
+           id="tspan7092"
+           x="201.44809"
+           y="1014.4042">96</tspan></text>
+    </g>
+    <g
+       transform="matrix(0.51679587,0,0,0.51679587,335.16793,486.25028)"
+       id="g7094">
+      <rect
+         y="929.07648"
+         x="-3.0517578e-05"
+         height="46"
+         width="342"
+         id="rect7096"
+         style="opacity:1;fill:#87cdde;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      <text
+         id="text7098"
+         y="960.03137"
+         x="8.1542664"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         xml:space="preserve"><tspan
+           y="960.03137"
+           x="8.1542664"
+           id="tspan7100">RawDataLength</tspan></text>
+      <rect
+         style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect7102"
+         width="72"
+         height="32"
+         x="259.99997"
+         y="936.07648" />
+      <text
+         id="text7104"
+         y="960.11847"
+         x="289.81467"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         xml:space="preserve"><tspan
+           y="960.11847"
+           x="289.81467"
+           id="tspan7106">4</tspan></text>
+      <rect
+         y="936.07648"
+         x="177.99997"
+         height="32"
+         width="72"
+         id="rect7108"
+         style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      <text
+         id="text7110"
+         y="960.11847"
+         x="201.42612"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         xml:space="preserve"><tspan
+           y="960.11847"
+           x="201.42612"
+           id="tspan7112">95</tspan></text>
+    </g>
+    <text
+       id="text7114"
+       y="1032.104"
+       x="411.91208"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11.6279068px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       xml:space="preserve"><tspan
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:31.00775146px;font-family:'Liberation Serif';-inkscape-font-specification:'Liberation Serif'"
+         y="1032.104"
+         x="411.91208"
+         id="tspan7116">...</tspan></text>
+    <g
+       id="g7118"
+       transform="matrix(0.51679587,0,0,0.51679587,50.132626,267.47108)">
+      <rect
+         y="960.41425"
+         x="551.54327"
+         height="46"
+         width="342"
+         id="rect7120"
+         style="opacity:1;fill:#87cdde;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      <text
+         id="text7122"
+         y="991.3692"
+         x="559.69757"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         xml:space="preserve"><tspan
+           y="991.3692"
+           x="559.69757"
+           id="tspan7124">SendingTime</tspan></text>
+      <rect
+         style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect7126"
+         width="72"
+         height="32"
+         x="811.54327"
+         y="967.41425" />
+      <text
+         id="text7128"
+         y="991.45624"
+         x="838.17743"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         xml:space="preserve"><tspan
+           y="991.45624"
+           x="838.17743"
+           id="tspan7130">...</tspan></text>
+      <rect
+         y="967.41425"
+         x="729.54327"
+         height="32"
+         width="72"
+         id="rect7132"
+         style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      <text
+         id="text7134"
+         y="991.45624"
+         x="753.13971"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         xml:space="preserve"><tspan
+           y="991.45624"
+           x="753.13971"
+           id="tspan7136">52</tspan></text>
+    </g>
+    <path
+       style="opacity:1;fill:none;fill-opacity:1;stroke:#666666;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       d="m 527.35132,890.94107 c 7.7063,0 13.95349,-6.2472 13.95349,-13.9535 0,-7.7063 -6.24719,-13.9535 -13.95349,-13.9535"
+       id="path7138" />
+    <g
+       id="g7140"
+       transform="matrix(0.51679587,0,0,0.51679587,45.762241,324.34554)">
+      <g
+         transform="translate(590,-19.428489)"
+         id="g7142">
+        <rect
+           y="1149.7906"
+           x="-3.0517578e-05"
+           height="46"
+           width="342"
+           id="rect7144"
+           style="opacity:1;fill:#87cdde;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+        <text
+           id="text7146"
+           y="1180.7456"
+           x="8.1542664"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           xml:space="preserve"><tspan
+             y="1180.7456"
+             x="8.1542664"
+             id="tspan7148">RefMsgType</tspan></text>
+        <rect
+           style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           id="rect7150"
+           width="72"
+           height="32"
+           x="259.99997"
+           y="1156.7906" />
+        <text
+           id="text7152"
+           y="1180.8326"
+           x="288.49631"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           xml:space="preserve"><tspan
+             y="1180.8326"
+             x="288.49631"
+             id="tspan7154">A</tspan></text>
+        <rect
+           y="1156.7906"
+           x="177.99997"
+           height="32"
+           width="72"
+           id="rect7156"
+           style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+        <text
+           id="text7158"
+           y="1180.8326"
+           x="195.35617"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           xml:space="preserve"><tspan
+             y="1180.8326"
+             x="195.35617"
+             id="tspan7160">372</tspan></text>
+      </g>
+      <g
+         transform="translate(590,-17.714256)"
+         id="g7162">
+        <rect
+           style="opacity:1;fill:#87cdde;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           id="rect7164"
+           width="342"
+           height="46"
+           x="-3.0517578e-05"
+           y="1204.0764" />
+        <text
+           xml:space="preserve"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           x="8.1542664"
+           y="1235.0314"
+           id="text7166"><tspan
+             id="tspan7168"
+             x="8.1542664"
+             y="1235.0314">MsgDirection</tspan></text>
+        <rect
+           y="1211.0764"
+           x="259.99997"
+           height="32"
+           width="72"
+           id="rect7170"
+           style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+        <text
+           xml:space="preserve"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           x="288.5018"
+           y="1235.1184"
+           id="text7172"><tspan
+             id="tspan7174"
+             x="288.5018"
+             y="1235.1184">S</tspan></text>
+        <rect
+           style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           id="rect7176"
+           width="72"
+           height="32"
+           x="177.99997"
+           y="1211.0764" />
+        <text
+           xml:space="preserve"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           x="195.26279"
+           y="1235.1184"
+           id="text7178"><tspan
+             id="tspan7180"
+             x="195.26279"
+             y="1235.1184">385</tspan></text>
+      </g>
+    </g>
+    <path
+       id="path7182"
+       d="m 527.35132,948.82217 c 7.7063,0 13.95349,-6.2472 13.95349,-13.9535 0,-7.7063 -6.24719,-13.9535 -13.95349,-13.9535"
+       style="opacity:1;fill:none;fill-opacity:1;stroke:#666666;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+    <path
+       style="opacity:1;fill:none;fill-opacity:1;stroke:#666666;stroke-width:1.99999976;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       d="m 542.03535,934.27437 c 15.69802,0 28.42379,-12.7257 28.42379,-28.4237 0,-15.6981 -12.72577,-28.4238 -28.42379,-28.4238"
+       id="path7184" />
+    <g
+       transform="matrix(0.51679587,0,0,0.51679587,45.762241,264.92701)"
+       id="g7343">
+      <rect
+         y="1020.3099"
+         x="962"
+         height="131.0522"
+         width="362"
+         id="rect7188"
+         style="opacity:1;fill:#ffd840;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         x="1107.7229"
+         y="1045.693"
+         id="text7190"><tspan
+           id="tspan7192"
+           x="1107.7229"
+           y="1045.693">Logout</tspan></text>
+      <g
+         id="g7194"
+         transform="translate(-1.7871094,154.49617)">
+        <rect
+           y="905.86603"
+           x="973.78705"
+           height="46"
+           width="342"
+           id="rect7196"
+           style="opacity:1;fill:#87cdde;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+        <text
+           id="text7198"
+           y="936.82098"
+           x="981.94135"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           xml:space="preserve"><tspan
+             y="936.82098"
+             x="981.94135"
+             id="tspan7200">SendingTime</tspan></text>
+        <rect
+           style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           id="rect7202"
+           width="72"
+           height="32"
+           x="1233.787"
+           y="912.86603" />
+        <text
+           id="text7204"
+           y="936.90802"
+           x="1260.4211"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           xml:space="preserve"><tspan
+             y="936.90802"
+             x="1260.4211"
+             id="tspan7206">...</tspan></text>
+        <rect
+           y="912.86603"
+           x="1151.787"
+           height="32"
+           width="72"
+           id="rect7208"
+           style="opacity:1;fill:#d7eef4;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+        <text
+           id="text7210"
+           y="936.90802"
+           x="1175.3834"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           xml:space="preserve"><tspan
+             y="936.90802"
+             x="1175.3834"
+             id="tspan7212">52</tspan></text>
+      </g>
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:22.5px;line-height:125%;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         x="1120.5"
+         y="1131.5126"
+         id="text7214"><tspan
+           id="tspan7216"
+           x="1120.5"
+           y="1131.5126"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:60px;font-family:'Liberation Serif';-inkscape-font-specification:'Liberation Serif'">...</tspan></text>
+    </g>
+    <path
+       id="path8956"
+       d="m 292.13885,686.89663 -69.8496,37.91602"
+       style="fill:none;fill-rule:evenodd;stroke:#666666;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-end:url(#marker8958)" />
+  </g>
+</svg>
