@@ -11,3 +11,6 @@ keywords = ["fix", "protocol", "finance", "trading", "library"]
 license = "MIT/Apache-2.0"
 
 [dependencies]
+"mio" = "0.6"
+"chrono" = "0.2"
+"time" = "0.1"

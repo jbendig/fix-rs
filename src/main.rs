@@ -9,11 +9,16 @@
 // at your option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+extern crate chrono;
 #[macro_use]
 extern crate fix_rs;
 
-use fix_rs::dictionary::Logon;
+use chrono::offset::utc::UTC;
+use chrono::TimeZone;
+
+use fix_rs::dictionary::messages::Logon;
 use fix_rs::fix::Parser;
+use fix_rs::fixt::client::Client;
 use fix_rs::message::Message;
 
 //Helper function to make it easier to figure out what the body_length tag should be set to.
@@ -39,7 +44,7 @@ fn estimate_body_length(message_bytes: &[u8]) -> usize {
 
 fn main() {
     define_dictionary!(
-        b"A" => Logon : Logon,
+        Logon : Logon,
     );
 
     let message_bytes = b"8=FIX.4.2\x019=132\x0135=A\x0149=SERVER\x0156=CLIENT\x0134=177\x0152=20090107-18:15:16\x0198=0\x01108=30\x0195=13\x0196=This\x01is=atest\x011137=4\x01384=2\x01372=Test\x01385=A\x01372=Test2\x01385=B\x0110=171\x01";
@@ -54,11 +59,11 @@ fn main() {
     match message_to_enum(&**(parser.messages.first().unwrap())) {
         MessageEnum::Logon(message) => {
             assert_eq!(message.encrypt_method,"0");
-            assert_eq!(message.heart_bt_int,"30");
-            assert_eq!(message.msg_seq_num,"177");
+            assert_eq!(message.heart_bt_int,30);
+            assert_eq!(message.msg_seq_num,177);
             assert_eq!(message.sender_comp_id,"SERVER");
             assert_eq!(message.target_comp_id,"CLIENT");
-            assert_eq!(message.sending_time,"20090107-18:15:16");
+            assert_eq!(message.sending_time,UTC.ymd(2009,1,7).and_hms(18,15,16));
             assert_eq!(message.raw_data,b"This\x01is=atest");
             assert_eq!(message.default_appl_ver_id,"4");
             assert_eq!(message.msg_type_grp.len(),2);
@@ -91,5 +96,7 @@ fn main() {
             assert!(message1 == message);
         }
     }
+
+    let client = Client::new(build_dictionary(),String::from("TEST_C"),String::from("TEST_S"));
 }
 

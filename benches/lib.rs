@@ -17,7 +17,7 @@ extern crate test;
 
 use test::Bencher;
 
-use fix_rs::dictionary::NewOrderSingle;
+use fix_rs::dictionary::messages::NewOrderSingle;
 use fix_rs::fix::Parser;
 use fix_rs::message::Message;
 
@@ -26,7 +26,7 @@ const MESSAGE_BYTES: &'static [u8] = b"8=FIX.4.2\x019=197\x0135=D\x0149=AFUNDMGR
 #[bench]
 fn parse_simple_message_bench(b: &mut Bencher) {
     define_dictionary!(
-        b"D" => NewOrderSingle : NewOrderSingle,
+        NewOrderSingle : NewOrderSingle,
     );
 
     let mut parser = Parser::new(build_dictionary());
@@ -40,7 +40,7 @@ fn parse_simple_message_bench(b: &mut Bencher) {
 #[bench]
 fn serialize_simple_message_bench(b: &mut Bencher) {
     define_dictionary!(
-        b"D" => NewOrderSingle : NewOrderSingle,
+        NewOrderSingle : NewOrderSingle,
     );
 
     let mut parser = Parser::new(build_dictionary());

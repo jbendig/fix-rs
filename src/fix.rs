@@ -17,7 +17,9 @@ use std::mem;
 use std::str::FromStr;
 
 use constant::{TAG_END,VALUE_END};
-use message::{Meta,Message,NullMessage};
+use dictionary::messages::NullMessage;
+use fixt::message::FIXTMessage;
+use message::{Meta,Message,SetValueError};
 use rule::Rule;
 
 //TODO: Support configuration settings for things like MAX_VALUE_LENGTH, MAX_BODY_LENGTH,
@@ -29,9 +31,9 @@ const BODYLENGTH_TAG: &'static [u8] = b"9";
 const MSGTYPE_TAG: &'static [u8] = b"35";
 const CHECKSUM_TAG: &'static [u8] = b"10";
 
-#[derive(Debug)]
 pub enum ParseError {
-    MissingRequiredTag(Vec<u8>), //Required tag was not included in message.
+    MissingRequiredTag(Vec<u8>,Box<FIXTMessage + Send>), //Required tag was not included in message.
+    MissingConditionallyRequiredTag(Vec<u8>,Box<FIXTMessage + Send>), //Conditionally required tag was not included in message.
     BeginStrNotFirstTag,
     BodyLengthNotSecondTag,
     BodyLengthNotNumber,
@@ -42,7 +44,10 @@ pub enum ParseError {
     ChecksumNotNumber,
     DuplicateTag(Vec<u8>),
     UnexpectedTag(Vec<u8>), //Tag found does not belong to the current message type.
+    UnknownTag(Vec<u8>), //Tag found does not beling to any known message.
     WrongFormatTag(Vec<u8>),
+    OutOfRangeTag(Vec<u8>),
+    NoValueAfterTag(Vec<u8>),
     MissingPrecedingLengthTag(Vec<u8>), //Tag was found that requires a preceding length tag which was omitted.
     MissingFollowingLengthTag(Vec<u8>), //Length tag that was specified does not match the following tag.
     NonRepeatingGroupTagInRepeatingGroup(Vec<u8>), //Tag that doesn't belong in a repeating group was found.
@@ -57,7 +62,8 @@ fn tag_to_string(tag: &[u8]) -> String {
 impl fmt::Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            ParseError::MissingRequiredTag(ref tag) => write!(f,"ParseError::MissingRequiredTag({})",tag_to_string(tag)),
+            ParseError::MissingRequiredTag(ref tag,_) => write!(f,"ParseError::MissingRequiredTag({})",tag_to_string(tag)),
+            ParseError::MissingConditionallyRequiredTag(ref tag,_) => write!(f,"ParseError::MissingConditionallyRequiredTag({})",tag_to_string(tag)),
             ParseError::BeginStrNotFirstTag => write!(f,"ParseError::BeginStrNotFirstTag"),
             ParseError::BodyLengthNotSecondTag => write!(f,"ParseError::BodyLengthNotSecondTag"),
             ParseError::BodyLengthNotNumber => write!(f,"ParseError::BodyLengthNotNumber"),
@@ -68,13 +74,22 @@ impl fmt::Display for ParseError {
             ParseError::ChecksumNotNumber => write!(f,"ParseError::ChecksumNotNumber"),
             ParseError::DuplicateTag(ref tag) => write!(f,"ParseError::DuplicateTag({})",tag_to_string(tag)),
             ParseError::UnexpectedTag(ref tag) => write!(f,"ParseError::UnexpectedTag({})",tag_to_string(tag)),
+            ParseError::UnknownTag(ref tag) => write!(f,"ParseError::UnknownTag({})",tag_to_string(tag)),
             ParseError::WrongFormatTag(ref tag) => write!(f,"ParseError::WrongFormatTag({})",tag_to_string(tag)),
+            ParseError::OutOfRangeTag(ref tag) => write!(f,"ParseError::OutOfRangeTag({})",tag_to_string(tag)),
+            ParseError::NoValueAfterTag(ref tag) => write!(f,"ParseError::NoValueAfterTag({})",tag_to_string(tag)),
             ParseError::MissingPrecedingLengthTag(ref value_tag) => write!(f,"ParseError::MissingPrecedingLengthTag({})",tag_to_string(value_tag)),
             ParseError::MissingFollowingLengthTag(ref length_tag) => write!(f,"ParseError::MissingFollowingLengthTag({})",tag_to_string(length_tag)),
             ParseError::NonRepeatingGroupTagInRepeatingGroup(ref tag) => write!(f,"ParseError::NonRepeatingGroupTagInRepeatingGroup({})",tag_to_string(tag)),
             ParseError::RepeatingGroupTagWithNoRepeatingGroup(ref tag) => write!(f,"ParseError::RepeatingGroupTagWithNoRepeatingGroup({})",tag_to_string(tag)),
             ParseError::MissingFirstRepeatingGroupTagAfterNumberOfRepeatingGroupTag(ref number_of_tag) => write!(f,"ParseError::MissingFirstRepeatingGroupTagAfterNumberOfRepeatingGroupTag({})",tag_to_string(number_of_tag)),
         }
+    }
+}
+
+impl fmt::Debug for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        <ParseError as fmt::Display>::fmt(self,f)
     }
 }
 
@@ -93,15 +108,35 @@ struct ParseRepeatingGroupState {
 }
 
 impl ParseRepeatingGroupState {
-    fn is_last_group_complete(&self) -> Result<(),ParseError> {
+    fn check_last_group_complete(&self,missing_tag: &mut Vec<u8>,missing_conditional_tag: &mut Vec<u8>) {
+        //Mark the missing tag so we can emit an error when done parsing.
+        //The error cannot be emitted immediately because the MsgSeqNum
+        //might not have been parsed yet and it's required in order to
+        //respond with a Reject message.
+        //TODO: The above reasoning is likely not true. Although having the MsgType is useful in
+        //the Reject, the MsgSeqNum is not actually needed at all. We can exit quickly if it turns
+        //out to be more performant.
+
+        if !missing_tag.is_empty() || !missing_conditional_tag.is_empty() {
+            return;
+        }
+
         //Check if the last group has had all of its required fields specified.
         if let Some(last_group) = self.groups.last() {
             if let Some(tag) = last_group.remaining_required_fields.iter().next() {
-                return Err(ParseError::MissingRequiredTag(Vec::from(*tag)));
+                *missing_tag = tag.to_vec();
+                return;
+            }
+
+            //TODO: Add test to confirm conditional require works for this and outer message
+            //fields.
+            for tag in last_group.message.conditional_required_fields() {
+                if last_group.remaining_fields.contains_key(&tag) {
+                    *missing_conditional_tag = tag.to_vec();
+                    return;
+                }
             }
         }
-
-        Ok(())
     }
 }
 
@@ -131,7 +166,7 @@ fn ascii_to_integer<T: FromStr>(ascii_bytes: &Vec<u8>) -> Result<T,<T as FromStr
 }
 
 pub struct Parser {
-    message_dictionary: HashMap<&'static [u8],Box<Message>>,
+    message_dictionary: HashMap<&'static [u8],Box<FIXTMessage + Send>>,
     value_to_length_tags: HashMap<&'static [u8],&'static [u8]>,
     found_message: FoundMessage,
     current_tag: Vec<u8>, //Tag if completely parsed, otherwise empty.
@@ -147,12 +182,14 @@ pub struct Parser {
     found_tag_count: usize,
     remaining_fields: HashMap<&'static [u8],Rule>,
     remaining_required_fields: HashSet<&'static [u8]>,
-    current_message: Box<Message>,
-    pub messages: Vec<Box<Message>>,
+    missing_tag: Vec<u8>,
+    missing_conditional_tag: Vec<u8>,
+    current_message: Box<FIXTMessage + Send>,
+    pub messages: Vec<Box<FIXTMessage + Send>>,
 }
 
 impl Parser {
-    pub fn new(message_dictionary: HashMap<&'static [u8],Box<Message>>) -> Parser {
+    pub fn new(message_dictionary: HashMap<&'static [u8],Box<FIXTMessage + Send>>) -> Parser {
         //Perform a sanity check to make sure message dictionary was defined correctly. For now,
         //validate_message_dictionary() panics on failure because dictionaries should be composed
         //using a compile time macro. Thus, there's no practical reason to try and recover.
@@ -163,7 +200,7 @@ impl Parser {
         //the previous tag matches the required tag. This is an optional sanity check that's
         //provided for better error messages but probably isn't needed in practice.
         let mut value_to_length_tags = HashMap::new();
-        let mut message_stack = Vec::from_iter(message_dictionary.iter().map(|(_,message)| { message.new_into_box() }));
+        let mut message_stack = Vec::from_iter(message_dictionary.iter().map(|(_,message)| { Message::new_into_box(&**message) }));
         while let Some(message) = message_stack.pop() {
             for (tag,rule) in message.fields() {
                 match rule {
@@ -171,7 +208,7 @@ impl Parser {
                         value_to_length_tags.insert(tag,previous_tag);
                     },
                     Rule::BeginGroup{ message } => {
-                        message_stack.push(message.new_into_box());
+                        message_stack.push(Message::new_into_box(&*message));
                     },
                     _ => {}
                 }
@@ -195,6 +232,8 @@ impl Parser {
             found_tag_count: 0,
             remaining_fields: HashMap::new(),
             remaining_required_fields: HashSet::new(),
+            missing_tag: Vec::new(),
+            missing_conditional_tag: Vec::new(),
             current_message: Box::new(NullMessage {}),
             messages: Vec::new(),
         }
@@ -215,10 +254,12 @@ impl Parser {
         self.found_tag_count = 0;
         self.remaining_fields.clear();
         self.remaining_required_fields.clear();
+        self.missing_tag.clear();
+        self.missing_conditional_tag.clear();
         self.current_message = Box::new(NullMessage {});
     }
 
-    pub fn validate_message_dictionary(message_dictionary: &HashMap<&'static [u8],Box<Message>>) {
+    pub fn validate_message_dictionary(message_dictionary: &HashMap<&'static [u8],Box<FIXTMessage + Send>>) {
         enum MessageType {
             Standard,
             RepeatingGroup,
@@ -227,11 +268,11 @@ impl Parser {
         //Start by walking the message_dictionary and collecting every possible message format --
         //including repeating and nested repeating groups.
         let mut all_messages = Vec::new();
-        let mut message_stack = Vec::from_iter(message_dictionary.iter().map(|(_,message)| { (MessageType::Standard,message.new_into_box()) }));
+        let mut message_stack = Vec::from_iter(message_dictionary.iter().map(|(_,message)| { (MessageType::Standard,Message::new_into_box(&**message)) }));
         while let Some((message_type,message)) = message_stack.pop() {
             for rule in message.fields().values() {
                 if let Rule::BeginGroup{ ref message } = *rule {
-                    message_stack.push((MessageType::RepeatingGroup,message.new_into_box()));
+                    message_stack.push((MessageType::RepeatingGroup,Message::new_into_box(&**message)));
                 }
             }
             all_messages.push((message_type,message));
@@ -342,12 +383,12 @@ impl Parser {
     fn validate_checksum(&mut self) -> Result<(),ParseError> {
         //Remove checksum tag that should not be part of the current checksum.
         let mut checksum = self.checksum.overflowing_sub(CHECKSUM_TAG[0] + CHECKSUM_TAG[1] + TAG_END + VALUE_END).0;
-        let ref checksum_bytes = self.current_bytes;
+        let checksum_bytes = &self.current_bytes;
         for c in checksum_bytes {
             checksum = checksum.overflowing_sub(*c).0;
         }
 
-        match ascii_to_integer::<u8>(&checksum_bytes) {
+        match ascii_to_integer::<u8>(checksum_bytes) {
             Ok(stated_checksum) => if checksum != stated_checksum {
                 return Err(ParseError::ChecksumDoesNotMatch(checksum,stated_checksum));
             },
@@ -574,13 +615,17 @@ impl Parser {
                 return Err(ParseError::MsgTypeNotThirdTag);
             }
             else if let Some(message) = self.message_dictionary.get(self.current_bytes.as_slice()) {
-                self.current_message = (*message).new_into_box();
+                self.current_message = FIXTMessage::new_into_box(&**message);
                 self.remaining_fields = message.fields();
                 self.remaining_required_fields = message.required_fields();
             }
             else {
                 return Err(ParseError::MsgTypeUnknown(self.current_tag.clone()));
             }
+        }
+        else if self.current_bytes.is_empty() {
+            //Tag was provided without a value.
+            return Err(ParseError::NoValueAfterTag(self.current_tag.clone()));
         }
         else {
             //Make sure checksum checks out when done reading a message.
@@ -602,7 +647,7 @@ impl Parser {
                         if self.current_tag == prgs.first_tag {
                             //Make sure previous group has all required tags specified
                             //before we start a new one.
-                            try!(prgs.is_last_group_complete());
+                            prgs.check_last_group_complete(&mut self.missing_tag,&mut self.missing_conditional_tag);
 
                             //Begin a new group.
                             let group = prgs.group_template.new_into_box();
@@ -629,8 +674,11 @@ impl Parser {
                                 //Apply parsed value to group.
                                 if let Rule::BeginGroup{ .. } = rule {} //Ignore begin group tags, they will be handled below.
                                 else {
-                                    if !group.message.set_value(self.current_tag.as_slice(),self.current_bytes.as_slice()) {
-                                        return Err(ParseError::WrongFormatTag(self.current_tag.clone()));
+                                    if let Err(e) = group.message.set_value(self.current_tag.as_slice(),self.current_bytes.as_slice()) {
+                                        match e {
+                                            SetValueError::WrongFormat => return Err(ParseError::WrongFormatTag(self.current_tag.clone())),
+                                            SetValueError::OutOfRange => return Err(ParseError::OutOfRangeTag(self.current_tag.clone())),
+                                        };
                                     }
                                 }
 
@@ -651,7 +699,7 @@ impl Parser {
                             }
 
                             //Make sure all required tags have been specified.
-                            try!(prgs.is_last_group_complete());
+                            prgs.check_last_group_complete(&mut self.missing_tag,&mut self.missing_conditional_tag);
 
                             //Tag does not belong in this group and all stated groups are
                             //accounted for.
@@ -688,24 +736,66 @@ impl Parser {
                     skip_set_value = try!(self.handle_rule_after_value(rule));
                 }
                 else {
-                    return Err(ParseError::UnexpectedTag(self.current_tag.clone()));
+                    if self.is_tag_known(&self.current_tag) {
+                        if self.current_message.fields().contains_key(&self.current_tag[..]) {
+                            return Err(ParseError::DuplicateTag(self.current_tag.clone()));
+                        }
+                        else {
+                            return Err(ParseError::UnexpectedTag(self.current_tag.clone()));
+                        }
+                    }
+                    else {
+                        return Err(ParseError::UnknownTag(self.current_tag.clone()));
+                    }
                 }
             }
 
-            if !is_message_end && !tag_in_group && !skip_set_value && !self.current_message.set_value(self.current_tag.as_slice(),self.current_bytes.as_slice()) {
-                //This means either the key could not be found in the message (an
-                //internal error) or the bytes are not formatted correctly. For
-                //example, maybe it was suppose to be a number but non-digit characters
-                //were used.
-                return Err(ParseError::WrongFormatTag(self.current_tag.clone()));
+            if !is_message_end && !tag_in_group && !skip_set_value {
+                if let Err(e) = self.current_message.set_value(self.current_tag.as_slice(),self.current_bytes.as_slice()) {
+                    match e {
+                        //This means either the key could not be found in the message (an
+                        //internal error) or the bytes are not formatted correctly. For
+                        //example, maybe it was suppose to be a number but non-digit characters
+                        //were used.
+                        SetValueError::WrongFormat => return Err(ParseError::WrongFormatTag(self.current_tag.clone())),
+                        //Value was formatted correctly but outside of the defined range or not
+                        //part of the list of allowed choices.
+                        SetValueError::OutOfRange => return Err(ParseError::OutOfRangeTag(self.current_tag.clone())),
+                    };
+                }
             }
 
             if is_message_end {
                 //Make sure all required tags are specified.
-                if let Some(tag) = self.remaining_required_fields.iter().next() {
-                    return Err(ParseError::MissingRequiredTag(tag.to_vec()));
+                if !self.missing_tag.is_empty() {
+                    return Err(
+                        ParseError::MissingRequiredTag(
+                            self.missing_tag.clone(),
+                            mem::replace(&mut self.current_message,Box::new(NullMessage {}))));
+                }
+                else if !self.missing_conditional_tag.is_empty() {
+                    return Err(
+                        ParseError::MissingConditionallyRequiredTag(
+                            self.missing_conditional_tag.clone(),
+                            mem::replace(&mut self.current_message,Box::new(NullMessage {}))));
                 }
 
+                if let Some(tag) = self.remaining_required_fields.iter().next() {
+                    return Err(
+                        ParseError::MissingRequiredTag(
+                            tag.to_vec(),
+                            mem::replace(&mut self.current_message,Box::new(NullMessage {}))));
+                }
+
+                for tag in self.current_message.conditional_required_fields() {
+                    if self.remaining_fields.contains_key(&tag) {
+                        return Err(
+                            ParseError::MissingConditionallyRequiredTag(
+                                tag.to_vec(),
+                                mem::replace(&mut self.current_message,Box::new(NullMessage {}))));
+                    }
+                }
+                
                 //Store meta info about the message. Mainly for debugging.
                 self.current_message.set_meta(Meta {
                     protocol: mem::replace(&mut self.protocol,Vec::new()),
@@ -734,6 +824,16 @@ impl Parser {
         self.found_tag_count += 1;
 
         Ok(MessageEnd::No)
+    }
+
+    fn is_tag_known(&self,tag: &[u8]) -> bool {
+        for message in self.message_dictionary.values() {
+            if message.fields().contains_key(tag) {
+                return true;
+            }
+        }
+
+        false
     }
 
     pub fn parse(&mut self,message_bytes: &[u8]) -> (usize,Result<(),ParseError>) {
@@ -767,14 +867,25 @@ impl Parser {
             //a value.
             match c {
                 //Byte indicates a tag has finished being read.
-                b'=' => {
+                b'=' if self.current_tag.is_empty() => {
                     try!(self.match_tag_end(index,message_bytes));
                 },
                 //Byte indicates a vale has finished being read. Now both the tag and value are known.
                 b'\x01' => { //SOH
-                    if try!(self.match_value_end(index,message_bytes)) == MessageEnd::Yes {
-                        continue;
-                    }
+                    match self.match_value_end(index,message_bytes) {
+                        Ok(ref result) if *result == MessageEnd::Yes => {
+                            //Message finished and index was already forwaded to the end of
+                            //message_bytes or the beginning of the next message.
+                            continue;
+                        }
+                        Err(e) => {
+                            //An error occurred. Manually move index forward so this byte isn't
+                            //reprocessed in the next call to parse().
+                            *index += 1;
+                            return Err(e);
+                        }
+                        _ => {}, //Still reading a message and it's going okay!
+                    };
                 },
                 //Byte is part of a tag or value.
                 _ => {

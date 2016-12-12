@@ -16,7 +16,7 @@ pub trait Field {
     type Type;
     fn rule() -> Rule;
     fn tag() -> &'static [u8];
-    fn read(field: &<<Self as Field>::Type as FieldType>::Type,buf: &mut Vec<u8>) -> usize
+    fn read(field: &<<Self as Field>::Type as FieldType>::Type,buf: &mut Vec<u8>,required: bool) -> usize
         where <Self as Field>::Type: FieldType;
 }
 
@@ -50,18 +50,23 @@ macro_rules! define_fields {
                 $tag
             }
 
-            fn read(field: &<<Self as $crate::field::Field>::Type as $crate::field_type::FieldType>::Type,buf: &mut Vec<u8>) -> usize {
+            fn read(field: &<<Self as $crate::field::Field>::Type as $crate::field_type::FieldType>::Type,buf: &mut Vec<u8>,required: bool) -> usize {
                 use ::std::io::Write;
 
-                if <$field_type as $crate::field_type::FieldType>::is_empty(field) {
+                if !required && <$field_type as $crate::field_type::FieldType>::is_empty(field) {
                     return 0;
                 }
 
                 let mut result = 1;
 
-                //If this is part of a Rule::PrepareForBytes and Rule::ConfirmPreviousTag pair,
-                //insert the length tag first.
-                if let $crate::rule::Rule::ConfirmPreviousTag{ previous_tag } = <$field_name as $crate::field::Field>::rule() {
+                //If this is the first part of a Rule::PrepareForBytes and Rule::ConfirmPreviousTag
+                //pair, skip the tag completely.
+                if let $crate::rule::Rule::PrepareForBytes{ .. } = <$field_name as $crate::field::Field>::rule() {
+                    return 0;
+                }
+                //If this is the second part of a Rule::PrepareForBytes and
+                //Rule::ConfirmPreviousTag pair, insert the length tag first.
+                else if let $crate::rule::Rule::ConfirmPreviousTag{ previous_tag } = <$field_name as $crate::field::Field>::rule() {
                     result += 2;
                     result += buf.write(previous_tag).unwrap();
                     buf.push($crate::constant::TAG_END);
