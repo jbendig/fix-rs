@@ -89,6 +89,14 @@ impl FIXTMessage for NullMessage {
         unimplemented!();
     }
 
+    fn sender_comp_id(&self) -> &<<SenderCompID as Field>::Type as FieldType>::Type {
+        unimplemented!();
+    }
+
+    fn target_comp_id(&self) -> &<<TargetCompID as Field>::Type as FieldType>::Type {
+        unimplemented!();
+    }
+
     fn is_poss_dup(&self) -> bool {
         unimplemented!();
     }

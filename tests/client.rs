@@ -21,7 +21,7 @@ use std::time::Duration;
 
 #[macro_use]
 mod common;
-use common::TestServer;
+use common::{TestServer,new_logon_message};
 use fix_rs::dictionary::messages::{Heartbeat,Logon,Logout,Reject,ResendRequest,SequenceReset,TestRequest};
 use fix_rs::fixt::client::{ClientEvent,ConnectionTerminatedReason};
 use fix_rs::fixt::message::FIXTMessage;
@@ -352,5 +352,93 @@ fn test_send_logout_and_recv_logout_with_high_msg_seq_num_and_no_reply() {
     client_poll_event!(client,ClientEvent::ConnectionTerminated(terminated_connection_id,reason) => {
         assert_eq!(terminated_connection_id,connection_id);
         assert!(if let ConnectionTerminatedReason::LogoutNoResponseError = reason { true } else { false });
+    });
+}
+
+#[test]
+fn test_wrong_sender_comp_id_in_logon_response() {
+    define_dictionary!(
+        Logon : Logon,
+        Logout : Logout,
+        Reject : Reject,
+    );
+
+    //Connect and attempt logon.
+    let (mut test_server,mut client,connection_id) = TestServer::setup(build_dictionary());
+
+    let message = new_logon_message();
+    client.send_message(connection_id,Box::new(message));
+    let _ = test_server.recv_message::<Logon>();
+
+    //Respond with a logon messaging containing the wrong SenderCompID.
+    let mut message = new_logon_message();
+    message.sender_comp_id = String::from("unknown");
+    test_server.send_message(message);
+
+    //Confirm client sends Reject, Logout, and then disconnects.
+    let message = test_server.recv_message::<Reject>();
+    assert_eq!(message.msg_seq_num,2);
+    assert_eq!(message.ref_seq_num,1);
+    assert_eq!(message.session_reject_reason,"9");
+    assert_eq!(message.text,"CompID problem");
+
+    let message = test_server.recv_message::<Logout>();
+    assert_eq!(message.text,"SenderCompID is wrong");
+
+    client_poll_event!(client,ClientEvent::MessageRejected(msg_connection_id,rejected_message) => {
+        assert_eq!(msg_connection_id,connection_id);
+
+        let message = rejected_message.as_any().downcast_ref::<Logon>().expect("Not expected message type").clone();
+        assert_eq!(message.msg_seq_num,1);
+        assert_eq!(message.sender_comp_id,"unknown");
+    });
+
+    client_poll_event!(client,ClientEvent::ConnectionTerminated(terminated_connection_id,reason) => {
+        assert_eq!(terminated_connection_id,connection_id);
+        assert!(if let ConnectionTerminatedReason::SenderCompIDWrongError = reason { true } else { false });
+    });
+}
+
+#[test]
+fn test_wrong_target_comp_id_in_logon_response() {
+    define_dictionary!(
+        Logon : Logon,
+        Logout : Logout,
+        Reject : Reject,
+    );
+
+    //Connect and attempt logon.
+    let (mut test_server,mut client,connection_id) = TestServer::setup(build_dictionary());
+
+    let message = new_logon_message();
+    client.send_message(connection_id,Box::new(message));
+    let _ = test_server.recv_message::<Logon>();
+
+    //Respond with a logon messaging containing the wrong TargetCompID.
+    let mut message = new_logon_message();
+    message.target_comp_id = String::from("unknown");
+    test_server.send_message(message);
+
+    //Confirm client sends Reject, Logout, and then disconnects.
+    let message = test_server.recv_message::<Reject>();
+    assert_eq!(message.msg_seq_num,2);
+    assert_eq!(message.ref_seq_num,1);
+    assert_eq!(message.session_reject_reason,"9");
+    assert_eq!(message.text,"CompID problem");
+
+    let message = test_server.recv_message::<Logout>();
+    assert_eq!(message.text,"TargetCompID is wrong");
+
+    client_poll_event!(client,ClientEvent::MessageRejected(msg_connection_id,rejected_message) => {
+        assert_eq!(msg_connection_id,connection_id);
+
+        let message = rejected_message.as_any().downcast_ref::<Logon>().expect("Not expected message type").clone();
+        assert_eq!(message.msg_seq_num,1);
+        assert_eq!(message.target_comp_id,"unknown");
+    });
+
+    client_poll_event!(client,ClientEvent::ConnectionTerminated(terminated_connection_id,reason) => {
+        assert_eq!(terminated_connection_id,connection_id);
+        assert!(if let ConnectionTerminatedReason::TargetCompIDWrongError = reason { true } else { false });
     });
 }

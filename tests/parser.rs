@@ -55,6 +55,14 @@ impl FIXTMessage for LogonTest {
         self.msg_seq_num
     }
 
+    fn sender_comp_id(&self) -> &<<SenderCompID as Field>::Type as FieldType>::Type {
+        unimplemented!();
+    }
+
+    fn target_comp_id(&self) -> &<<TargetCompID as Field>::Type as FieldType>::Type {
+        unimplemented!();
+    }
+
     fn is_poss_dup(&self) -> bool {
         unimplemented!();
     }
@@ -278,6 +286,14 @@ fn length_tag_test() {
             unimplemented!();
         }
 
+        fn sender_comp_id(&self) -> &<<SenderCompID as Field>::Type as FieldType>::Type {
+            unimplemented!();
+        }
+
+        fn target_comp_id(&self) -> &<<TargetCompID as Field>::Type as FieldType>::Type {
+            unimplemented!();
+        }
+
         fn is_poss_dup(&self) -> bool {
             unimplemented!();
         }
@@ -347,6 +363,14 @@ fn repeating_groups_test() {
         }
 
         fn msg_seq_num(&self) -> <<MsgSeqNum as Field>::Type as FieldType>::Type {
+            unimplemented!();
+        }
+
+        fn sender_comp_id(&self) -> &<<SenderCompID as Field>::Type as FieldType>::Type {
+            unimplemented!();
+        }
+
+        fn target_comp_id(&self) -> &<<TargetCompID as Field>::Type as FieldType>::Type {
             unimplemented!();
         }
 
@@ -499,6 +523,14 @@ fn nested_repeating_groups_test() {
         }
 
         fn msg_seq_num(&self) -> <<MsgSeqNum as Field>::Type as FieldType>::Type {
+            unimplemented!();
+        }
+
+        fn sender_comp_id(&self) -> &<<SenderCompID as Field>::Type as FieldType>::Type {
+            unimplemented!();
+        }
+
+        fn target_comp_id(&self) -> &<<TargetCompID as Field>::Type as FieldType>::Type {
             unimplemented!();
         }
 

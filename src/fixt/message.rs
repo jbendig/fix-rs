@@ -20,6 +20,8 @@ pub trait FIXTMessage: Message {
     fn new_into_box(&self) -> Box<FIXTMessage + Send>;
     fn msg_type(&self) -> &'static [u8];
     fn msg_seq_num(&self) -> <<MsgSeqNum as Field>::Type as FieldType>::Type;
+    fn sender_comp_id(&self) -> &<<SenderCompID as Field>::Type as FieldType>::Type;
+    fn target_comp_id(&self) -> &<<TargetCompID as Field>::Type as FieldType>::Type;
     fn is_poss_dup(&self) -> bool;
     fn sending_time(&self) -> <<SendingTime as Field>::Type as FieldType>::Type;
     fn orig_sending_time(&self) -> <<OrigSendingTime as Field>::Type as FieldType>::Type;
@@ -96,6 +98,14 @@ macro_rules! define_fixt_message {
 
             fn msg_seq_num(&self) -> <<$crate::dictionary::fields::MsgSeqNum as $crate::field::Field>::Type as $crate::field_type::FieldType>::Type {
                 self.msg_seq_num
+            }
+
+            fn sender_comp_id(&self) -> &<<$crate::dictionary::fields::SenderCompID as $crate::field::Field>::Type as $crate::field_type::FieldType>::Type {
+                &self.sender_comp_id
+            }
+
+            fn target_comp_id(&self) -> &<<$crate::dictionary::fields::TargetCompID as $crate::field::Field>::Type as $crate::field_type::FieldType>::Type {
+                &self.target_comp_id
             }
 
             fn is_poss_dup(&self) -> bool {

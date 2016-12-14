@@ -28,7 +28,7 @@ use std::time::Duration;
 
 #[macro_use]
 mod common;
-use common::{TestServer,new_logon_message,recv_bytes_with_timeout};
+use common::{SERVER_SENDER_COMP_ID,SERVER_TARGET_COMP_ID,TestServer,new_logon_message,recv_bytes_with_timeout};
 use fix_rs::dictionary::fields::{TestReqID,HeartBtInt,BeginSeqNo,EndSeqNo,SideField,OrigSendingTime,NoHops,HopCompID};
 use fix_rs::dictionary::messages::{Logon,Logout,NewOrderSingle,ResendRequest,TestRequest,Heartbeat,SequenceReset,Reject,BusinessMessageReject};
 use fix_rs::field_type::{CharFieldType,NoneFieldType,Side,StringFieldType};
@@ -70,7 +70,12 @@ fn test_1B() {
     {
         let (_,mut client,connection_id,logon_message) = do_logon(|mut test_server,message| {
             assert!(is_logon_valid(&message));
-            test_server.send_message(message);
+
+            let mut response_message = new_fixt_message!(Logon);
+            response_message.encrypt_method = message.encrypt_method;
+            response_message.heart_bt_int = message.heart_bt_int;
+            response_message.default_appl_ver_id = message.default_appl_ver_id;
+            test_server.send_message(response_message);
         });
 
         client_poll_event!(client,ClientEvent::SessionEstablished(session_connection_id) => {
@@ -82,19 +87,24 @@ fn test_1B() {
         let mut message = client_poll_message!(client,connection_id,Logon);
         assert!((logon_message.sending_time - message.sending_time).num_milliseconds() < 50);
         message.sending_time = logon_message.sending_time;
-        assert_eq!(message.sender_comp_id,logon_message.target_comp_id);
+        assert_eq!(message.sender_comp_id,SERVER_SENDER_COMP_ID);
         message.sender_comp_id = logon_message.sender_comp_id.clone();
-        assert_eq!(message.target_comp_id,logon_message.sender_comp_id);
+        assert_eq!(message.target_comp_id,SERVER_TARGET_COMP_ID);
         message.target_comp_id = logon_message.target_comp_id.clone();
         assert!(message == logon_message);
     }
 
     //c. Handle receiving a valid Logon with too high of MsgSeqNum.
     {
-        let (mut test_server,mut client,connection_id,_) = do_logon(|mut test_server,mut message| {
+        let (mut test_server,mut client,connection_id,_) = do_logon(|mut test_server,message| {
             assert!(is_logon_valid(&message));
-            message.msg_seq_num = 9;
-            test_server.send_message(message);
+
+            let mut response_message = new_fixt_message!(Logon);
+            response_message.msg_seq_num = 9;
+            response_message.encrypt_method = message.encrypt_method;
+            response_message.heart_bt_int = message.heart_bt_int;
+            response_message.default_appl_ver_id = message.default_appl_ver_id;
+            test_server.send_message(response_message);
         });
 
         client_poll_event!(client,ClientEvent::SessionEstablished(session_connection_id) => {
@@ -119,9 +129,12 @@ fn test_1B() {
 
     //d. Handle receiving an invalid Logon.
     {
-        let (mut test_server,mut client,connection_id,_) = do_logon(|mut test_server,mut message| {
-            message.heart_bt_int = -1;
-            test_server.send_message(message);
+        let (mut test_server,mut client,connection_id,_) = do_logon(|mut test_server,message| {
+            let mut response_message = new_fixt_message!(Logon);
+            response_message.encrypt_method = message.encrypt_method;
+            response_message.heart_bt_int = -1;
+            response_message.default_appl_ver_id = message.default_appl_ver_id;
+            test_server.send_message(response_message);
         });
 
         //Confirm the client sent a Logout message.
@@ -248,6 +261,8 @@ fn test_2B() {
         let message = test_server.recv_message::<Logout>();
         assert_eq!(message.msg_seq_num,3);
 
+        let mut message = new_fixt_message!(Logout);
+        message.msg_seq_num = 3;
         test_server.send_message(message);
         let message = client_poll_message!(client,connection_id,Logout);
         assert_eq!(message.msg_seq_num,3);
@@ -462,9 +477,94 @@ fn test_2B() {
         });
     }
 
+    //j. and k. SenderCompID and TargetCompID should match specified values. Otherwise, Client
+    //should respond with a Reject and then Logout.
+    {
+        //SenderCompID and TargetCompID correct followed by SenderCompID being wrong.
+        {
+            //Connect and logon.
+            let (mut test_server,mut client,connection_id) = TestServer::setup_and_logon(build_dictionary());
+
+            //Send TestRequest without correct SenderCompID and TargetCompID.
+            let mut message = new_fixt_message!(TestRequest);
+            message.msg_seq_num = 2;
+            message.test_req_id = String::from("1");
+            message.sender_comp_id = String::from(SERVER_SENDER_COMP_ID);
+            message.target_comp_id = String::from(SERVER_TARGET_COMP_ID);
+            test_server.send_message(message);
+
+            let message = client_poll_message!(client,connection_id,TestRequest);
+            assert_eq!(message.sender_comp_id,SERVER_SENDER_COMP_ID);
+            assert_eq!(message.target_comp_id,SERVER_TARGET_COMP_ID);
+            let _ = test_server.recv_message::<Heartbeat>();
+
+            //Send TestRequest with wrong SenderCompID.
+            let mut message = new_fixt_message!(TestRequest);
+            message.msg_seq_num = 3;
+            message.test_req_id = String::from("2");
+            message.sender_comp_id = String::from("unknown");
+            message.target_comp_id = String::from(SERVER_SENDER_COMP_ID);
+            test_server.send_message(message);
+
+            //Client should send Reject, Logout, and then disconnect.
+            let message = test_server.recv_message::<Reject>();
+            assert_eq!(message.msg_seq_num,3);
+            assert_eq!(message.ref_seq_num,3);
+            assert_eq!(message.session_reject_reason,"9");
+            assert_eq!(message.text,"CompID problem");
+
+            let message = test_server.recv_message::<Logout>();
+            assert_eq!(message.text,"SenderCompID is wrong");
+
+            client_poll_event!(client,ClientEvent::MessageRejected(msg_connection_id,rejected_message) => {
+                assert_eq!(msg_connection_id,connection_id);
+
+                let _ = rejected_message.as_any().downcast_ref::<TestRequest>().expect("Not expected message type").clone();
+            });
+
+            client_poll_event!(client,ClientEvent::ConnectionTerminated(terminated_connection_id,reason) => {
+                assert_eq!(terminated_connection_id,connection_id);
+                assert!(if let ConnectionTerminatedReason::SenderCompIDWrongError = reason { true } else { false });
+            });
+        }
+
+        //TargetCompID being wrong.
+        {
+            //Connect and logon.
+            let (mut test_server,mut client,connection_id) = TestServer::setup_and_logon(build_dictionary());
+
+            //Send TestRequest with wrong TargetCompID.
+            let mut message = new_fixt_message!(TestRequest);
+            message.msg_seq_num = 2;
+            message.test_req_id = String::from("2");
+            message.sender_comp_id = String::from(SERVER_SENDER_COMP_ID);
+            message.target_comp_id = String::from("unknown");
+            test_server.send_message(message);
+
+            //Client should send Reject, Logout, and then disconnect.
+            let message = test_server.recv_message::<Reject>();
+            assert_eq!(message.msg_seq_num,2);
+            assert_eq!(message.ref_seq_num,2);
+            assert_eq!(message.session_reject_reason,"9");
+            assert_eq!(message.text,"CompID problem");
+
+            let message = test_server.recv_message::<Logout>();
+            assert_eq!(message.text,"TargetCompID is wrong");
+
+            client_poll_event!(client,ClientEvent::MessageRejected(msg_connection_id,rejected_message) => {
+                assert_eq!(msg_connection_id,connection_id);
+
+                let _ = rejected_message.as_any().downcast_ref::<TestRequest>().expect("Not expected message type").clone();
+            });
+
+            client_poll_event!(client,ClientEvent::ConnectionTerminated(terminated_connection_id,reason) => {
+                assert_eq!(terminated_connection_id,connection_id);
+                assert!(if let ConnectionTerminatedReason::TargetCompIDWrongError = reason { true } else { false });
+            });
+        }
+    }
+
     //h., i.: TODO: BeginStr should match value in specified testing profile. Otherwise, Logout.
-    //j., k.: TODO: SenderCompID and TargetCompID should match values in specified testing
-    //              profile. Otherwise, reject and Logout.
     //l., m.: TODO: BodyLength must be correct. Otherwise, ignore and issue warning.
     //n., o.: TODO: SendingTime must be within 2 minutes of current (atomic click-based) time.
     //              Otherwise, Reject and Logout.
@@ -735,7 +835,7 @@ fn test_10B() {
         message.gap_fill_flag = true;
         message.new_seq_no = 15;
         test_server.send_message(message);
-        
+
         //Confirm client responds with appropriate ResendRequest.
         let message = test_server.recv_message::<ResendRequest>();
         assert_eq!(message.msg_seq_num,2);
@@ -893,7 +993,7 @@ fn test_11B() {
     //a. Client receives SequenceReset-Reset message with NewSeqNo > inbound expected sequence
     //number. Client should ignore MsgSeqNum of received message and set inbound expected sequence
     //number to NewSeqNo.
-    for msg_seq_num in msg_seq_nums.clone() { 
+    for msg_seq_num in msg_seq_nums.clone() {
         //Connect and Logon.
         let (mut test_server,mut client,connection_id) = TestServer::setup_and_logon(build_dictionary());
 
@@ -1005,7 +1105,7 @@ fn test_11B() {
         client_poll_event!(client,ClientEvent::SequenceResetResetInThePast(warning_connection_id) => {
             assert_eq!(warning_connection_id,connection_id);
         });
-        
+
         //Make sure client accepted the message.
         let message = client_poll_message!(client,connection_id,SequenceReset);
         assert_eq!(message.msg_seq_num,msg_seq_num);
@@ -1050,7 +1150,10 @@ fn test_12B() {
         //Have server respond to Logout.
         let mut message = test_server.recv_message::<Logout>();
         assert_eq!(message.text,"");
-        message.session_status = String::from("4"); //Session logout complete"
+
+        let mut message = new_fixt_message!(Logout);
+        message.msg_seq_num = 2;
+        message.session_status = String::from("4"); //Session logout complete.
         test_server.send_message(message);
 
         //Give client thread a chance to disconnect.
@@ -1101,7 +1204,7 @@ fn test_13B() {
 
     //a. Client receives Logout response in response to its Logout message and then should
     //disconnect immediately. This is already covered by 12B above.
-    
+
     //b. Client receives a Logout message without sending a Logout message first. Client should
     //respond with a Logout message and wait for server to disconnect.
     {
@@ -1574,7 +1677,7 @@ fn test_20B() {
     message.msg_seq_num = 10;
     message.test_req_id = String::from("10");
     test_server.send_message(message);
-    
+
     let message = test_server.recv_message::<ResendRequest>();
     assert_eq!(message.msg_seq_num,6);
     assert_eq!(message.begin_seq_no,2);

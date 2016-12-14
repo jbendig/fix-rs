@@ -433,11 +433,13 @@ impl Connection {
     }
 
     fn initiate_logout(&mut self,timer: &mut Timer<(TimeoutType,Token)>,logging_out_type: LoggingOutType,text: &str) {
-        //Begin the logout process. This shouldn't be used if already logging out or responding to
-        //a logout message.
+        //Begin the logout process. Use respond_to_logout() to respond to a logout message.
 
-        assert!(self.status.is_logging_on() || self.status.is_established() || self.status.is_logging_out_with_resending_request_initiated_by_client());
-        assert!(match logging_out_type { LoggingOutType::Ok | LoggingOutType::Error(_) => true, _ => false });
+        assert!(match logging_out_type {
+            LoggingOutType::Ok => !self.status.is_logging_out() || self.status.is_logging_out_with_resending_request_initiated_by_client(),
+            LoggingOutType::Error(_) => !self.status.is_logging_out_with_error(),
+            _ => false,
+        });
 
         let mut logout = Logout::new();
         logout.text = String::from(text);
@@ -998,6 +1000,35 @@ impl InternalThread {
             }
 
             Ok(Some(message))
+        }
+
+        //Every message must have SenderCompID and TargetCompID set to the expected values or else
+        //the message must be rejected and we should logout. See FIXT 1.1, page 52.
+        if *message.sender_comp_id() != *connection.target_comp_id {
+            connection.initiate_logout(timer,LoggingOutType::Error(ConnectionTerminatedReason::SenderCompIDWrongError),"SenderCompID is wrong");
+
+            let mut reject = Reject::new();
+            reject.ref_seq_num = connection.inbound_msg_seq_num;
+            reject.session_reject_reason = String::from("9");
+            reject.text = String::from("CompID problem");
+            connection.outbound_messages.insert(0,OutboundMessage::from(reject));
+
+            tx.send(ClientEvent::MessageRejected(connection.token.0,message)).unwrap();
+
+            return Ok(());
+        }
+        else if *message.target_comp_id() != *connection.sender_comp_id {
+            connection.initiate_logout(timer,LoggingOutType::Error(ConnectionTerminatedReason::TargetCompIDWrongError),"TargetCompID is wrong");
+
+            let mut reject = Reject::new();
+            reject.ref_seq_num = connection.inbound_msg_seq_num;
+            reject.session_reject_reason = String::from("9");
+            reject.text = String::from("CompID problem");
+            connection.outbound_messages.insert(0,OutboundMessage::from(reject));
+
+            tx.send(ClientEvent::MessageRejected(connection.token.0,message)).unwrap();
+
+            return Ok(());
         }
 
         //When the connection first starts, it sends a Logon message to the server. The server then

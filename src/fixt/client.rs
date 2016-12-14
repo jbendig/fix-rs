@@ -39,9 +39,11 @@ pub enum ConnectionTerminatedReason {
     LogoutNoHangUpError,
     LogoutNoResponseError,
     OutboundMsgSeqNumMaxExceededError,
+    SenderCompIDWrongError,
     ServerRequested,
     SocketReadError(io::Error),
     SocketWriteError(io::Error),
+    TargetCompIDWrongError,
     TestRequestNotRespondedError,
 }
 
@@ -57,9 +59,11 @@ impl fmt::Debug for ConnectionTerminatedReason {
             ConnectionTerminatedReason::LogoutNoHangUpError => write!(f,"Server requested logout but did not close socket after response."),
             ConnectionTerminatedReason::LogoutNoResponseError => write!(f,"Client requested logout but server did not respond within a reasonable amount of time."),
             ConnectionTerminatedReason::OutboundMsgSeqNumMaxExceededError => write!(f,"Expected outbound MsgSeqNum exceeded maximum allowed."),
+            ConnectionTerminatedReason::SenderCompIDWrongError => write!(f,"Received message with SenderCompID not matching the expected value."),
             ConnectionTerminatedReason::ServerRequested => write!(f,"Server requested logout and it was performed cleanly."),
             ConnectionTerminatedReason::SocketReadError(ref error) => write!(f,"Socket could not be read from: {}",error),
             ConnectionTerminatedReason::SocketWriteError(ref error) => write!(f,"Socket could not be written to: {}",error),
+            ConnectionTerminatedReason::TargetCompIDWrongError => write!(f,"Received message with TargetCompID not matching the expected value."),
             ConnectionTerminatedReason::TestRequestNotRespondedError => write!(f,"TestRequest message not responded with Heartbeat message within a reasonable amount of time."),
         }
     }

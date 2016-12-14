@@ -32,8 +32,10 @@ use fix_rs::fixt::message::FIXTMessage;
 const SOCKET_BASE_PORT: usize = 7000;
 static SOCKET_PORT: AtomicUsize = AtomicUsize::new(SOCKET_BASE_PORT);
 
-pub const TARGET_COMP_ID: &'static str = "TX"; //Test Exchange
-pub const SENDER_COMP_ID: &'static str = "TEST";
+const CLIENT_TARGET_COMP_ID: &'static str = "TX"; //Test Exchange
+const CLIENT_SENDER_COMP_ID: &'static str = "TEST";
+pub const SERVER_TARGET_COMP_ID: &'static str = CLIENT_SENDER_COMP_ID;
+pub const SERVER_SENDER_COMP_ID: &'static str = CLIENT_TARGET_COMP_ID;
 
 #[macro_export]
 macro_rules! client_poll_event {
@@ -65,10 +67,10 @@ macro_rules! new_fixt_message {
         let mut message = $message_type::new();
         message.setup_fixt_session_header(
             Some(1),
-            //Target and Sender are swapped here because if the message is sent by TestServer, this
-            //is correct. If the message is sent by client, the client will overwrite these.
-            String::from($crate::common::TARGET_COMP_ID),
-            String::from($crate::common::SENDER_COMP_ID)
+            //Set to from-server by default because if the message is sent by the client, it will
+            //overwrite these.
+            String::from($crate::common::SERVER_SENDER_COMP_ID),
+            String::from($crate::common::SERVER_TARGET_COMP_ID)
         );
 
         message
@@ -142,7 +144,7 @@ impl TestServer {
         let listener = TcpListener::bind(&addr).unwrap();
 
         //Setup client and connect to socket.
-        let mut client = Client::new(message_dictionary.clone(),String::from(SENDER_COMP_ID),String::from(TARGET_COMP_ID)).unwrap();
+        let mut client = Client::new(message_dictionary.clone(),String::from(CLIENT_SENDER_COMP_ID),String::from(CLIENT_TARGET_COMP_ID)).unwrap();
         let connection_id = client.add_connection(addr).unwrap();
 
         //Try to accept connection from client. Fails on timeout or socket error.
@@ -172,7 +174,11 @@ impl TestServer {
         let message = test_server.recv_message::<Logon>();
         assert_eq!(message.msg_seq_num,1);
 
-        test_server.send_message(message);
+        let mut response_message = new_fixt_message!(Logon);
+        response_message.encrypt_method = message.encrypt_method;
+        response_message.heart_bt_int = message.heart_bt_int;
+        response_message.default_appl_ver_id = message.default_appl_ver_id;
+        test_server.send_message(response_message);
         client_poll_event!(client,ClientEvent::SessionEstablished(_) => {});
         let message = client_poll_message!(client,connection_id,Logon);
         assert_eq!(message.msg_seq_num,1);
