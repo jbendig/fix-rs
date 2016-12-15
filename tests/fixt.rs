@@ -29,6 +29,7 @@ use std::time::Duration;
 #[macro_use]
 mod common;
 use common::{SERVER_SENDER_COMP_ID,SERVER_TARGET_COMP_ID,TestServer,new_logon_message,recv_bytes_with_timeout};
+use fix_rs::dictionary::standard_msg_types;
 use fix_rs::dictionary::fields::{TestReqID,HeartBtInt,BeginSeqNo,EndSeqNo,SideField,OrigSendingTime,NoHops,HopCompID};
 use fix_rs::dictionary::messages::{Logon,Logout,NewOrderSingle,ResendRequest,TestRequest,Heartbeat,SequenceReset,Reject,BusinessMessageReject};
 use fix_rs::field_type::{CharFieldType,NoneFieldType,Side,StringFieldType};
@@ -564,14 +565,111 @@ fn test_2B() {
         }
     }
 
+    //p. MsgType should match those defined in spec or as part of a user defined list. This test is
+    //basically performed in most other tests so it's skipped here.
+
+    //q. If MsgType is not defined in the spec or as part of a user defined list, Client should
+    //respond with a Reject, increment the inbound expected MsgSeqNum, and issue a warning.
+    {
+        define_dictionary!(
+            Logon : Logon,
+            Reject : Reject,
+            TestRequest : TestRequest,
+        );
+
+        define_fixt_message!(MessageWithInvalidMsgType: b"99999" => {
+            NOT_REQUIRED, test_req_id: TestReqID,
+        });
+
+        let message = new_fixt_message!(MessageWithInvalidMsgType);
+        let invalid_msg_type = <MessageWithInvalidMsgType as FIXTMessage>::msg_type(&message);
+
+        //Connect and logon.
+        let (mut test_server,mut client,connection_id) = TestServer::setup_and_logon(build_dictionary());
+
+        //Send message with invalid MsgType.
+        let mut message = new_fixt_message!(MessageWithInvalidMsgType);
+        message.msg_seq_num = 2;
+        test_server.send_message(message);
+
+        //Confirm Client responds with an appropriate Reject.
+        let message = test_server.recv_message::<Reject>();
+        assert_eq!(message.msg_seq_num,2);
+        assert_eq!(message.ref_msg_type,String::from_utf8_lossy(invalid_msg_type).to_owned());
+        assert_eq!(message.session_reject_reason,"11");
+        assert_eq!(message.text,"Invalid MsgType");
+
+        //Confirm Client issued warning.
+        client_poll_event!(client,ClientEvent::MessageReceivedGarbled(msg_connection_id,parse_error) => {
+            assert_eq!(msg_connection_id,connection_id);
+            assert!(if let ParseError::MsgTypeUnknown(_) = parse_error { true } else { false });
+        });
+
+        //Confirm Client incremented expected inbound MsgSeqNum.
+        let mut message = new_fixt_message!(TestRequest);
+        message.msg_seq_num = 3;
+        message.test_req_id = String::from("test_id");
+        test_server.send_message(message);
+
+        let message = client_poll_message!(client,connection_id,TestRequest);
+        assert_eq!(message.msg_seq_num,3);
+    }
+
+    //r. If MsgType is part of spec but unsupported, Client should respond with a
+    //BusinessMessageReject, increment the inbound expected MsgSeqNum, and issue a warning.
+    //TODO: Send Reject (< FIX 4.2) or Business Message Reject (>= FIX 4.2)
+    {
+        define_dictionary!(
+            BusinessMessageReject : BusinessMessageReject,
+            Logon : Logon,
+            TestRequest : TestRequest,
+        );
+
+        define_fixt_message!(MessageWithUnsupportedMsgType: b"AA" => {
+            NOT_REQUIRED, test_req_id: TestReqID,
+        });
+
+        //Confirm message type is standard but not supported.
+        let message = new_fixt_message!(MessageWithUnsupportedMsgType);
+        let unsupported_msg_type = <MessageWithUnsupportedMsgType as FIXTMessage>::msg_type(&message);
+        assert!(standard_msg_types().contains(unsupported_msg_type));
+        assert!(!build_dictionary().contains_key(unsupported_msg_type));
+
+        //Connect and logon.
+        let (mut test_server,mut client,connection_id) = TestServer::setup_and_logon(build_dictionary());
+
+        //Send message with unsupported MsgType.
+        let mut message = new_fixt_message!(MessageWithUnsupportedMsgType);
+        message.msg_seq_num = 2;
+        test_server.send_message(message);
+
+        //Confirm Client responds with an appropriate BusinessMessageReject.
+        let message = test_server.recv_message::<BusinessMessageReject>();
+        assert_eq!(message.msg_seq_num,2);
+        assert_eq!(message.ref_msg_type,String::from_utf8_lossy(unsupported_msg_type).to_owned());
+        assert_eq!(message.business_reject_reason,"3");
+        assert_eq!(message.text,"Unsupported Message Type");
+
+        //Confirm Client issued warning.
+        client_poll_event!(client,ClientEvent::MessageReceivedGarbled(msg_connection_id,parse_error) => {
+            assert_eq!(msg_connection_id,connection_id);
+            assert!(if let ParseError::MsgTypeUnknown(_) = parse_error { true } else { false });
+        });
+
+        //Confirm Client incremented expected inbound MsgSeqNum.
+        let mut message = new_fixt_message!(TestRequest);
+        message.msg_seq_num = 3;
+        message.test_req_id = String::from("test_id");
+        test_server.send_message(message);
+
+        let message = client_poll_message!(client,connection_id,TestRequest);
+        assert_eq!(message.msg_seq_num,3);
+    }
+
     //h., i.: TODO: BeginStr should match value in specified testing profile. Otherwise, Logout.
     //l., m.: TODO: BodyLength must be correct. Otherwise, ignore and issue warning.
     //n., o.: TODO: SendingTime must be within 2 minutes of current (atomic click-based) time.
     //              Otherwise, Reject and Logout.
-    //p., q.: TODO: MsgType should be valid. Otherwise, send Reject, increment inbound MsgSeqNum
-    //              and issue warning.
-    //r:      TODO: MsgType is valid but unsupported. Send Reject (< FIX 4.2) or Business Message
-    //              Reject (>= FIX 4.2), increment inbound MsgSeqNum, and issue warning.
     //s., t.: TODO: BeginString, BodyLength, and MsgType should be first three fields. Otherwise,
     //              ignore and issue warning.
 }
@@ -1148,7 +1246,7 @@ fn test_12B() {
         client.logout(connection_id);
 
         //Have server respond to Logout.
-        let mut message = test_server.recv_message::<Logout>();
+        let message = test_server.recv_message::<Logout>();
         assert_eq!(message.text,"");
 
         let mut message = new_fixt_message!(Logout);

@@ -25,7 +25,7 @@ use std::time::Duration;
 
 use fixt::client::{ClientEvent,ConnectionTerminatedReason};
 use fixt::message::FIXTMessage;
-use dictionary::CloneDictionary;
+use dictionary::{CloneDictionary,standard_msg_types};
 use dictionary::fields::{MsgSeqNum,SenderCompID,TargetCompID,OrigSendingTime};
 use dictionary::messages::{Logon,Logout,ResendRequest,TestRequest,Heartbeat,SequenceReset,Reject,BusinessMessageReject};
 use field::Field;
@@ -1147,7 +1147,7 @@ impl InternalThread {
     }
 
     fn on_network_parse_error(connection: &mut Connection,parse_error: ParseError,tx: &Sender<ClientEvent>)-> Result<(),ConnectionTerminatedReason> {
-        fn push_reject(connection: &mut Connection,ref_msg_type: &'static [u8],ref_tag_id: &Vec<u8>,session_reject_reason: &str,text: &str) -> Result<(),ConnectionTerminatedReason> {
+        fn push_reject(connection: &mut Connection,ref_msg_type: &[u8],ref_tag_id: &Vec<u8>,session_reject_reason: &str,text: &str) -> Result<(),ConnectionTerminatedReason> {
             let mut reject = Reject::new();
             reject.ref_msg_type = String::from_utf8_lossy(ref_msg_type).into_owned();
             reject.ref_tag_id = String::from_utf8_lossy(ref_tag_id).into_owned();
@@ -1224,6 +1224,27 @@ impl InternalThread {
                     ParseError::NonRepeatingGroupTagInRepeatingGroup(ref tag) |
                     ParseError::RepeatingGroupTagWithNoRepeatingGroup(ref tag) => {
                         try!(push_reject(connection,b"",tag,"16","Incorrect NumInGroup count for repeating group"));
+                    },
+                    ParseError::MsgTypeUnknown(ref msg_type) => {
+                        //If we're here, we know the MsgType is not user defined. So we just need
+                        //to know if it's defined in the spec (Unsupported MsgType) or completely
+                        //unknown (Invalid MsgType).
+                        if standard_msg_types().contains(&msg_type[..]) {
+                            //MsgType is unsupported.
+                            let mut business_message_reject = BusinessMessageReject::new();
+                            business_message_reject.ref_seq_num = connection.inbound_msg_seq_num;
+                            business_message_reject.ref_msg_type = String::from_utf8_lossy(msg_type).into_owned();
+                            business_message_reject.business_reject_reason = String::from("3");
+                            business_message_reject.business_reject_ref_id = business_message_reject.ref_msg_type.clone();
+                            business_message_reject.text = String::from("Unsupported Message Type");
+                            connection.outbound_messages.push(OutboundMessage::from(business_message_reject));
+
+                            try!(connection.increment_inbound_msg_seq_num());
+                        }
+                        else {
+                            //MsgType is invalid.
+                            try!(push_reject(connection,&msg_type[..],msg_type,"11","Invalid MsgType"));
+                        }
                     },
                     _ => {}, //TODO: Support other errors as appropriate.
                 };
