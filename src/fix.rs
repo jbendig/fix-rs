@@ -620,7 +620,7 @@ impl Parser {
                 self.remaining_required_fields = message.required_fields();
             }
             else {
-                return Err(ParseError::MsgTypeUnknown(self.current_tag.clone()));
+                return Err(ParseError::MsgTypeUnknown(self.current_bytes.clone()));
             }
         }
         else if self.current_bytes.is_empty() {
