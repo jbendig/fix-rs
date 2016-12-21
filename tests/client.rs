@@ -22,6 +22,7 @@ use std::time::Duration;
 #[macro_use]
 mod common;
 use common::{TestServer,new_logon_message};
+use fix_rs::dictionary::field_types::other::SessionRejectReason;
 use fix_rs::dictionary::messages::{Heartbeat,Logon,Logout,Reject,ResendRequest,SequenceReset,TestRequest};
 use fix_rs::fixt::client::{ClientEvent,ConnectionTerminatedReason};
 use fix_rs::fixt::message::FIXTMessage;
@@ -48,7 +49,7 @@ fn test_recv_resend_request_invalid_end_seq_no() {
     let message = test_server.recv_message::<Reject>();
     assert_eq!(message.msg_seq_num,2);
     assert_eq!(message.ref_seq_num,5);
-    assert_eq!(message.session_reject_reason,"5");
+    assert_eq!(message.session_reject_reason.unwrap(),SessionRejectReason::ValueIsIncorrectForThisTag);
 }
 
 #[test]
@@ -379,7 +380,7 @@ fn test_wrong_sender_comp_id_in_logon_response() {
     let message = test_server.recv_message::<Reject>();
     assert_eq!(message.msg_seq_num,2);
     assert_eq!(message.ref_seq_num,1);
-    assert_eq!(message.session_reject_reason,"9");
+    assert_eq!(message.session_reject_reason.unwrap(),SessionRejectReason::CompIDProblem);
     assert_eq!(message.text,"CompID problem");
 
     let message = test_server.recv_message::<Logout>();
@@ -423,7 +424,7 @@ fn test_wrong_target_comp_id_in_logon_response() {
     let message = test_server.recv_message::<Reject>();
     assert_eq!(message.msg_seq_num,2);
     assert_eq!(message.ref_seq_num,1);
-    assert_eq!(message.session_reject_reason,"9");
+    assert_eq!(message.session_reject_reason.unwrap(),SessionRejectReason::CompIDProblem);
     assert_eq!(message.text,"CompID problem");
 
     let message = test_server.recv_message::<Logout>();

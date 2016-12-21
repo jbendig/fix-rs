@@ -27,6 +27,7 @@ use fixt::client::{ClientEvent,ConnectionTerminatedReason};
 use fixt::message::FIXTMessage;
 use dictionary::{CloneDictionary,standard_msg_types};
 use dictionary::field_types::generic::UTCTimestampFieldType;
+use dictionary::field_types::other::SessionRejectReason;
 use dictionary::fields::{MsgSeqNum,SenderCompID,TargetCompID,OrigSendingTime};
 use dictionary::messages::{Logon,Logout,ResendRequest,TestRequest,Heartbeat,SequenceReset,Reject,BusinessMessageReject};
 use field::Field;
@@ -765,7 +766,7 @@ impl InternalThread {
                 if resend_request.begin_seq_no > resend_request.end_seq_no && resend_request.end_seq_no != 0 {
                     let mut reject = Reject::new();
                     reject.ref_seq_num = msg_seq_num;
-                    reject.session_reject_reason = String::from("5");
+                    reject.session_reject_reason = Some(SessionRejectReason::ValueIsIncorrectForThisTag);
                     reject.text = String::from("EndSeqNo must be greater than BeginSeqNo or set to 0");
                     connection.outbound_messages.push(OutboundMessage::from(reject));
 
@@ -825,7 +826,7 @@ impl InternalThread {
         fn reject_for_sending_time_accuracy(connection: &mut Connection,message: Box<FIXTMessage + Send>,msg_seq_num: MsgSeqNumType,tx: &Sender<ClientEvent>) {
             let mut reject = Reject::new();
             reject.ref_seq_num = msg_seq_num;
-            reject.session_reject_reason = String::from("10");
+            reject.session_reject_reason = Some(SessionRejectReason::SendingTimeAccuracyProblem);
             reject.text = String::from("SendingTime accuracy problem");
             connection.outbound_messages.push(OutboundMessage::from(reject));
 
@@ -967,7 +968,7 @@ impl InternalThread {
 
                         let mut reject = Reject::new();
                         reject.ref_seq_num = msg_seq_num;
-                        reject.session_reject_reason = String::from("5");
+                        reject.session_reject_reason = Some(SessionRejectReason::ValueIsIncorrectForThisTag);
                         let _ = write!(&mut reject.text,"Attempt to lower sequence number, invalid value NewSeqNo={}",sequence_reset.new_seq_no);
                         connection.outbound_messages.push(OutboundMessage::from(reject));
 
@@ -1010,7 +1011,7 @@ impl InternalThread {
 
             let mut reject = Reject::new();
             reject.ref_seq_num = connection.inbound_msg_seq_num;
-            reject.session_reject_reason = String::from("9");
+            reject.session_reject_reason = Some(SessionRejectReason::CompIDProblem);
             reject.text = String::from("CompID problem");
             connection.outbound_messages.insert(0,OutboundMessage::from(reject));
 
@@ -1023,7 +1024,7 @@ impl InternalThread {
 
             let mut reject = Reject::new();
             reject.ref_seq_num = connection.inbound_msg_seq_num;
-            reject.session_reject_reason = String::from("9");
+            reject.session_reject_reason = Some(SessionRejectReason::CompIDProblem);
             reject.text = String::from("CompID problem");
             connection.outbound_messages.insert(0,OutboundMessage::from(reject));
 
@@ -1088,7 +1089,7 @@ impl InternalThread {
 
                     let mut reject = Reject::new();
                     reject.ref_seq_num = msg_seq_num;
-                    reject.session_reject_reason = String::from("5"); //TODO: Is there a better reason or maybe leave this blank?
+                    reject.session_reject_reason = Some(SessionRejectReason::ValueIsIncorrectForThisTag); //TODO: Is there a better reason or maybe leave this blank?
                     let _ = write!(&mut reject.text,"Attempt to lower sequence number, invalid value NewSeqNo={}",sequence_reset.new_seq_no);
                     connection.outbound_messages.push(OutboundMessage::from(reject));
 
@@ -1148,12 +1149,12 @@ impl InternalThread {
     }
 
     fn on_network_parse_error(connection: &mut Connection,parse_error: ParseError,tx: &Sender<ClientEvent>)-> Result<(),ConnectionTerminatedReason> {
-        fn push_reject(connection: &mut Connection,ref_msg_type: &[u8],ref_tag_id: &Vec<u8>,session_reject_reason: &str,text: &str) -> Result<(),ConnectionTerminatedReason> {
+        fn push_reject(connection: &mut Connection,ref_msg_type: &[u8],ref_tag_id: &Vec<u8>,session_reject_reason: SessionRejectReason,text: &str) -> Result<(),ConnectionTerminatedReason> {
             let mut reject = Reject::new();
             reject.ref_msg_type = String::from_utf8_lossy(ref_msg_type).into_owned();
             reject.ref_tag_id = String::from_utf8_lossy(ref_tag_id).into_owned();
             reject.ref_seq_num = connection.inbound_msg_seq_num;
-            reject.session_reject_reason = String::from(session_reject_reason);
+            reject.session_reject_reason = Some(session_reject_reason);
             reject.text = String::from(text);
             connection.outbound_messages.push(OutboundMessage::from(reject));
 
@@ -1174,22 +1175,22 @@ impl InternalThread {
             _ => {
                 match parse_error {
                     ParseError::MissingRequiredTag(ref tag,_) => {
-                        try!(push_reject(connection,b"",tag,"1","Required tag missing"));
+                        try!(push_reject(connection,b"",tag,SessionRejectReason::RequiredTagMissing,"Required tag missing"));
                     },
                     ParseError::UnexpectedTag(ref tag) => {
-                        try!(push_reject(connection,b"",tag,"2","Tag not defined for this message type"));
+                        try!(push_reject(connection,b"",tag,SessionRejectReason::TagNotDefinedForThisMessageType,"Tag not defined for this message type"));
                     },
                     ParseError::UnknownTag(ref tag) => {
-                        try!(push_reject(connection,b"",tag,"0","Invalid tag number"));
+                        try!(push_reject(connection,b"",tag,SessionRejectReason::InvalidTagNumber,"Invalid tag number"));
                     },
                     ParseError::NoValueAfterTag(ref tag) => {
-                        try!(push_reject(connection,b"",tag,"4","Tag specified without a value"));
+                        try!(push_reject(connection,b"",tag,SessionRejectReason::TagSpecifiedWithoutAValue,"Tag specified without a value"));
                     },
                     ParseError::OutOfRangeTag(ref tag) => {
-                        try!(push_reject(connection,b"",tag,"5","Value is incorrect (out of range) for this tag"));
+                        try!(push_reject(connection,b"",tag,SessionRejectReason::ValueIsIncorrectForThisTag,"Value is incorrect (out of range) for this tag"));
                     },
                     ParseError::WrongFormatTag(ref tag) => {
-                        try!(push_reject(connection,b"",tag,"6","Incorrect data format for value"));
+                        try!(push_reject(connection,b"",tag,SessionRejectReason::IncorrectDataFormatForValue,"Incorrect data format for value"));
                     },
                     /* TODO: These should probably be considered garbled instead of
                      * responding to.
@@ -1199,15 +1200,15 @@ impl InternalThread {
                      ParseError::ChecksumNotLastTag |
                      ParseError::MissingPrecedingLengthTag(_) |
                      ParseError::MissingFollowingLengthTag(_) => {
-                         try!(push_reject(connection,None,"14","Tag specified out of required order"));
+                         try!(push_reject(connection,None,SessionRejectReason::TagSpecifiedOutOfRequiredOrder,"Tag specified out of required order"));
                      },
                      */
                     ParseError::DuplicateTag(ref tag) => {
-                        try!(push_reject(connection,b"",tag,"13","Tag appears more than once"));
+                        try!(push_reject(connection,b"",tag,SessionRejectReason::TagAppearsMoreThanOnce,"Tag appears more than once"));
                     },
                     ParseError::MissingConditionallyRequiredTag(ref tag,ref message) => {
                         if *tag == OrigSendingTime::tag() { //Session level conditionally required tag.
-                            try!(push_reject(connection,message.msg_type(),tag,"1","Conditionally required tag missing"));
+                            try!(push_reject(connection,message.msg_type(),tag,SessionRejectReason::RequiredTagMissing,"Conditionally required tag missing"));
                         }
                         else {
                             let mut business_message_reject = BusinessMessageReject::new();
@@ -1224,7 +1225,7 @@ impl InternalThread {
                     ParseError::MissingFirstRepeatingGroupTagAfterNumberOfRepeatingGroupTag(ref tag) |
                     ParseError::NonRepeatingGroupTagInRepeatingGroup(ref tag) |
                     ParseError::RepeatingGroupTagWithNoRepeatingGroup(ref tag) => {
-                        try!(push_reject(connection,b"",tag,"16","Incorrect NumInGroup count for repeating group"));
+                        try!(push_reject(connection,b"",tag,SessionRejectReason::IncorrectNumInGroupCountForRepeatingGroup,"Incorrect NumInGroup count for repeating group"));
                     },
                     ParseError::MsgTypeUnknown(ref msg_type) => {
                         //If we're here, we know the MsgType is not user defined. So we just need
@@ -1244,7 +1245,7 @@ impl InternalThread {
                         }
                         else {
                             //MsgType is invalid.
-                            try!(push_reject(connection,&msg_type[..],msg_type,"11","Invalid MsgType"));
+                            try!(push_reject(connection,&msg_type[..],msg_type,SessionRejectReason::InvalidMsgType,"Invalid MsgType"));
                         }
                     },
                     _ => {}, //TODO: Support other errors as appropriate.

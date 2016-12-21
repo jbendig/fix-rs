@@ -309,6 +309,7 @@ define_enum_field_type!(REQUIRED, RateSourceType, RateSourceTypeFieldType {
     RateSourceType::Secondary => b"1",
 } MUST_BE_INT);
 
+#[derive(Clone,Debug,PartialEq)]
 pub enum SessionRejectReason {
     InvalidTagNumber,
     RequiredTagMissing,

@@ -11,7 +11,7 @@
 
 use dictionary::field_types::generic::{BoolTrueOrBlankFieldType,CharFieldType,DataFieldType,IntFieldType,NoneFieldType,RepeatingGroupFieldType,SeqNumFieldType,StringFieldType,UTCTimestampFieldType};
 use dictionary::field_types::other as other_field_types;
-use dictionary::field_types::other::{CPProgramFieldType,HandlInstFieldType,RateSourceFieldType,RateSourceTypeFieldType,SideFieldType};
+use dictionary::field_types::other::{CPProgramFieldType,HandlInstFieldType,RateSourceFieldType,RateSourceTypeFieldType,SessionRejectReasonFieldType,SideFieldType};
 use message::{REQUIRED,NOT_REQUIRED};
 use rule::Rule;
 
@@ -161,7 +161,7 @@ define_fields!(
     LastMsgSeqNumProcessed: SeqNumFieldType = b"369",
     RefTagID: StringFieldType = b"371", //int
     RefMsgType: StringFieldType = b"372",
-    SessionRejectReason: StringFieldType = b"373", //TODO: Use SessionRejectReasonFieldType. Too many unreleated corrections to change this now.
+    SessionRejectReason: SessionRejectReasonFieldType = b"373",
     BusinessRejectRefID: StringFieldType = b"379",
     BusinessRejectReason: StringFieldType = b"380", //int //TODO: limited choices.
     MaxMessageSize: StringFieldType = b"383", //Length

@@ -31,7 +31,7 @@ mod common;
 use common::{SERVER_SENDER_COMP_ID,SERVER_TARGET_COMP_ID,TestServer,new_logon_message,recv_bytes_with_timeout};
 use fix_rs::dictionary::standard_msg_types;
 use fix_rs::dictionary::field_types::generic::{CharFieldType,NoneFieldType,StringFieldType};
-use fix_rs::dictionary::field_types::other::Side;
+use fix_rs::dictionary::field_types::other::{SessionRejectReason,Side};
 use fix_rs::dictionary::fields::{TestReqID,HeartBtInt,BeginSeqNo,EndSeqNo,SideField,OrigSendingTime,NoHops,HopCompID};
 use fix_rs::dictionary::messages::{Logon,Logout,NewOrderSingle,ResendRequest,TestRequest,Heartbeat,SequenceReset,Reject,BusinessMessageReject};
 use fix_rs::field::Field;
@@ -430,7 +430,7 @@ fn test_2B() {
         //Server should receive Reject with an appropriate reason.
         let message = test_server.recv_message::<Reject>();
         assert_eq!(message.ref_seq_num,2);
-        assert_eq!(message.session_reject_reason,"10");
+        assert_eq!(message.session_reject_reason.unwrap(),SessionRejectReason::SendingTimeAccuracyProblem);
         assert_eq!(message.text,"SendingTime accuracy problem");
 
         client_poll_event!(client,ClientEvent::MessageRejected(msg_connection_id,rejected_message) => {
@@ -459,7 +459,7 @@ fn test_2B() {
         //Server should receive Reject with an appropriate reason.
         let message = test_server.recv_message::<Reject>();
         assert_eq!(message.ref_seq_num,2);
-        assert_eq!(message.session_reject_reason,"1");
+        assert_eq!(message.session_reject_reason.unwrap(),SessionRejectReason::RequiredTagMissing);
         assert_eq!(message.text,"Conditionally required tag missing");
 
         client_poll_event!(client,ClientEvent::MessageReceivedGarbled(msg_connection_id,parse_error) => {
@@ -512,7 +512,7 @@ fn test_2B() {
             let message = test_server.recv_message::<Reject>();
             assert_eq!(message.msg_seq_num,3);
             assert_eq!(message.ref_seq_num,3);
-            assert_eq!(message.session_reject_reason,"9");
+            assert_eq!(message.session_reject_reason.unwrap(),SessionRejectReason::CompIDProblem);
             assert_eq!(message.text,"CompID problem");
 
             let message = test_server.recv_message::<Logout>();
@@ -547,7 +547,7 @@ fn test_2B() {
             let message = test_server.recv_message::<Reject>();
             assert_eq!(message.msg_seq_num,2);
             assert_eq!(message.ref_seq_num,2);
-            assert_eq!(message.session_reject_reason,"9");
+            assert_eq!(message.session_reject_reason.unwrap(),SessionRejectReason::CompIDProblem);
             assert_eq!(message.text,"CompID problem");
 
             let message = test_server.recv_message::<Logout>();
@@ -597,7 +597,7 @@ fn test_2B() {
         let message = test_server.recv_message::<Reject>();
         assert_eq!(message.msg_seq_num,2);
         assert_eq!(message.ref_msg_type,String::from_utf8_lossy(invalid_msg_type).to_owned());
-        assert_eq!(message.session_reject_reason,"11");
+        assert_eq!(message.session_reject_reason.unwrap(),SessionRejectReason::InvalidMsgType);
         assert_eq!(message.text,"Invalid MsgType");
 
         //Confirm Client issued warning.
@@ -1062,7 +1062,7 @@ fn test_10B() {
         let mut expected_error_text = String::new();
         let _ = write!(&mut expected_error_text,"Attempt to lower sequence number, invalid value NewSeqNo={}",new_seq_no);
         assert_eq!(message.text,expected_error_text);
-        assert_eq!(message.session_reject_reason,"5");
+        assert_eq!(message.session_reject_reason.unwrap(),SessionRejectReason::ValueIsIncorrectForThisTag);
 
         client_poll_event!(client,ClientEvent::MessageRejected(msg_connection_id,rejected_message) => {
             assert_eq!(msg_connection_id,connection_id);
@@ -1215,7 +1215,7 @@ fn test_11B() {
         let message = test_server.recv_message::<Reject>();
         assert_eq!(message.msg_seq_num,2);
         assert_eq!(message.ref_seq_num,msg_seq_num);
-        assert_eq!(message.session_reject_reason,"5");
+        assert_eq!(message.session_reject_reason.unwrap(),SessionRejectReason::ValueIsIncorrectForThisTag);
         assert_eq!(message.text,"Attempt to lower sequence number, invalid value NewSeqNo=1");
 
         //Make sure client did not change inbound sequence number.
@@ -1405,7 +1405,7 @@ fn test_14B() {
         REQUIRED, test_req_id_2: TestReqID,
     });
 
-    fn do_garbled_test_with_dict<F: Fn(&mut TestServer,&mut Client,usize),TestRequestResponse: FIXTMessage + Any + Clone>(session_reject_reason: &'static str,ref_tag_id: &'static [u8],test_func: F,dict: HashMap<&'static [u8],Box<FIXTMessage + Send>>) {
+    fn do_garbled_test_with_dict<F: Fn(&mut TestServer,&mut Client,usize),TestRequestResponse: FIXTMessage + Any + Clone>(session_reject_reason: SessionRejectReason,ref_tag_id: &'static [u8],test_func: F,dict: HashMap<&'static [u8],Box<FIXTMessage + Send>>) {
         //Connect and Logon.
         let (mut test_server,mut client,connection_id) = TestServer::setup_and_logon(dict);
 
@@ -1415,7 +1415,7 @@ fn test_14B() {
         //Make sure client responds with an appropriate Reject.
         let message = test_server.recv_message::<Reject>();
         assert_eq!(message.msg_seq_num,2);
-        assert_eq!(message.session_reject_reason,String::from(session_reject_reason));
+        assert_eq!(message.session_reject_reason.unwrap(),session_reject_reason);
         assert_eq!(message.ref_tag_id,String::from_utf8_lossy(ref_tag_id));
 
         //Make sure client incremented inbound sequence number.
@@ -1428,13 +1428,13 @@ fn test_14B() {
         assert_eq!(message.msg_seq_num(),3);
     }
 
-    fn do_garbled_test<F: Fn(&mut TestServer,&mut Client,usize)>(session_reject_reason: &'static str,ref_tag_id: &'static [u8],test_func: F) {
+    fn do_garbled_test<F: Fn(&mut TestServer,&mut Client,usize)>(session_reject_reason: SessionRejectReason,ref_tag_id: &'static [u8],test_func: F) {
         do_garbled_test_with_dict::<F,TestRequest>(session_reject_reason,ref_tag_id,test_func,build_dictionary());
     }
 
     //a. Send message with tag not defined in spec (tag shouldn't be allowed in any message).
     //Client should respond with Reject, increment inbound sequence number, and issue an error.
-    do_garbled_test("0",UndefinedField::tag(),|test_server,client,connection_id| {
+    do_garbled_test(SessionRejectReason::InvalidTagNumber,UndefinedField::tag(),|test_server,client,connection_id| {
         //Send message with undefined tag.
         let mut message = new_fixt_message!(TestRequestWithUndefinedField);
         message.msg_seq_num = 2;
@@ -1454,7 +1454,7 @@ fn test_14B() {
 
     //b. Send message with a required field missing. Client should respond with Reject, increment
     //inbound sequence number, and issue an error.
-    do_garbled_test("1",TestReqID::tag(),|test_server,client,connection_id| {
+    do_garbled_test(SessionRejectReason::RequiredTagMissing,TestReqID::tag(),|test_server,client,connection_id| {
         //Send message with missing required tag.
         let mut message = new_fixt_message!(TestRequestWithNotRequiredField);
         message.msg_seq_num = 2;
@@ -1475,7 +1475,7 @@ fn test_14B() {
 
     //c. Send message with defined field but not for the message type. Client should respond with
     //Reject, increment inbound sequence number, and issue an error.
-    do_garbled_test("2",HeartBtInt::tag(),|test_server,client,connection_id| {
+    do_garbled_test(SessionRejectReason::TagNotDefinedForThisMessageType,HeartBtInt::tag(),|test_server,client,connection_id| {
         //Send message with wrong tag for message.
         let mut message = new_fixt_message!(TestRequestWithWrongField);
         message.msg_seq_num = 2;
@@ -1495,7 +1495,7 @@ fn test_14B() {
 
     //d. Send message with a tag containing no value. Client should respond with Reject, increment
     //inbound sequence number, and issue an error.
-    do_garbled_test("4",TestReqIDEmpty::tag(),|test_server,client,connection_id| {
+    do_garbled_test(SessionRejectReason::TagSpecifiedWithoutAValue,TestReqIDEmpty::tag(),|test_server,client,connection_id| {
         //Send message with valid tag but empty field for message.
         let mut message = new_fixt_message!(TestRequestWithEmptyField);
         message.msg_seq_num = 2;
@@ -1535,7 +1535,7 @@ fn test_14B() {
             Reject : Reject,
         );
 
-        do_garbled_test_with_dict::<_,TestRequestWithEnumeratedField>("5",SideField::tag(),|test_server,client,connection_id| {
+        do_garbled_test_with_dict::<_,TestRequestWithEnumeratedField>(SessionRejectReason::ValueIsIncorrectForThisTag,SideField::tag(),|test_server,client,connection_id| {
             //Send message with incorrect value.
             let mut message = new_fixt_message!(TestRequestWithIncorrectField);
             message.test_req_id = String::from("test_id");
@@ -1555,7 +1555,7 @@ fn test_14B() {
 
     //f. Send message with an incorrect data format for a field. Client should respond with Reject,
     //increment inbound sequence number, and issue an error.
-    do_garbled_test("6",BeginSeqNoString::tag(),|test_server,client,connection_id| {
+    do_garbled_test(SessionRejectReason::IncorrectDataFormatForValue,BeginSeqNoString::tag(),|test_server,client,connection_id| {
         //Send message with incorrect value.
         let mut message = new_fixt_message!(ResendRequestWithStringBeginSeqNo);
         message.msg_seq_num = 2;
@@ -1585,7 +1585,7 @@ fn test_14B() {
         b"8=FIX.4.2\x019=38\x0149=TEST\x0135=1\x0156=TX\x0134=1\x0152=20090107-18:15:16\x01112=1\x0110=204\x01", //MsgType is not the third tag.
         b"8=FIX.4.2\x019=38\x0135=1\x0149=TEST\x0156=TX\x0134=1\x0152=20090107-18:15:16\x0110=204\x01112=1\x01" //Checksum is not the last tag.
     ] {
-        do_garbled_test("14",|test_server,client,connection_id| {
+        do_garbled_test(SessionRejectReason::TagSpecifiedOutOfRequiredOrder,|test_server,client,connection_id| {
             //Send message.
             let bytes_written = test_server.stream.write(message_bytes).unwrap();
             assert_eq!(bytes_written,message_bytes.len());
@@ -1607,7 +1607,7 @@ fn test_14B() {
 
     //h. Send message with a tag duplicated outside of an appropriate repeating group. Client
     //should respond with Reject, increment inbound sequence number, and issue an error.
-    do_garbled_test("13",TestReqID::tag(),|test_server,client,connection_id| {
+    do_garbled_test(SessionRejectReason::TagAppearsMoreThanOnce,TestReqID::tag(),|test_server,client,connection_id| {
         //Send message with duplicate tag.
         let mut message = new_fixt_message!(TestRequestWithDuplicateField);
         message.msg_seq_num = 2;
@@ -1633,7 +1633,7 @@ fn test_14B() {
         messages_bytes.push((TestReqID::tag(),b"8=FIX.4.2\x019=999\x0135=1\x0149=TEST\x0156=TX\x0134=1\x0152=20090107-18:15:16\x01627=2\x01628=1\x01112=1\x0110=204\x01")); //Claim two groups but have one.
         messages_bytes.push((HopCompID::tag(),b"8=FIX.4.2\x019=999\x0135=1\x0149=TEST\x0156=TX\x0134=1\x0152=20090107-18:15:16\x01627=2\x01628=1\x01628=2\x01628=3\x01112=1\x0110=204\x01")); //Claim two groups but have three.
         for (ref_tag_id,message_bytes) in messages_bytes {
-            do_garbled_test("16",ref_tag_id,|test_server,client,connection_id| {
+            do_garbled_test(SessionRejectReason::IncorrectNumInGroupCountForRepeatingGroup,ref_tag_id,|test_server,client,connection_id| {
                 //Send message.
                 let bytes_written = test_server.stream.write(message_bytes).unwrap();
                 assert_eq!(bytes_written,message_bytes.len());
@@ -1698,7 +1698,7 @@ fn test_14B() {
         //Make sure client responds with an appropriate Reject.
         let message = test_server.recv_message::<Reject>();
         assert_eq!(message.msg_seq_num,2);
-        assert_eq!(message.session_reject_reason,String::from("1"));
+        assert_eq!(message.session_reject_reason.unwrap(),SessionRejectReason::RequiredTagMissing);
         assert_eq!(message.ref_msg_type,String::from_utf8_lossy(<TestRequest as MessageDetails>::msg_type()));
         assert_eq!(message.ref_tag_id,String::from_utf8_lossy(OrigSendingTime::tag()));
 
