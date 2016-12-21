@@ -20,6 +20,7 @@ use chrono::TimeZone;
 use std::any::Any;
 use std::collections::HashMap;
 
+use fix_rs::dictionary::field_types::other::{RateSource,RateSourceType};
 use fix_rs::dictionary::fields::{EncryptMethod,HeartBtInt,MsgSeqNum,SendingTime,SenderCompID,TargetCompID,NoMsgTypeGrp,RawData,RawDataLength,NoRateSources,Symbol,NoOrders,Text,OrigSendingTime};
 use fix_rs::field::Field;
 use fix_rs::field_type::FieldType;
@@ -404,49 +405,49 @@ fn repeating_groups_test() {
     let one_repeating_group_message = b"8=FIX.4.2\x019=26\x0135=A\x011445=1\x011446=0\x011447=0\x0110=157\x01";
     let message = parse_message::<RepeatingGroupsTestMessage>(one_repeating_group_message).unwrap();
     assert_eq!(message.rate_sources.len(),1);
-    assert_eq!(message.rate_sources.first().unwrap().rate_source,"0");
-    assert_eq!(message.rate_sources.first().unwrap().rate_source_type,"0");
+    assert_eq!(message.rate_sources.first().unwrap().rate_source,RateSource::Bloomberg);
+    assert_eq!(message.rate_sources.first().unwrap().rate_source_type,RateSourceType::Primary);
 
     let one_repeating_group_with_optional_message = b"8=FIX.4.2\x019=43\x0135=A\x011445=1\x011446=99\x011447=0\x011448=SomeSource\x0110=242\x01";
     let message = parse_message::<RepeatingGroupsTestMessage>(one_repeating_group_with_optional_message).unwrap();
     assert_eq!(message.rate_sources.len(),1);
-    assert_eq!(message.rate_sources.first().unwrap().rate_source,"99");
-    assert_eq!(message.rate_sources.first().unwrap().rate_source_type,"0");
+    assert_eq!(message.rate_sources.first().unwrap().rate_source,RateSource::Other);
+    assert_eq!(message.rate_sources.first().unwrap().rate_source_type,RateSourceType::Primary);
     assert_eq!(message.rate_sources.first().unwrap().reference_page,"SomeSource");
 
     let two_repeating_groups_message = b"8=FIX.4.2\x019=40\x0135=A\x011445=2\x011446=0\x011447=0\x011446=1\x011447=1\x0110=23\x01";
     let message = parse_message::<RepeatingGroupsTestMessage>(two_repeating_groups_message).unwrap();
     assert_eq!(message.rate_sources.len(),2);
-    assert_eq!(message.rate_sources.first().unwrap().rate_source,"0");
-    assert_eq!(message.rate_sources.first().unwrap().rate_source_type,"0");
-    assert_eq!(message.rate_sources.get(1).unwrap().rate_source,"1");
-    assert_eq!(message.rate_sources.get(1).unwrap().rate_source_type,"1");
+    assert_eq!(message.rate_sources.first().unwrap().rate_source,RateSource::Bloomberg);
+    assert_eq!(message.rate_sources.first().unwrap().rate_source_type,RateSourceType::Primary);
+    assert_eq!(message.rate_sources.get(1).unwrap().rate_source,RateSource::Reuters);
+    assert_eq!(message.rate_sources.get(1).unwrap().rate_source_type,RateSourceType::Secondary);
 
     let two_repeating_groups_with_optional_first_message = b"8=FIX.4.2\x019=57\x0135=A\x011445=2\x011446=99\x011447=0\x011448=SomeSource\x011446=1\x011447=1\x0110=117\x01";
     let message = parse_message::<RepeatingGroupsTestMessage>(two_repeating_groups_with_optional_first_message).unwrap();
     assert_eq!(message.rate_sources.len(),2);
-    assert_eq!(message.rate_sources.first().unwrap().rate_source,"99");
-    assert_eq!(message.rate_sources.first().unwrap().rate_source_type,"0");
+    assert_eq!(message.rate_sources.first().unwrap().rate_source,RateSource::Other);
+    assert_eq!(message.rate_sources.first().unwrap().rate_source_type,RateSourceType::Primary);
     assert_eq!(message.rate_sources.first().unwrap().reference_page,"SomeSource");
-    assert_eq!(message.rate_sources.get(1).unwrap().rate_source,"1");
-    assert_eq!(message.rate_sources.get(1).unwrap().rate_source_type,"1");
+    assert_eq!(message.rate_sources.get(1).unwrap().rate_source,RateSource::Reuters);
+    assert_eq!(message.rate_sources.get(1).unwrap().rate_source_type,RateSourceType::Secondary);
 
     let two_repeating_groups_with_optional_second_message = b"8=FIX.4.2\x019=57\x0135=A\x011445=2\x011446=0\x011447=0\x011446=99\x011447=1\x011448=SomeSource\x0110=116\x01";
     let message = parse_message::<RepeatingGroupsTestMessage>(two_repeating_groups_with_optional_second_message).unwrap();
     assert_eq!(message.rate_sources.len(),2);
-    assert_eq!(message.rate_sources.first().unwrap().rate_source,"0");
-    assert_eq!(message.rate_sources.first().unwrap().rate_source_type,"0");
-    assert_eq!(message.rate_sources.get(1).unwrap().rate_source,"99");
-    assert_eq!(message.rate_sources.get(1).unwrap().rate_source_type,"1");
+    assert_eq!(message.rate_sources.first().unwrap().rate_source,RateSource::Bloomberg);
+    assert_eq!(message.rate_sources.first().unwrap().rate_source_type,RateSourceType::Primary);
+    assert_eq!(message.rate_sources.get(1).unwrap().rate_source,RateSource::Other);
+    assert_eq!(message.rate_sources.get(1).unwrap().rate_source_type,RateSourceType::Secondary);
     assert_eq!(message.rate_sources.get(1).unwrap().reference_page,"SomeSource");
 
     let two_repeating_groups_not_body_end_message = b"8=FIX.4.2\x019=66\x0135=A\x011445=2\x011446=0\x011447=0\x011446=99\x011447=1\x011448=SomeSource\x0155=[N/A]\x0110=146\x01";
     let message = parse_message::<RepeatingGroupsTestMessage>(two_repeating_groups_not_body_end_message).unwrap();
     assert_eq!(message.rate_sources.len(),2);
-    assert_eq!(message.rate_sources.first().unwrap().rate_source,"0");
-    assert_eq!(message.rate_sources.first().unwrap().rate_source_type,"0");
-    assert_eq!(message.rate_sources.get(1).unwrap().rate_source,"99");
-    assert_eq!(message.rate_sources.get(1).unwrap().rate_source_type,"1");
+    assert_eq!(message.rate_sources.first().unwrap().rate_source,RateSource::Bloomberg);
+    assert_eq!(message.rate_sources.first().unwrap().rate_source_type,RateSourceType::Primary);
+    assert_eq!(message.rate_sources.get(1).unwrap().rate_source,RateSource::Other);
+    assert_eq!(message.rate_sources.get(1).unwrap().rate_source_type,RateSourceType::Secondary);
     assert_eq!(message.rate_sources.get(1).unwrap().reference_page,"SomeSource");
     assert_eq!(message.symbol,"[N/A]");
 

@@ -185,6 +185,24 @@ define_fixt_message!(Logout: b"5" => {
 
 //Other Messages
 
+define_fixt_message!(Email: b"C" => {
+    REQUIRED, email_thread_id: EmailThreadID,
+    REQUIRED, email_type: EmailType,
+    NOT_REQUIRED, orig_time: OrigTime,
+    REQUIRED, subject: Subject,
+    NOT_REQUIRED, encoded_subject_len: EncodedSubjectLen,
+    NOT_REQUIRED, encoded_subject: EncodedSubject,
+    NOT_REQUIRED, no_routing_ids: NoRoutingIDs,
+    NOT_REQUIRED, no_related_sym: NoRelatedSym,
+    NOT_REQUIRED, no_underlyings: NoUnderlyings,
+    NOT_REQUIRED, no_legs: NoLegs,
+    NOT_REQUIRED, order_id: OrderID,
+    NOT_REQUIRED, cl_ord_id: ClOrdID,
+    REQUIRED, no_lines_of_text: NoLinesOfText,
+    NOT_REQUIRED, raw_data_length: RawDataLength,
+    NOT_REQUIRED, raw_data: RawData,
+});
+
 define_fixt_message!(BusinessMessageReject: b"j" => {
     NOT_REQUIRED, ref_seq_num: RefSeqNum,
     REQUIRED, ref_msg_type: RefMsgType,
@@ -217,7 +235,7 @@ define_fixt_message!(NewOrderSingle: b"D" => {
     NOT_REQUIRED, settl_date: SettlDate,
     /*NOT_REQUIRED, cash_margin: CashMargin,
     NOT_REQUIRED, clearing_free_indicator: ClearingFreeIndicator,*/
-    NOT_REQUIRED, hand_inst: HandInst,
+    NOT_REQUIRED, handl_inst: HandlInst,
     /*NOT_REQUIRED, exec_inst: ExecInst,*/
     NOT_REQUIRED, min_qty: MinQty,
     /*NOT_REQUIRED, match_increment: MatchIncrement,

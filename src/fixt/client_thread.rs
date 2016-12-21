@@ -26,10 +26,11 @@ use std::time::Duration;
 use fixt::client::{ClientEvent,ConnectionTerminatedReason};
 use fixt::message::FIXTMessage;
 use dictionary::{CloneDictionary,standard_msg_types};
+use dictionary::field_types::generic::UTCTimestampFieldType;
 use dictionary::fields::{MsgSeqNum,SenderCompID,TargetCompID,OrigSendingTime};
 use dictionary::messages::{Logon,Logout,ResendRequest,TestRequest,Heartbeat,SequenceReset,Reject,BusinessMessageReject};
 use field::Field;
-use field_type::{FieldType,UTCTimestampFieldType};
+use field_type::FieldType;
 use fix::{Parser,ParseError};
 
 //TODO: Support Application Version. FIXT 1.1, page 8.
