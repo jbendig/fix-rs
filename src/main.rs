@@ -16,6 +16,7 @@ extern crate fix_rs;
 use chrono::offset::utc::UTC;
 use chrono::TimeZone;
 
+use fix_rs::dictionary::field_types::other::ApplVerID;
 use fix_rs::dictionary::messages::Logon;
 use fix_rs::fix::Parser;
 use fix_rs::fixt::client::Client;
@@ -65,7 +66,7 @@ fn main() {
             assert_eq!(message.target_comp_id,"CLIENT");
             assert_eq!(message.sending_time,UTC.ymd(2009,1,7).and_hms(18,15,16));
             assert_eq!(message.raw_data,b"This\x01is=atest");
-            assert_eq!(message.default_appl_ver_id,"4");
+            assert_eq!(message.default_appl_ver_id,Some(ApplVerID::FIX42));
             assert_eq!(message.msg_type_grp.len(),2);
 
             let message_type_0 = &message.msg_type_grp[0];

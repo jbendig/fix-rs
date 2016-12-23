@@ -27,7 +27,7 @@ use fixt::client::{ClientEvent,ConnectionTerminatedReason};
 use fixt::message::FIXTMessage;
 use dictionary::{CloneDictionary,standard_msg_types};
 use dictionary::field_types::generic::UTCTimestampFieldType;
-use dictionary::field_types::other::SessionRejectReason;
+use dictionary::field_types::other::{BusinessRejectReason,SessionRejectReason};
 use dictionary::fields::{MsgSeqNum,SenderCompID,TargetCompID,OrigSendingTime};
 use dictionary::messages::{Logon,Logout,ResendRequest,TestRequest,Heartbeat,SequenceReset,Reject,BusinessMessageReject};
 use field::Field;
@@ -1214,7 +1214,7 @@ impl InternalThread {
                             let mut business_message_reject = BusinessMessageReject::new();
                             business_message_reject.ref_seq_num = connection.inbound_msg_seq_num;
                             business_message_reject.ref_msg_type = String::from_utf8_lossy(message.msg_type()).into_owned();
-                            business_message_reject.business_reject_reason = String::from("5");
+                            business_message_reject.business_reject_reason = BusinessRejectReason::ConditionallyRequiredFieldMissing;
                             business_message_reject.business_reject_ref_id = String::from_utf8_lossy(tag).into_owned();
                             business_message_reject.text = String::from("Conditionally required field missing");
                             connection.outbound_messages.push(OutboundMessage::from(business_message_reject));
@@ -1236,7 +1236,7 @@ impl InternalThread {
                             let mut business_message_reject = BusinessMessageReject::new();
                             business_message_reject.ref_seq_num = connection.inbound_msg_seq_num;
                             business_message_reject.ref_msg_type = String::from_utf8_lossy(msg_type).into_owned();
-                            business_message_reject.business_reject_reason = String::from("3");
+                            business_message_reject.business_reject_reason = BusinessRejectReason::UnsupportedMessageType;
                             business_message_reject.business_reject_ref_id = business_message_reject.ref_msg_type.clone();
                             business_message_reject.text = String::from("Unsupported Message Type");
                             connection.outbound_messages.push(OutboundMessage::from(business_message_reject));

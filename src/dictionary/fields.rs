@@ -11,7 +11,7 @@
 
 use dictionary::field_types::generic::{BoolTrueOrBlankFieldType,CharFieldType,DataFieldType,IntFieldType,NoneFieldType,RepeatingGroupFieldType,SeqNumFieldType,StringFieldType,UTCTimestampFieldType};
 use dictionary::field_types::other as other_field_types;
-use dictionary::field_types::other::{CPProgramFieldType,HandlInstFieldType,RateSourceFieldType,RateSourceTypeFieldType,SessionRejectReasonFieldType,SideFieldType};
+use dictionary::field_types::other::{ApplVerIDFieldType,BusinessRejectReasonFieldType,ComplexEventConditionFieldType,ComplexEventPriceBoundaryMethodFieldType,ComplexEventPriceTimeTypeFieldType,ComplexEventTypeFieldType,ContractMultiplierUnitFieldType,CPProgramFieldType,EmailTypeFieldType,EventTypeFieldType,ExerciseStyleFieldType,FlowScheduleTypeFieldType,HandlInstFieldType,InstrmtAssignmentMethodFieldType,ListMethodFieldType,NotRequiredSecurityIDSourceFieldType,NotRequiredSecurityTypeFieldType as SecurityTypeFieldType,NotRequiredSideFieldType,NotRequiredTimeUnitFieldType as TimeUnitFieldType,OptPayoutTypeFieldType,OrdTypeFieldType,PartyIDSourceFieldType,PartyRoleFieldType,PartySubIDTypeFieldType,PriceQuoteMethodFieldType,ProductFieldType,PutOrCallFieldType,RateSourceFieldType,RateSourceTypeFieldType,RequiredSecurityIDSourceFieldType,RequiredSideFieldType,RequiredStipulationTypeFieldType as StipulationTypeFieldType,RestructuringTypeFieldType,RoutingTypeFieldType,SecurityStatusFieldType,SeniorityFieldType,SessionRejectReasonFieldType,SettlMethodFieldType,StrikePriceBoundaryMethodFieldType,StrikePriceDeterminationMethodFieldType,TimeInForceFieldType,UnderlyingCashTypeFieldType,UnderlyingFXRateCalcFieldType,UnderlyingPriceDeterminationMethodFieldType,UnderlyingSettlementTypeFieldType,UnitOfMeasureFieldType,ValuationMethodFieldType};
 use message::{REQUIRED,NOT_REQUIRED};
 use rule::Rule;
 
@@ -36,13 +36,13 @@ define_fields!(
     Currency: StringFieldType = b"15", //Currency
     EndSeqNo: SeqNumFieldType = b"16",
     HandlInst: HandlInstFieldType = b"21",
-    SecurityIDSource: StringFieldType = b"22", //TODO: Limited choices.
+    SecurityIDSource: NotRequiredSecurityIDSourceFieldType = b"22",
     NoLinesOfText: RepeatingGroupFieldType<LinesOfTextGrp> = b"33",
     MsgSeqNum: SeqNumFieldType = b"34", //TODO: Special field probably might be better off built into the parser.
     NewSeqNo: SeqNumFieldType = b"36",
     OrderID: StringFieldType = b"37",
     OrderQty: StringFieldType = b"38", //Qty
-    OrdType: StringFieldType = b"40", //Char, TODO: limited choices.
+    OrdType: OrdTypeFieldType = b"40",
     OrigTime: UTCTimestampFieldType = b"42",
     PossDupFlag: BoolTrueOrBlankFieldType = b"43",
     Price: StringFieldType = b"44", //Price
@@ -51,13 +51,13 @@ define_fields!(
     SenderCompID: StringFieldType = b"49",
     SenderSubID: StringFieldType = b"50",
     SendingTime: UTCTimestampFieldType = b"52",
-    SideField: SideFieldType = b"54",
+    SideField: RequiredSideFieldType = b"54",
     Symbol: StringFieldType = b"55",
     TargetCompID: StringFieldType = b"56",
     TargetSubID: StringFieldType = b"57",
     Text: StringFieldType = b"58",
-    TimeInForce: StringFieldType = b"59", //Char, TODO: limited choices.
-    TransactTime: StringFieldType = b"60", //UTCTimestamp
+    TimeInForce: TimeInForceFieldType = b"59",
+    TransactTime: UTCTimestampFieldType = b"60",
     SettlType: StringFieldType = b"63", //TODO: Limited choices.
     SettlDate: StringFieldType = b"64", //LocalMktDate
     SymbolSfx: StringFieldType = b"65", //TODO: Limited choices.
@@ -68,7 +68,7 @@ define_fields!(
     SecureDataLen: NoneFieldType = b"90" => Rule::PrepareForBytes{ bytes_tag: SecureData::tag() },
     SecureData: DataFieldType = b"91" => Rule::ConfirmPreviousTag{ previous_tag: SecureDataLen::tag() },
     SignatureLength: NoneFieldType = b"93" => Rule::PrepareForBytes{ bytes_tag: Signature::tag() },
-    EmailType: CharFieldType = b"94", //TODO: Limited choices.
+    EmailType: EmailTypeFieldType = b"94",
     RawDataLength: NoneFieldType = b"95" => Rule::PrepareForBytes{ bytes_tag: RawData::tag() },
     RawData: DataFieldType = b"96" => Rule::ConfirmPreviousTag{ previous_tag: RawDataLength::tag() },
     PossResend: StringFieldType = b"97", //Bool
@@ -95,16 +95,16 @@ define_fields!(
     Subject: StringFieldType = b"147",
     CashOrderQty: StringFieldType = b"152", //Qty
     EmailThreadID: StringFieldType = b"164",
-    SecurityType: StringFieldType = b"167", //TODO: Limited choices but needs to support user adjustable.
+    SecurityType: SecurityTypeFieldType = b"167",
     MaturityMonthYear: MonthYearFieldType = b"200",
-    PutOrCall: IntFieldType = b"201", //TODO: Limited choices.
+    PutOrCall: PutOrCallFieldType = b"201",
     StrikePrice: StringFieldType = b"202", //Price
     OptAttribute: CharFieldType = b"206",
     SecurityExchange: ExchangeFieldType = b"207", //TODO: See Appendix 6-C for field type.
     XmlDataLen: NoneFieldType = b"212" => Rule::PrepareForBytes{ bytes_tag: XmlData::tag() },
     XmlData: DataFieldType = b"213" => Rule::ConfirmPreviousTag{ previous_tag: XmlDataLen::tag() },
     NoRoutingIDs: RepeatingGroupFieldType<RoutingGrp> = b"215",
-    RoutingType: IntFieldType = b"216", //TODO: Limited choices.
+    RoutingType: RoutingTypeFieldType = b"216",
     RoutingID: StringFieldType = b"217",
     CouponRate: PercentageFieldType = b"223",
     CouponPaymentDate: LocalMktDateFieldType = b"224", //TODO: Use UTCDate when FIX version < 4.4.
@@ -113,18 +113,18 @@ define_fields!(
     RepurchaseRate: PercentageFieldType = b"227",
     Factor: StringFieldType = b"228", //Float
     ContractMultiplier: StringFieldType = b"231", //Float
-    RepoCollateralSecurityType: StringFieldType = b"239", //TODO: Limited choices but needs to support user adjustable.
+    RepoCollateralSecurityType: SecurityTypeFieldType = b"239",
     RedemptionDate: LocalMktDateFieldType = b"240",
     UnderlyingCouponPaymentDate: LocalMktDateFieldType = b"241",
     UnderlyingIssueDate: LocalMktDateFieldType = b"242",
-    UnderlyingRepoCollateralSecurityType: StringFieldType = b"243", //TODO: Limited choices but needs to support user adjustable.
+    UnderlyingRepoCollateralSecurityType: SecurityTypeFieldType = b"243",
     UnderlyingRepurchaseTerm: IntFieldType = b"244",
     UnderlyingRepurchaseRate: PercentageFieldType = b"245",
     UnderlyingFactor: StringFieldType = b"246", //Float
     UnderlyingRedemptionDate: LocalMktDateFieldType = b"247",
     LegCouponPaymentDate: LocalMktDateFieldType = b"248",
     LegIssueDate: LocalMktDateFieldType = b"249",
-    LegRepoCollateralSecurityType: StringFieldType = b"250",
+    LegRepoCollateralSecurityType: SecurityTypeFieldType = b"250",
     LegRepurchaseTerm: IntFieldType = b"251",
     LegRepurchaseRate: PercentageFieldType = b"252",
     LegFactor: StringFieldType = b"253", //Float
@@ -132,16 +132,16 @@ define_fields!(
     CreditRating: StringFieldType = b"255",
     UnderlyingCreditRating: StringFieldType = b"256",
     LegCreditRating: StringFieldType = b"257",
-    UnderlyingSecurityIDSource: StringFieldType = b"305", //TODO: Limited choices.
+    UnderlyingSecurityIDSource: NotRequiredSecurityIDSourceFieldType = b"305",
     UnderlyingIssuer: StringFieldType = b"306", //TODO: Limited choices, maybe, see Issuer (106).
     UnderlyingSecurityDesc: StringFieldType = b"307",
     UnderlyingSecurityExchange: ExchangeFieldType = b"308",
     UnderlyingSecurityID: StringFieldType = b"309", //TODO: Required UnderlyingSecurityIDSource.
-    UnderlyingSecurityType: StringFieldType = b"310", //TODO: Limited choices but needs to support user adjustable.
+    UnderlyingSecurityType: SecurityTypeFieldType = b"310",
     UnderlyingSymbol: StringFieldType = b"311",
     UnderlyingSymbolSfx: StringFieldType = b"312", //TODO: Limited choices.
     UnderlyingMaturityMonthYear: MonthYearFieldType = b"313",
-    UnderlyingPutOrCall: IntFieldType = b"315", //TODO: Limited choices.
+    UnderlyingPutOrCall: PutOrCallFieldType = b"315",
     UnderlyingStrikePrice: StringFieldType = b"316", //Price
     UnderlyingOptAttribute: CharFieldType = b"317",
     UnderlyingCurrency: CurrencyFieldType = b"318",
@@ -163,7 +163,7 @@ define_fields!(
     RefMsgType: StringFieldType = b"372",
     SessionRejectReason: SessionRejectReasonFieldType = b"373",
     BusinessRejectRefID: StringFieldType = b"379",
-    BusinessRejectReason: StringFieldType = b"380", //int //TODO: limited choices.
+    BusinessRejectReason: BusinessRejectReasonFieldType = b"380",
     MaxMessageSize: StringFieldType = b"383", //Length
     NoMsgTypeGrp: RepeatingGroupFieldType<MsgTypeGrp> = b"384",
     MsgDirection: StringFieldType = b"385", //Char
@@ -171,18 +171,18 @@ define_fields!(
     UnderlyingContractMultiplier: StringFieldType = b"436", //Float
     NoSecurityAltID: RepeatingGroupFieldType<SecAltIDGrp> = b"454",
     SecurityAltID: StringFieldType = b"455",
-    SecurityAltIDSource: StringFieldType = b"456", //TODO: Limited choices.
+    SecurityAltIDSource: RequiredSecurityIDSourceFieldType = b"456",
     NoUnderlyingSecurityAltID: RepeatingGroupFieldType<UndSecAltIDGrp> = b"457",
     UnderlyingSecurityAltID: StringFieldType = b"458", //TODO: Requires UnderlyingSecurityAltIDSource.
-    UnderlyingSecurityAltIDSource: StringFieldType = b"459", //TODO: Limited choices.
-    Product: IntFieldType = b"460", //TODO: Limited choices.
+    UnderlyingSecurityAltIDSource: RequiredSecurityIDSourceFieldType = b"459",
+    Product: ProductFieldType = b"460",
     CFICode: StringFieldType = b"461",
-    UnderlyingProduct: IntFieldType = b"462", //TODO: Limited choices.
+    UnderlyingProduct: ProductFieldType = b"462",
     UnderlyingCFICode: StringFieldType = b"463",
     TestMessageIndicator: StringFieldType = b"464", //Bool
     CountryOfIssue: CountryFieldType = b"470",
     StateOrProvinceOfIssue: StringFieldType = b"471",
-    LocaleOfIssue: StringFieldType = b"472", //TODO: Limited choices.
+    LocaleOfIssue: StringFieldType = b"472", //Full code list is available for purchase here: http://www.iata.org/publications/store/Pages/airline-coding-directory.aspx
     MaturityDate: LocalMktDateFieldType = b"541",
     UnderlyingMaturityDate: LocalMktDateFieldType = b"542",
     InstrRegistry: StringFieldType = b"543",
@@ -193,22 +193,22 @@ define_fields!(
     LegPrice: PriceFieldType = b"566",
     UnderlyingCountryOfIssue: CountryFieldType = b"592",
     UnderlyingStateOrProvinceOfIssue: StringFieldType = b"593",
-    UnderlyingLocaleOfIssue: StringFieldType = b"594", //TODO: Limited choices.
+    UnderlyingLocaleOfIssue: StringFieldType = b"594", //See LocaleOfIssue (472).
     UnderlyingInstrRegistry: StringFieldType = b"595",
     LegCountryOfIssue: CountryFieldType = b"596",
     LegStateOrProvinceOfIssue: StringFieldType = b"597",
-    LegLocaleOfIssue: StringFieldType = b"598", //TODO: Limited choices.
+    LegLocaleOfIssue: StringFieldType = b"598", //See LocaleOfIssue (472).
     LegInstrRegistry: StringFieldType = b"599",
     LegSymbol: StringFieldType = b"600",
     LegSymbolSfx: StringFieldType = b"601", //TODO: Limited choices.
     LegSecurityID: StringFieldType = b"602", //TODO: Requires LegSecurityIDSource
-    LegSecurityIDSource: StringFieldType = b"603", //TODO: Limited choices,
+    LegSecurityIDSource: NotRequiredSecurityIDSourceFieldType = b"603",
     NoLegSecurityAltID: RepeatingGroupFieldType<LegSecAltIDGrp> = b"604",
     LegSecurityAltID: StringFieldType = b"605",
-    LegSecurityAltIDSource: StringFieldType = b"606", //TODO: Limited choices.
-    LegProduct: IntFieldType = b"607", //TODO: Limited choices.
+    LegSecurityAltIDSource: RequiredSecurityIDSourceFieldType = b"606",
+    LegProduct: ProductFieldType = b"607",
     LegCFICode: StringFieldType = b"608",
-    LegSecurityType: StringFieldType = b"609", //TODO: Limited choices.
+    LegSecurityType: SecurityTypeFieldType = b"609",
     LegMaturityMonthYear: MonthYearFieldType = b"610",
     LegMaturityDate: LocalMktDateFieldType = b"611",
     LegStrikePrice: PriceFieldType = b"612",
@@ -223,10 +223,10 @@ define_fields!(
     EncodedLegSecurityDescLen: NoneFieldType = b"621" => Rule::PrepareForBytes{ bytes_tag: EncodedLegSecurityDesc::tag() },
     EncodedLegSecurityDesc: DataFieldType = b"622" => Rule::ConfirmPreviousTag{ previous_tag: EncodedLegSecurityDescLen::tag() },
     LegRatioQty: StringFieldType = b"623", //Float
-    LegSide: CharFieldType = b"624", //TODO: Limited choices.
+    LegSide: NotRequiredSideFieldType = b"624",
     NoHops: RepeatingGroupFieldType<HopGrp> = b"627",
     HopCompID: StringFieldType = b"628",
-    HopSendingTime: StringFieldType = b"629", //UTCTimestamp
+    HopSendingTime: UTCTimestampFieldType = b"629",
     HopRefID: SeqNumFieldType = b"630",
     ContractSettlMonth: MonthYearFieldType = b"667",
     Pool: StringFieldType = b"691",
@@ -239,7 +239,7 @@ define_fields!(
     NextExpectedMsgSeqNum: SeqNumFieldType = b"789",
     UnderlyingPx: PriceFieldType = b"810",
     NoEvents: RepeatingGroupFieldType<EvntGrp> = b"864",
-    EventType: IntFieldType = b"865", //TODO: Limited choices.
+    EventType: EventTypeFieldType = b"865",
     EventDate: LocalMktDateFieldType = b"866",
     EventPx: PriceFieldType = b"867",
     EventText: StringFieldType = b"868",
@@ -256,7 +256,7 @@ define_fields!(
     UnderlyingCurrentValue: AmtFieldType = b"885",
     UnderlyingEndValue: AmtFieldType = b"886",
     NoUnderlyingStips: RepeatingGroupFieldType<UnderlyingStipulation> = b"887",
-    UnderlyingStipType: StringFieldType = b"888", //TODO: Limited choices
+    UnderlyingStipType: StipulationTypeFieldType = b"888",
     UnderlyingStipValue: StringFieldType = b"889", //TODO: Parsable expression.
     NewPassword: StringFieldType = b"925",
     UnderlyingStrikeCurrency: CurrencyFieldType = b"941",
@@ -264,7 +264,7 @@ define_fields!(
     StrikeCurrency: CurrencyFieldType = b"947",
     LegContractSettlMonth: MonthYearFieldType = b"955",
     LegInterestAccrualDate: LocalMktDateFieldType = b"956",
-    SecurityStatus: StringFieldType = b"965", //TODO: Limited choices.
+    SecurityStatus: SecurityStatusFieldType = b"965",
     SettleOnOpenFlag: StringFieldType = b"966",
     StrikeMultiplier: StringFieldType = b"967", //Float
     StrikeValue: StringFieldType = b"968", //Float
@@ -273,14 +273,14 @@ define_fields!(
     NTPositionLimit: IntFieldType = b"971",
     UnderlyingAllocationPercent: PercentageFieldType = b"972",
     UnderlyingCashAmount: AmtFieldType = b"973",
-    UnderlyingCashType: StringFieldType = b"974", //TODO: Limited choices.
-    UnderlyingSettlementType: IntFieldType = b"975", //TODO: Limited choices, maybe?
-    UnitOfMeasure: StringFieldType = b"996", //TODO: Limited choices.
-    TimeUnit: StringFieldType = b"997", //TODO: Limited choices with third party choices support.
-    UnderlyingUnitOfMeasure: StringFieldType = b"998", //TODO: Limited choices.
-    LegUnitOfMeasure: StringFieldType = b"999", //TODO: Limited choices.
-    UnderlyingTimeUnit: StringFieldType = b"1000", //TODO: Limited choices.
-    LegTimeUnit: StringFieldType = b"1001", //TODO: Limited choices.
+    UnderlyingCashType: UnderlyingCashTypeFieldType = b"974",
+    UnderlyingSettlementType: UnderlyingSettlementTypeFieldType = b"975",
+    UnitOfMeasure: UnitOfMeasureFieldType = b"996",
+    TimeUnit: TimeUnitFieldType = b"997",
+    UnderlyingUnitOfMeasure: UnitOfMeasureFieldType = b"998",
+    LegUnitOfMeasure: UnitOfMeasureFieldType = b"999",
+    UnderlyingTimeUnit: TimeUnitFieldType = b"1000",
+    LegTimeUnit: TimeUnitFieldType = b"1001",
     LegOptionRatio: StringFieldType = b"1017", //Float
     NoInstrumentParties: RepeatingGroupFieldType<InstrumentParty> = b"1018",
     InstrumentPartyID: StringFieldType = b"1019", //TODO: Limited choices. See PartyID (448).
@@ -289,23 +289,23 @@ define_fields!(
     UnderlyingSettlMethod: StringFieldType = b"1039",
     UnderlyingAdjustedQuantity: StringFieldType = b"1044", //Qty
     UnderlyingFXRate: StringFieldType = b"1045", //Float
-    UnderlyingFXRateCalc: CharFieldType = b"1046", //TODO: Limited choices.
+    UnderlyingFXRateCalc: UnderlyingFXRateCalcFieldType = b"1046",
     NoUndlyInstrumentParties: RepeatingGroupFieldType<UndlyInstrumentPtysSubGrp> = b"1058",
-    InstrmtAssignmentMethod: CharFieldType = b"1049", //TODO: Limited choices.
-    InstrumentPartyIDSource: CharFieldType = b"1050", //TODO: Limited choices.
-    InstrumentPartyRole: IntFieldType = b"1051", //TODO: Limited choices.
+    InstrmtAssignmentMethod: InstrmtAssignmentMethodFieldType = b"1049",
+    InstrumentPartyIDSource: PartyIDSourceFieldType = b"1050",
+    InstrumentPartyRole: PartyRoleFieldType = b"1051",
     NoInstrumentPartySubIDs: RepeatingGroupFieldType<InstrumentPtysSubGrp> = b"1052",
     InstrumentPartySubID: StringFieldType = b"1053",
-    InstrumentPartySubIDType: IntFieldType = b"1054", //TODO: Limited choices.
+    InstrumentPartySubIDType: PartySubIDTypeFieldType = b"1054",
     NoUndlyInstrumentPartySubIDs: RepeatingGroupFieldType<UndlyInstrumentPtysSubGrp> = b"1062",
     UnderlyingInstrumentPartySubID: StringFieldType = b"1063",
-    UnderlyingInstrumentPartySubIDType: IntFieldType = b"1064", //TODO: Limited choices.
+    UnderlyingInstrumentPartySubIDType: PartySubIDTypeFieldType = b"1064",
     MaturityTime: TZTimeOnlyFieldType = b"1079",
-    ApplVerID: StringFieldType = b"1128", //TODO: limited choices.
+    ApplVerID: ApplVerIDFieldType = b"1128",
     CstmApplVerID: StringFieldType = b"1129",
-    RefApplVerID: StringFieldType = b"1130",
+    RefApplVerID: ApplVerIDFieldType = b"1130",
     RefCstmApplVerID: StringFieldType = b"1131",
-    DefaultApplVerID: StringFieldType = b"1137", //TODO: limited choices.
+    DefaultApplVerID: ApplVerIDFieldType = b"1137",
     EventTime: UTCTimestampFieldType = b"1145",
     MinPriceIncrementAmount: AmtFieldType = b"1146",
     UnitOfMeasureQty: StringFieldType = b"1147", //Qty
@@ -314,14 +314,14 @@ define_fields!(
     SecurityXMLLen: NoneFieldType = b"1184" => Rule::PrepareForBytes{ bytes_tag: SecurityXML::tag() },
     SecurityXML: DataFieldType = b"1185" => Rule::ConfirmPreviousTag{ previous_tag: SecurityXMLLen::tag() },
     SecurityXMLSchema: StringFieldType = b"1186",
-    PriceUnitOfMeasure: StringFieldType = b"1191", //TODO: Limited choices.
+    PriceUnitOfMeasure: UnitOfMeasureFieldType = b"1191",
     PriceUnitOfMeasureQty: StringFieldType = b"1192", //Qty
-    SettlMethod: CharFieldType = b"1193", //TODO: Limited choices.
-    ExerciseStyle: IntFieldType = b"1194", //TODO: Limited choices.
+    SettlMethod: SettlMethodFieldType = b"1193",
+    ExerciseStyle: ExerciseStyleFieldType = b"1194",
     OptPayoutAmount: AmtFieldType = b"1195", //TODO: Conditionally required if OptPayoutType is set to binary.
-    PriceQuoteMethod: StringFieldType = b"1196", //TODO: Limited choices.
-    ValuationMethod: StringFieldType = b"1197", //TODO: Limited choices.
-    ListMethod: IntFieldType = b"1198", //TODO: Limited choices.
+    PriceQuoteMethod: PriceQuoteMethodFieldType = b"1196",
+    ValuationMethod: ValuationMethodFieldType = b"1197",
+    ListMethod: ListMethodFieldType = b"1198",
     CapPrice: PriceFieldType = b"1199",
     FloorPrice: PriceFieldType = b"1200",
     LegMaturityTime: TZTimeOnlyFieldType = b"1212",
@@ -330,7 +330,7 @@ define_fields!(
     ProductComplex: StringFieldType = b"1227",
     FlexibleProductElgibilityIndicator: BoolFieldType = b"1242",
     FlexibleIndicator: BoolFieldType = b"1244",
-    LegPutOrCall: IntFieldType = b"1358", //TODO: Limited choices.
+    LegPutOrCall: PutOrCallFieldType = b"1358",
     EncryptedPasswordMethod: StringFieldType = b"1400", //int
     EncryptedPasswordLen: NoneFieldType = b"1401" => Rule::PrepareForBytes{ bytes_tag: EncryptedPassword::tag() },
     EncryptedPassword: DataFieldType = b"1402" => Rule::ConfirmPreviousTag{ previous_tag: EncryptedPasswordLen::tag() },
@@ -341,48 +341,48 @@ define_fields!(
     DefaultCstmApplVerID: StringFieldType = b"1408",
     SessionStatus: StringFieldType = b"1409", //int
     DefaultVerIndicator: StringFieldType = b"1410", //bool
-    UnderlyingExerciseStyle: IntFieldType = b"1419", //TODO: Limited choices.
-    LegExerciseStyle: IntFieldType = b"1420", //TODO: Limited choices.
-    LegPriceUnitOfMeasure: StringFieldType = b"1421", //TODO: Limited choices.
+    UnderlyingExerciseStyle: ExerciseStyleFieldType = b"1419",
+    LegExerciseStyle: ExerciseStyleFieldType = b"1420",
+    LegPriceUnitOfMeasure: UnitOfMeasureFieldType = b"1421",
     LegPriceUnitOfMeasureQty: StringFieldType = b"1422", //Qty
     UnderlyingUnitOfMeasureQty: StringFieldType = b"1423", //Qty
-    UnderlyingPriceUnitOfMeasure: StringFieldType = b"1424", //TODO: Limted choices.
+    UnderlyingPriceUnitOfMeasure: UnitOfMeasureFieldType = b"1424",
     UnderlyingPriceUnitOfMeasureQty: StringFieldType = b"1425", //Qty
-    ContractMultiplierUnit: IntFieldType = b"1435", //TODO: Limited choices.
-    LegContractMultiplierUnit: IntFieldType = b"1436", //TODO: Limited choices.
-    UnderlyingContractMultiplierUnit: IntFieldType = b"1437", //TODO: Limited choices.
-    FlowScheduleType: IntFieldType = b"1439", //TODO: Limited choices plus user choice.
-    LegFlowScheduleType: IntFieldType = b"1440", //TODO: Limited choices plus user choice.
-    UnderlyingFlowScheduleType: IntFieldType = b"1441", //TODO: Limited choices plus user choice.
+    ContractMultiplierUnit: ContractMultiplierUnitFieldType = b"1435",
+    LegContractMultiplierUnit: ContractMultiplierUnitFieldType = b"1436",
+    UnderlyingContractMultiplierUnit: ContractMultiplierUnitFieldType = b"1437",
+    FlowScheduleType: FlowScheduleTypeFieldType = b"1439",
+    LegFlowScheduleType: FlowScheduleTypeFieldType = b"1440",
+    UnderlyingFlowScheduleType: FlowScheduleTypeFieldType = b"1441",
     NoRateSources: RepeatingGroupFieldType<RateSourceGrp> = b"1445",
     RateSource: RateSourceFieldType = b"1446",
     RateSourceType: RateSourceTypeFieldType = b"1447",
     ReferencePage: StringFieldType = b"1448",
-    RestructuringType: StringFieldType = b"1449", //TODO: Limited choices.
-    Seniority: StringFieldType = b"1450", //TODO: Limited choices.
+    RestructuringType: RestructuringTypeFieldType = b"1449",
+    Seniority: SeniorityFieldType = b"1450",
     NotionalPercentageOutstanding: PercentageFieldType = b"1451",
     OriginalNotionalPercentageOutstanding: PercentageFieldType = b"1452",
-    UnderlyingRestructuringType: StringFieldType = b"1453", //TODO: Limited choices,
-    UnderlyingSeniority: StringFieldType = b"1454", //TODO: Limited choices.
+    UnderlyingRestructuringType: RestructuringTypeFieldType = b"1453",
+    UnderlyingSeniority: SeniorityFieldType = b"1454",
     UnderlyingNotionalPercentageOutstanding: PercentageFieldType = b"1455",
     UnderlyingOriginalNotionalPercentageOutstanding: PercentageFieldType = b"1456",
     AttachmentPoint: PercentageFieldType = b"1457",
     DetachmentPoint: PercentageFieldType = b"1458",
     UnderlyingAttachmentPoint: PercentageFieldType = b"1459",
     UnderlyingDetachmentPoint: PercentageFieldType = b"1460",
-    StrikePriceDeterminationMethod: IntFieldType = b"1478", //TODO: Limited choices but user choices supported.
-    StrikePriceBoundaryMethod: IntFieldType = b"1479", //TODO: Limited choices.
+    StrikePriceDeterminationMethod: StrikePriceDeterminationMethodFieldType = b"1478",
+    StrikePriceBoundaryMethod: StrikePriceBoundaryMethodFieldType = b"1479",
     StrikePriceBoundaryPrecision: PercentageFieldType = b"1480",
-    UnderlyingPriceDeterminationMethod: IntFieldType = b"1481", //TODO: Limited choices.
-    OptPayoutType: IntFieldType = b"1482", //TODO: Limited choices.
+    UnderlyingPriceDeterminationMethod: UnderlyingPriceDeterminationMethodFieldType = b"1481",
+    OptPayoutType: OptPayoutTypeFieldType = b"1482",
     NoComplexEvents: RepeatingGroupFieldType<ComplexEvent> = b"1483",
-    ComplexEventType: IntFieldType = b"1484", //TODO: Limited choices
+    ComplexEventType: ComplexEventTypeFieldType = b"1484",
     ComplexOptPayoutAmount: AmtFieldType = b"1485",
     ComplexEventPrice: PriceFieldType = b"1486",
-    ComplexEventPriceBoundaryMethod: IntFieldType = b"1487", //TODO: Limited choices.
+    ComplexEventPriceBoundaryMethod: ComplexEventPriceBoundaryMethodFieldType = b"1487",
     ComplexEventPriceBoundaryPrecision: PercentageFieldType = b"1488",
-    ComplexEventPriceTimeType: IntFieldType = b"1489", //TODO: Limited choices.
-    ComplexEventCondition: IntFieldType = b"1490", //TODO: Limited choices.
+    ComplexEventPriceTimeType: ComplexEventPriceTimeTypeFieldType = b"1489",
+    ComplexEventCondition: ComplexEventConditionFieldType = b"1490",
     NoComplexEventDates: RepeatingGroupFieldType<ComplexEventDate> = b"1491",
     ComplexEventStartDate: UTCTimestampFieldType = b"1492", //TODO: Must always be less than end date.
     ComplexEventEndDate: UTCTimestampFieldType = b"1493", //TODO: Must always be greater than event start date.
@@ -583,7 +583,7 @@ define_message!(InstrumentLeg {
 
 define_message!(InstrumentParty {
     REQUIRED, instrument_party_id: InstrumentPartyID,
-    NOT_REQUIRED, instrument_party_id_source: InstrumentPartyIDSource,
+    REQUIRED, instrument_party_id_source: InstrumentPartyIDSource, //Conditionally required if InstrumentPartyID is specified, but InstrumentPartyID is required, so this is also required.
     NOT_REQUIRED, instrument_party_role: InstrumentPartyRole,
     NOT_REQUIRED, no_instrument_party_sub_ids: NoInstrumentPartySubIDs,
 });

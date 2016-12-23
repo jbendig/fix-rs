@@ -31,7 +31,7 @@ mod common;
 use common::{SERVER_SENDER_COMP_ID,SERVER_TARGET_COMP_ID,TestServer,new_logon_message,recv_bytes_with_timeout};
 use fix_rs::dictionary::standard_msg_types;
 use fix_rs::dictionary::field_types::generic::{CharFieldType,NoneFieldType,StringFieldType};
-use fix_rs::dictionary::field_types::other::{SessionRejectReason,Side};
+use fix_rs::dictionary::field_types::other::{BusinessRejectReason,OrdType,SecurityIDSource,SessionRejectReason,Side};
 use fix_rs::dictionary::fields::{TestReqID,HeartBtInt,BeginSeqNo,EndSeqNo,SideField,OrigSendingTime,NoHops,HopCompID};
 use fix_rs::dictionary::messages::{Logon,Logout,NewOrderSingle,ResendRequest,TestRequest,Heartbeat,SequenceReset,Reject,BusinessMessageReject};
 use fix_rs::field::Field;
@@ -163,11 +163,11 @@ fn test_1B() {
             new_order_single.cl_ord_id = String::from("0");
             new_order_single.symbol = String::from("TEST");
             new_order_single.security_id = String::from("0");
-            new_order_single.security_id_source = String::from("0");
+            new_order_single.security_id_source = Some(SecurityIDSource::CUSIP);
             new_order_single.side = Side::Buy;
-            new_order_single.transact_time = String::from("time");
+            new_order_single.transact_time = new_order_single.sending_time;
             new_order_single.order_qty = String::from("1");
-            new_order_single.ord_type = String::from("test");
+            new_order_single.ord_type = OrdType::Market;
             test_server.send_message(new_order_single);
         });
 
@@ -648,7 +648,7 @@ fn test_2B() {
         let message = test_server.recv_message::<BusinessMessageReject>();
         assert_eq!(message.msg_seq_num,2);
         assert_eq!(message.ref_msg_type,String::from_utf8_lossy(unsupported_msg_type).to_owned());
-        assert_eq!(message.business_reject_reason,"3");
+        assert_eq!(message.business_reject_reason,BusinessRejectReason::UnsupportedMessageType);
         assert_eq!(message.text,"Unsupported Message Type");
 
         //Confirm Client issued warning.

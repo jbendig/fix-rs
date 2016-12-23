@@ -24,6 +24,7 @@ use std::thread;
 use std::time::{Duration,Instant};
 
 use fix_rs::dictionary::CloneDictionary;
+use fix_rs::dictionary::field_types::other::ApplVerID;
 use fix_rs::dictionary::messages::Logon;
 use fix_rs::fix::Parser;
 use fix_rs::fixt::client::{Client,ClientEvent};
@@ -82,7 +83,7 @@ pub fn new_logon_message() -> Logon {
     let mut message = new_fixt_message!(Logon);
     message.encrypt_method = String::from("0"); //Not encrypted.
     message.heart_bt_int = 5;
-    message.default_appl_ver_id = String::from("9"); //FIX50SP2
+    message.default_appl_ver_id = Some(ApplVerID::FIX50SP2);
     //TODO: Populate message here.
 
     message
