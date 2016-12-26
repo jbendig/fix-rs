@@ -318,7 +318,7 @@ define_fields!(
     PriceUnitOfMeasureQty: StringFieldType = b"1192", //Qty
     SettlMethod: SettlMethodFieldType = b"1193",
     ExerciseStyle: ExerciseStyleFieldType = b"1194",
-    OptPayoutAmount: AmtFieldType = b"1195", //TODO: Conditionally required if OptPayoutType is set to binary.
+    OptPayoutAmount: AmtFieldType = b"1195",
     PriceQuoteMethod: PriceQuoteMethodFieldType = b"1196",
     ValuationMethod: ValuationMethodFieldType = b"1197",
     ListMethod: ListMethodFieldType = b"1198",
@@ -490,7 +490,7 @@ define_message!(Instrument {
     NOT_REQUIRED, settl_method: SettlMethod,
     NOT_REQUIRED, exercise_style: ExerciseStyle,
     NOT_REQUIRED, opt_payout_type: OptPayoutType,
-    NOT_REQUIRED, opt_payout_amount: OptPayoutAmount,
+    NOT_REQUIRED, opt_payout_amount: OptPayoutAmount => EXCEPT_WHEN message, if let Some(ref opt_payout_type) = message.opt_payout_type { *opt_payout_type == other_field_types::OptPayoutType::Binary } else { false },
     NOT_REQUIRED, price_quote_method: PriceQuoteMethod,
     NOT_REQUIRED, valuation_method: ValuationMethod,
     NOT_REQUIRED, list_method: ListMethod,
