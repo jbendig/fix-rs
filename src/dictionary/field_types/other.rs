@@ -12,6 +12,9 @@
 use std::io::Write;
 use std::str::FromStr;
 
+use field_type::FieldType;
+use message::SetValueError;
+
 //Helper macros
 
 macro_rules! define_enum_field_type_impl {
@@ -637,6 +640,213 @@ define_enum_field_type!(NOT_REQUIRED, InstrmtAssignmentMethod, InstrmtAssignment
     InstrmtAssignmentMethod::Random => b"R",
     InstrmtAssignmentMethod::ProRata => b"P",
 } MUST_BE_CHAR);
+
+#[derive(Clone,PartialEq)]
+pub enum Issuer {
+    CouncilOfEurope,
+    DeutscheAusgleichsbank,
+    EuropeanBankForReconstructionAndDevelopment,
+    EuropeanInvestmentBank,
+    Hessen,
+    KreditanstaltFuerWiederaufbau,
+    LandwirtschaftlicheRentenbank,
+    NordRheinWestfalenNRW,
+    SachsenAnhalt,
+    AustrianTreasuryBill,
+    AustrianGovernmentBond,
+    AustrianBundesobligation, //OBL
+    AustrianBundesschatzscheine,
+    AustrianGovernmentInternationalBond,
+    RAGBCouponStrip, //Austrian
+    RAGBPrincipalStrip, //Austrian
+    AustriaMediumTermBill,
+    BelgianTreasuryBill,
+    BelgianGovernmentBond,
+    BelgianGovernmentInternationalBond,
+    BelgianStrip,
+    BelgianPrincipalStrip,
+    DanishTreasuryBill,
+    DanishGovernmentBond,
+    DanishGovernmentInternationalBond,
+    FinnishTreasuryBill,
+    FinnishGovernmentBond,
+    FinnishGovernmentInternationalBond,
+    FinnishHousingBond,
+    FrenchFixedRateShortTermDiscountTreasuryBills, //BTF
+    FrenchFixedRateTreasuryNotes, //BTAN
+    FrenchTreasuryBonds, //OAT
+    FrenchTreasuryBondsPrincipalSTRIPS, //OAT
+    FrenchTreasuryBondsCouponSTRIPS, //OAT
+    SocialSecurityDebtRepaymentFund, //French
+    GermanTreasuryBill,
+    GermanFederalTreasuryBill, //DM Ccy
+    GermanTwoYearNotes,
+    GermanFinancingTreasuryNotes, //DM Ccy
+    GermanGovernmentBond,
+    GermanGovernmentBondPrincipalSTRIPS,
+    GermanGovernmentBondCouponSTRIPS,
+    GermanFiveYearBonds,
+    GermanUnityFundDBR, //S (only 2)
+    GermanUnityFund, //BKO (None)
+    GermanFederalPost, //BUNDESPOST
+    GermanFederalRailroad, //BUNDESBAHN
+    TreuhandAgencyBonds,
+    TreuhandAgencyObligations, //All matured
+    GermanRetributionFund, //Only 2 sinking funds
+    EuropeanRecoveryProgramSpecialFunds, //German only 2)
+    Bundeskassenscheine, //1 matured
+    HellenicRepublicTreasuryBill,
+    HellenicRepublicGovernmentBond,
+    HellenicRepublicGovernmentInternationalBond,
+    HellenicRepublicGovernmentBondCouponSTRIPS,
+    HellenicRepublicGovernmentBondResidualSTRIPS,
+    IrishGovernmentBond,
+    IrishGovernmentInternationalBond,
+    ItalianTreasuryBill,
+    ItalianGovernmentBond,
+    ItalianTreasuryCertificate,
+    ItalianZeroCouponBonds,
+    ItalianGovernmentBondsIssuedInEUR, //Matured
+    ItalianGovernmentBondsWithPutOption, //All matured
+    ItalianInternationalBonds,
+    ItalianGovernmentBondCouponSTRIPS,
+    ItalianGovernmentBondResidualSTRIPS,
+    LuxembourgeoisGovernmentBond,
+    DutchGovernmentBond,
+    DutchPrincipalStrip,
+    DutchStrip,
+    DutchTreasuryCertificate,
+    DutchBankCertificate, //All matured
+    NorwegianTreasuryBill,
+    NorwegianGovernmentBond,
+    NorwegianGovernmentInternationalBond, //NOK
+    PortugueseTreasuryBills,
+    PortugueseGovernmentBond,
+    PortugueseGovernmentInternationalBond,
+    SpanishGovernmentBond,
+    SpanishGovernmentBondCouponStrips,
+    SpanishGovernmentBondPrincipalStrips,
+    SpanishGovernmentInternationalBond,
+    SpanishLetrasDelTesoro,
+    SwedishTreasuryBill,
+    SwedishGovernmentBond,
+    SwedishGovernmentInternationalBond, //SEK
+    SwedishGovernmentBondCouponStrip,
+    SwedishGovernmentBondResidualStrip,
+    SwissTreasuryBill,
+    SwissGovernmentBond,
+    GenevaTreasuryBill, //CHF
+    UnitedKingdomGBPOrEURTreasuryBill,
+    UnitedKingdomGiltBond,
+    UnitedKingdomGiltBondCouponSTRIPS,
+    UnitedKingdomGiltBondResidualSTRIPS,
+    UnitedKingdomInternationalBond,
+    BankOfEnglandEURBill,
+    BankOfEnglandEURNote,
+}
+
+define_enum_field_type!(NOT_REQUIRED, Issuer, IssuerFieldType {
+    Issuer::CouncilOfEurope => b"COE",
+    Issuer::DeutscheAusgleichsbank => b"DTA",
+    Issuer::EuropeanBankForReconstructionAndDevelopment => b"EBRD",
+    Issuer::EuropeanInvestmentBank => b"EIB",
+    Issuer::Hessen => b"HESLAN",
+    Issuer::KreditanstaltFuerWiederaufbau => b"KFW",
+    Issuer::LandwirtschaftlicheRentenbank => b"LANREN",
+    Issuer::NordRheinWestfalenNRW => b"NORWES",
+    Issuer::SachsenAnhalt => b"SACHAN",
+    Issuer::AustrianTreasuryBill => b"RATB",
+    Issuer::AustrianGovernmentBond => b"RAGB",
+    Issuer::AustrianBundesobligation => b"AOBL",
+    Issuer::AustrianBundesschatzscheine => b"RABSS",
+    Issuer::AustrianGovernmentInternationalBond => b"AUST",
+    Issuer::RAGBCouponStrip => b"RAGBS",
+    Issuer::RAGBPrincipalStrip => b"RAGBR",
+    Issuer::AustriaMediumTermBill => b"RAMTB",
+    Issuer::BelgianTreasuryBill => b"BGTB",
+    Issuer::BelgianGovernmentBond => b"BGB",
+    Issuer::BelgianGovernmentInternationalBond => b"BELG",
+    Issuer::BelgianStrip => b"OLOS",
+    Issuer::BelgianPrincipalStrip => b"OLOR",
+    Issuer::DanishTreasuryBill => b"DGTB",
+    Issuer::DanishGovernmentBond => b"DGB",
+    Issuer::DanishGovernmentInternationalBond => b"DENK",
+    Issuer::FinnishTreasuryBill => b"RFTB",
+    Issuer::FinnishGovernmentBond => b"RFGB",
+    Issuer::FinnishGovernmentInternationalBond => b"FINL",
+    Issuer::FinnishHousingBond => b"FNHF",
+    Issuer::FrenchFixedRateShortTermDiscountTreasuryBills => b"BTF",
+    Issuer::FrenchFixedRateTreasuryNotes => b"BTNS",
+    Issuer::FrenchTreasuryBonds => b"FRTR",
+    Issuer::FrenchTreasuryBondsPrincipalSTRIPS => b"FRTRR",
+    Issuer::FrenchTreasuryBondsCouponSTRIPS => b"FRTRS",
+    Issuer::SocialSecurityDebtRepaymentFund => b"CADES",
+    Issuer::GermanTreasuryBill => b"BUBILL",
+    Issuer::GermanFederalTreasuryBill => b"DBSB",
+    Issuer::GermanTwoYearNotes => b"BKO",
+    Issuer::GermanFinancingTreasuryNotes => b"FSDB",
+    Issuer::GermanGovernmentBond => b"DBR",
+    Issuer::GermanGovernmentBondPrincipalSTRIPS => b"DBRR",
+    Issuer::GermanGovernmentBondCouponSTRIPS => b"DBRS",
+    Issuer::GermanFiveYearBonds => b"OBL",
+    Issuer::GermanUnityFundDBR => b"DBRUF",
+    Issuer::GermanUnityFund => b"BKOUF",
+    Issuer::GermanFederalPost => b"DBP",
+    Issuer::GermanFederalRailroad => b"DBB",
+    Issuer::TreuhandAgencyBonds => b"THA",
+    Issuer::TreuhandAgencyObligations => b"TOBL",
+    Issuer::GermanRetributionFund => b"ENTFND",
+    Issuer::EuropeanRecoveryProgramSpecialFunds => b"GERP",
+    Issuer::Bundeskassenscheine => b"BUNKASS",
+    Issuer::HellenicRepublicTreasuryBill => b"GTB",
+    Issuer::HellenicRepublicGovernmentBond => b"GGB",
+    Issuer::HellenicRepublicGovernmentInternationalBond => b"GREECE",
+    Issuer::HellenicRepublicGovernmentBondCouponSTRIPS => b"GGBSTP",
+    Issuer::HellenicRepublicGovernmentBondResidualSTRIPS => b"GGBRES",
+    Issuer::IrishGovernmentBond => b"IRISH",
+    Issuer::IrishGovernmentInternationalBond => b"IRELND",
+    Issuer::ItalianTreasuryBill => b"BOTS",
+    Issuer::ItalianGovernmentBond => b"BTPS",
+    Issuer::ItalianTreasuryCertificate => b"CCTS",
+    Issuer::ItalianZeroCouponBonds => b"ICTZ",
+    Issuer::ItalianGovernmentBondsIssuedInEUR => b"CTES",
+    Issuer::ItalianGovernmentBondsWithPutOption => b"CTOS",
+    Issuer::ItalianInternationalBonds => b"ITALY",
+    Issuer::ItalianGovernmentBondCouponSTRIPS => b"BTPSS",
+    Issuer::ItalianGovernmentBondResidualSTRIPS => b"BTPSR",
+    Issuer::LuxembourgeoisGovernmentBond => b"LGB",
+    Issuer::DutchGovernmentBond => b"NETHER",
+    Issuer::DutchPrincipalStrip => b"NETHRR",
+    Issuer::DutchStrip => b"NETHRS",
+    Issuer::DutchTreasuryCertificate => b"DTB",
+    Issuer::DutchBankCertificate => b"NBC",
+    Issuer::NorwegianTreasuryBill => b"NGTB",
+    Issuer::NorwegianGovernmentBond => b"NGB",
+    Issuer::NorwegianGovernmentInternationalBond => b"NORWAY",
+    Issuer::PortugueseTreasuryBills => b"PORTB",
+    Issuer::PortugueseGovernmentBond => b"PGB",
+    Issuer::PortugueseGovernmentInternationalBond => b"PORTUG",
+    Issuer::SpanishGovernmentBond => b"SPGB",
+    Issuer::SpanishGovernmentBondCouponStrips => b"SPGBS",
+    Issuer::SpanishGovernmentBondPrincipalStrips => b"SPGBR",
+    Issuer::SpanishGovernmentInternationalBond => b"SPAIN",
+    Issuer::SpanishLetrasDelTesoro => b"SGLT",
+    Issuer::SwedishTreasuryBill => b"SWTB",
+    Issuer::SwedishGovernmentBond => b"SGB",
+    Issuer::SwedishGovernmentInternationalBond => b"SWED",
+    Issuer::SwedishGovernmentBondCouponStrip => b"SGBS",
+    Issuer::SwedishGovernmentBondResidualStrip => b"SGBR",
+    Issuer::SwissTreasuryBill => b"SWISTB",
+    Issuer::SwissGovernmentBond => b"SWISS",
+    Issuer::GenevaTreasuryBill => b"GENTB",
+    Issuer::UnitedKingdomGBPOrEURTreasuryBill => b"UKTB",
+    Issuer::UnitedKingdomGiltBond => b"UKT",
+    Issuer::UnitedKingdomGiltBondCouponSTRIPS => b"UKTS",
+    Issuer::UnitedKingdomGiltBondResidualSTRIPS => b"UKTR",
+    Issuer::UnitedKingdomInternationalBond => b"UKIN",
+    Issuer::BankOfEnglandEURBill => b"BOE",
+    Issuer::BankOfEnglandEURNote => b"BOEN",
+} MUST_BE_STRING);
 
 #[derive(Clone,PartialEq)]
 pub enum ListMethod {
@@ -1504,6 +1714,133 @@ define_enum_field_type!(NOT_REQUIRED, SettlMethod, SettlMethodFieldType {
 } MUST_BE_CHAR);
 
 #[derive(Clone,PartialEq)]
+pub enum SettlType {
+    RegularOrFXSpotSettlement,
+    Cash,
+    NextDay,
+    TPlus2,
+    TPlus3,
+    TPlus4,
+    Future,
+    WhenAndIfIssued,
+    SellersOption,
+    TPlus5,
+    BrokenDate,
+    FXSpotNextSettlement,
+    Days(u64),
+    Months(u64),
+    Weeks(u64),
+    Years(u64),
+}
+
+impl SettlType {
+    fn new(bytes: &[u8]) -> Option<SettlType> {
+        Some(match bytes {
+            b"0" => SettlType::RegularOrFXSpotSettlement,
+            b"1" => SettlType::Cash,
+            b"2" => SettlType::NextDay,
+            b"3" => SettlType::TPlus2,
+            b"4" => SettlType::TPlus3,
+            b"5" => SettlType::TPlus4,
+            b"6" => SettlType::Future,
+            b"7" => SettlType::WhenAndIfIssued,
+            b"8" => SettlType::SellersOption,
+            b"9" => SettlType::TPlus5,
+            b"B" => SettlType::BrokenDate,
+            b"C" => SettlType::FXSpotNextSettlement,
+            _ if bytes.len() > 1 => {
+                let number_string = String::from_utf8_lossy(&bytes[1..]).into_owned();
+                let number = match u64::from_str(&number_string) {
+                    Err(_) => return None,
+                    Ok(number) if number == 0 => {
+                        //All of the following tenors require an integer > 0.
+                        return None;
+                    },
+                    Ok(number) => number,
+                };
+
+                match bytes[0] {
+                    b'D' => SettlType::Days(number),
+                    b'M' => SettlType::Months(number),
+                    b'W' => SettlType::Weeks(number),
+                    b'Y' => SettlType::Years(number),
+                    _ => return None,
+                }
+            },
+            _ => return None,
+        })
+    }
+
+    fn read(&self,buf: &mut Vec<u8>) -> usize {
+        match *self {
+            SettlType::RegularOrFXSpotSettlement => buf.write(b"0").unwrap(),
+            SettlType::Cash => buf.write(b"1").unwrap(),
+            SettlType::NextDay => buf.write(b"2").unwrap(),
+            SettlType::TPlus2 => buf.write(b"3").unwrap(),
+            SettlType::TPlus3 => buf.write(b"4").unwrap(),
+            SettlType::TPlus4 => buf.write(b"5").unwrap(),
+            SettlType::Future => buf.write(b"6").unwrap(),
+            SettlType::WhenAndIfIssued => buf.write(b"7").unwrap(),
+            SettlType::SellersOption => buf.write(b"8").unwrap(),
+            SettlType::TPlus5 => buf.write(b"9").unwrap(),
+            SettlType::BrokenDate => buf.write(b"B").unwrap(),
+            SettlType::FXSpotNextSettlement => buf.write(b"C").unwrap(),
+            SettlType::Days(number) => {
+                buf.write(b"D").unwrap() +
+                buf.write(number.to_string().as_bytes()).unwrap()
+            },
+            SettlType::Months(number) => {
+                buf.write(b"M").unwrap() +
+                buf.write(number.to_string().as_bytes()).unwrap()
+            },
+            SettlType::Weeks(number) => {
+                buf.write(b"W").unwrap() +
+                buf.write(number.to_string().as_bytes()).unwrap()
+            },
+            SettlType::Years(number) => {
+                buf.write(b"Y").unwrap() +
+                buf.write(number.to_string().as_bytes()).unwrap()
+            },
+        }
+    }
+}
+
+pub struct SettlTypeFieldType;
+
+impl FieldType for SettlTypeFieldType {
+    type Type = Option<SettlType>;
+
+    fn default_value() -> Self::Type {
+        None
+    }
+
+    fn set_value(field: &mut Self::Type,bytes: &[u8]) -> Result<(),SetValueError> {
+        if let Some(value) = SettlType::new(bytes) {
+            *field = Some(value);
+            return Ok(())
+        }
+
+        Err(SetValueError::OutOfRange)
+    }
+
+    fn is_empty(field: &Self::Type) -> bool {
+        field.is_none()
+    }
+
+    fn len(_field: &Self::Type) -> usize {
+        0 //Unused for this type.
+    }
+
+    fn read(field: &Self::Type,buf: &mut Vec<u8>) -> usize {
+        if let Some(ref field) = *field {
+            return field.read(buf)
+        }
+
+        0
+    }
+}
+
+#[derive(Clone,PartialEq)]
 pub enum Side {
     Buy,
     Sell,
@@ -1742,6 +2079,18 @@ define_enum_field_type_with_reserved!(NOT_REQUIRED, StrikePriceDeterminationMeth
     StrikePriceDeterminationMethod::StrikeSetToAverageOfUnderlyingSettlementPriceAcrossTheLifeOfTheOption => 3,
     StrikePriceDeterminationMethod::StrikeSetToOptimalValue => 4,
 } StrikePriceDeterminationMethod::Reserved100Plus => WITH_MINIMUM 100);
+
+#[derive(Clone,PartialEq)]
+pub enum SymbolSfx {
+    EUCPWithLumpSumInterestRatherThanDiscountPrice,
+    WhenIssued,
+    Other(Vec<u8>),
+}
+
+define_enum_field_type_with_reserved!(BYTES, SymbolSfx, RequiredSymbolSfxFieldType, NotRequiredSymbolSfxFieldType {
+    SymbolSfx::EUCPWithLumpSumInterestRatherThanDiscountPrice => b"CD",
+    SymbolSfx::WhenIssued => b"WI",
+} SymbolSfx::Other);
 
 #[derive(Clone,PartialEq)]
 pub enum TimeInForce {
