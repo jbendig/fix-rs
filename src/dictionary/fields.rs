@@ -9,31 +9,25 @@
 // at your option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use dictionary::field_types::generic::{BoolTrueOrBlankFieldType,CharFieldType,DataFieldType,IntFieldType,NoneFieldType,RepeatingGroupFieldType,SeqNumFieldType,StringFieldType,UTCTimestampFieldType};
+use dictionary::field_types::generic::{BoolTrueOrBlankFieldType,CharFieldType,CountryFieldType,CurrencyFieldType,DataFieldType,IntFieldType,LocalMktDateFieldType,MonthYearFieldType,NoneFieldType,RepeatingGroupFieldType,SeqNumFieldType,StringFieldType,UTCTimeOnlyFieldType,UTCTimestampFieldType};
 use dictionary::field_types::other as other_field_types;
 use dictionary::field_types::other::{ApplVerIDFieldType,BusinessRejectReasonFieldType,ComplexEventConditionFieldType,ComplexEventPriceBoundaryMethodFieldType,ComplexEventPriceTimeTypeFieldType,ComplexEventTypeFieldType,ContractMultiplierUnitFieldType,CPProgramFieldType,EmailTypeFieldType,EventTypeFieldType,ExerciseStyleFieldType,FlowScheduleTypeFieldType,HandlInstFieldType,InstrmtAssignmentMethodFieldType,IssuerFieldType,ListMethodFieldType,NotRequiredSecurityIDSourceFieldType,NotRequiredSecurityTypeFieldType as SecurityTypeFieldType,NotRequiredSideFieldType,NotRequiredSymbolSfxFieldType as SymbolSfxFieldType,NotRequiredTimeUnitFieldType as TimeUnitFieldType,OptPayoutTypeFieldType,OrdTypeFieldType,PartyIDSourceFieldType,PartyRoleFieldType,PartySubIDTypeFieldType,PriceQuoteMethodFieldType,ProductFieldType,PutOrCallFieldType,RateSourceFieldType,RateSourceTypeFieldType,RequiredSecurityIDSourceFieldType,RequiredSideFieldType,RequiredStipulationTypeFieldType as StipulationTypeFieldType,RestructuringTypeFieldType,RoutingTypeFieldType,SecurityStatusFieldType,SeniorityFieldType,SessionRejectReasonFieldType,SettlMethodFieldType,SettlTypeFieldType,StrikePriceBoundaryMethodFieldType,StrikePriceDeterminationMethodFieldType,TimeInForceFieldType,UnderlyingCashTypeFieldType,UnderlyingFXRateCalcFieldType,UnderlyingPriceDeterminationMethodFieldType,UnderlyingSettlementTypeFieldType,UnitOfMeasureFieldType,ValuationMethodFieldType};
 use message::{REQUIRED,NOT_REQUIRED};
 use rule::Rule;
 
 //TODO: Create implementations for all of these types.
-type BoolFieldType = StringFieldType;
 type PercentageFieldType = StringFieldType;
 type PriceFieldType = StringFieldType;
-type CountryFieldType = StringFieldType;
 type TZTimeOnlyFieldType = StringFieldType;
 type AmtFieldType = StringFieldType;
 type QtyFieldType = StringFieldType;
-type LocalMktDateFieldType = StringFieldType;
-type CurrencyFieldType = StringFieldType;
-type MonthYearFieldType = StringFieldType;
 type ExchangeFieldType = StringFieldType; //See ISO 10383 for a complete list: https://www.iso20022.org/10383/iso-10383-market-identifier-codes
-type UTCTimeOnlyFieldType = StringFieldType;
 
 define_fields!(
     Account: StringFieldType = b"1",
     BeginSeqNo: SeqNumFieldType = b"7",
     ClOrdID: StringFieldType = b"11",
-    Currency: StringFieldType = b"15", //Currency
+    Currency: CurrencyFieldType = b"15",
     EndSeqNo: SeqNumFieldType = b"16",
     HandlInst: HandlInstFieldType = b"21",
     SecurityIDSource: NotRequiredSecurityIDSourceFieldType = b"22",
@@ -328,8 +322,8 @@ define_fields!(
     UnderlyingMaturityTime: TZTimeOnlyFieldType = b"1213",
     LegUnitOfMeasureQty: StringFieldType = b"1224", //Qty
     ProductComplex: StringFieldType = b"1227",
-    FlexibleProductElgibilityIndicator: BoolFieldType = b"1242",
-    FlexibleIndicator: BoolFieldType = b"1244",
+    FlexibleProductElgibilityIndicator: BoolTrueOrBlankFieldType = b"1242",
+    FlexibleIndicator: BoolTrueOrBlankFieldType = b"1244",
     LegPutOrCall: PutOrCallFieldType = b"1358",
     EncryptedPasswordMethod: StringFieldType = b"1400", //int
     EncryptedPasswordLen: NoneFieldType = b"1401" => Rule::PrepareForBytes{ bytes_tag: EncryptedPassword::tag() },
