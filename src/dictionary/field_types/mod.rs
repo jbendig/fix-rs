@@ -9,5 +9,8 @@
 // at your option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[macro_use]
+pub mod macros;
+
 pub mod generic;
 pub mod other;
