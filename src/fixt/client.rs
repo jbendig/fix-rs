@@ -164,7 +164,7 @@ impl Client {
         self.tx.send(InternalClientToThreadEvent::Logout(Token(connection_id))).unwrap();
     }
 
-    pub fn poll(&mut self,duration: Option<Duration>) -> Option<ClientEvent> {
+    pub fn poll<D: Into<Option<Duration>>>(&mut self,duration: D) -> Option<ClientEvent> {
         //Perform any book keeping needed to manage client's state.
         fn update_client(client: &mut Client,event: &ClientEvent) {
             match *event {
@@ -181,7 +181,7 @@ impl Client {
             return Some(event);
         }
 
-        if let Some(poll_duration) = duration {
+        if let Some(poll_duration) = duration.into() {
             let now = Instant::now(); //Watch time manually because Mio's poll::poll() can wake immediatelly and we'll have no idea how long has elapsed.
 
             while let Some(poll_duration) = poll_duration.checked_sub(now.elapsed()) {
