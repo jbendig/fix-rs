@@ -13,3 +13,7 @@ pub mod client;
 mod client_thread;
 #[macro_use]
 pub mod message;
+
+pub mod tests {
+    pub use super::client_thread::{INBOUND_MESSAGES_BUFFER_LEN_MAX,INBOUND_BYTES_BUFFER_CAPACITY};
+}

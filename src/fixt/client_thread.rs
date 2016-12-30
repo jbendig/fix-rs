@@ -17,14 +17,13 @@ use mio::timer::Builder as TimerBuilder;
 use std::cmp;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
-use std::io::{ErrorKind,Read,Write};
+use std::io::ErrorKind;
 use std::mem;
 use std::net::SocketAddr;
 use std::rc::Rc;
 use std::time::Duration;
 
-use fixt::client::{ClientEvent,ConnectionTerminatedReason};
-use fixt::message::FIXTMessage;
+use byte_buffer::ByteBuffer;
 use dictionary::{CloneDictionary,standard_msg_types};
 use dictionary::field_types::generic::UTCTimestampFieldType;
 use dictionary::field_types::other::{BusinessRejectReason,SessionRejectReason};
@@ -33,6 +32,9 @@ use dictionary::messages::{Logon,Logout,ResendRequest,TestRequest,Heartbeat,Sequ
 use field::Field;
 use field_type::FieldType;
 use fix::{Parser,ParseError};
+use fixt::client::{ClientEvent,ConnectionTerminatedReason};
+use fixt::message::FIXTMessage;
+use network_read_retry::NetworkReadRetry;
 
 //TODO: Support Application Version. FIXT 1.1, page 8.
 //TODO: Make sure Logon message is sent automatically instead of waiting on caller. Althought, we
@@ -49,6 +51,8 @@ const AUTO_DISCONNECT_AFTER_LOGOUT_RESPONSE_SECS: u64 = 10;
 const AUTO_DISCONNECT_AFTER_INITIATING_LOGOUT_SECS: u64 = 10;
 const AUTO_CONTINUE_AFTER_LOGOUT_RESEND_REQUEST_SECS: u64 = 10;
 const EVENT_POLL_CAPACITY: usize = 1024;
+pub const INBOUND_MESSAGES_BUFFER_LEN_MAX: usize = 10;
+pub const INBOUND_BYTES_BUFFER_CAPACITY: usize = 2048;
 const TIMER_TICK_MS: u64 = 100;
 const TIMER_TIMEOUTS_PER_TICK_MAX: usize = 256;
 pub const CONNECTION_COUNT_MAX: usize = 65536;
@@ -56,7 +60,8 @@ const TIMEOUTS_PER_CONNECTION_MAX: usize = 3;
 
 pub const INTERNAL_CLIENT_EVENT_TOKEN: Token = Token(0);
 const TIMEOUT_TOKEN: Token = Token(1);
-pub const BASE_CONNECTION_TOKEN: Token = Token(2);
+const NETWORK_READ_RETRY_TOKEN: Token = Token(2);
+pub const BASE_CONNECTION_TOKEN: Token = Token(3);
 
 #[derive(Clone,Copy,PartialEq)]
 enum LoggingOutInitiator {
@@ -272,11 +277,11 @@ struct Connection {
     socket: TcpStream,
     token: Token,
     outbound_messages: Vec<OutboundMessage>,
-    outbound_buffer: Vec<u8>,
+    outbound_buffer: ByteBuffer,
     outbound_msg_seq_num: MsgSeqNumType,
     outbound_heartbeat_timeout: Option<Timeout>,
     outbound_heartbeat_timeout_duration: Option<Duration>,
-    inbound_buffer: Vec<u8>,
+    inbound_buffer: ByteBuffer,
     inbound_msg_seq_num: MsgSeqNumType,
     inbound_testrequest_timeout: Option<Timeout>,
     inbound_testrequest_timeout_duration: Option<Duration>,
@@ -338,7 +343,7 @@ impl Connection {
                     (*self.sender_comp_id).clone(),
                     (*self.target_comp_id).clone()
                 );
-                message.message.read(&mut self.outbound_buffer);
+                self.outbound_buffer.clear_and_read_all(|ref mut bytes| { message.message.read(bytes); });
 
                 //TODO: Hold onto message and pass it off to the client or some callback so the
                 //library user knows exactly which messages have been sent -- although not
@@ -346,12 +351,9 @@ impl Connection {
             }
 
             //Send data. Simple.
-            match self.socket.write(&self.outbound_buffer) {
-                Ok(bytes_written) => {
-                    //TODO: This shifting mechanism is not very efficient...
-                    self.outbound_buffer.drain(0..bytes_written);
+            match self.outbound_buffer.write(&mut self.socket) {
+                Ok(_) => {
                     sent_data = true;
-
                 },
                 Err(e) => {
                     match e.kind() {
@@ -377,13 +379,40 @@ impl Connection {
     }
 
     fn read(&mut self,timer: &mut Timer<(TimeoutType,Token)>) -> Result<(Vec<ConnectionReadMessage>),::std::io::Error> {
-        let mut messages = Vec::new();
+        fn parse_bytes(connection: &mut Connection,messages: &mut Vec<ConnectionReadMessage>) -> bool {
+            while !connection.inbound_buffer.is_empty() {
+                let (bytes_parsed,result) = connection.parser.parse(connection.inbound_buffer.bytes());
 
-        //Keep reading all available bytes on the socket until it's exhausted. The bytes are parsed
+                assert!(bytes_parsed > 0);
+                connection.inbound_buffer.consume(bytes_parsed);
+
+                //Retain order by extracting messages and then the error from parser.
+                for message in connection.parser.messages.drain(..) {
+                    messages.push(ConnectionReadMessage::Message(message));
+                }
+                if let Err(e) = result {
+                    messages.push(ConnectionReadMessage::Error(e));
+                }
+
+                //Stop reading once INBOUND_MESSAGES_BUFFER_LEN_MAX messages have been read.
+                //This prevents a flood of messages from completely stalling the thread.
+                if messages.len() >= INBOUND_MESSAGES_BUFFER_LEN_MAX {
+                    return false;
+                }
+            }
+
+            true
+        }
+
+        let mut messages = Vec::new();
+        let mut keep_reading = parse_bytes(self,&mut messages);
+
+        //Keep reading all available bytes on the socket until it's exhausted or
+        //INBOUND_MESSAGES_BUFFER_LEN_MAX messages have been read. The bytes are parsed
         //immediately into messages. Parse errors are stored in order of encounter relative to
         //messages because they often indicate an increase in expected inbound MsgSeqNum.
-        loop {
-            match self.socket.read(&mut self.inbound_buffer) {
+        while keep_reading {
+            match self.inbound_buffer.clear_and_read(&mut self.socket) {
                 Ok(bytes_read) => {
                     if bytes_read == 0 {
                         //Socket exhausted.
@@ -391,22 +420,7 @@ impl Connection {
                     }
 
                     //Parse all of the read bytes.
-                    let mut bytes_to_parse = bytes_read;
-                    while bytes_to_parse > 0 {
-                        let (bytes_parsed,result) = self.parser.parse(&self.inbound_buffer[bytes_read - bytes_to_parse..bytes_read]);
-
-                        assert!(bytes_parsed > 0);
-                        assert!(bytes_to_parse >= bytes_parsed);
-                        bytes_to_parse -= bytes_parsed;
-
-                        //Retain order by extracting messages and then the error from parser.
-                        for message in self.parser.messages.drain(..) {
-                            messages.push(ConnectionReadMessage::Message(message));
-                        }
-                        if let Err(e) = result {
-                            messages.push(ConnectionReadMessage::Error(e));
-                        }
-                    }
+                    keep_reading = parse_bytes(self,&mut messages);
                 },
                 Err(e) => {
                     use std::io::ErrorKind::WouldBlock;
@@ -530,6 +544,7 @@ struct InternalThread {
     target_comp_id: Rc<<<TargetCompID as Field>::Type as FieldType>::Type>,
     connections: HashMap<Token,Connection>,
     timer: Timer<(TimeoutType,Token)>,
+    network_read_retry: NetworkReadRetry,
 }
 
 impl InternalThread {
@@ -554,11 +569,11 @@ impl InternalThread {
                     socket: socket,
                     token: token,
                     outbound_messages: Vec::new(),
-                    outbound_buffer: Vec::new(),
+                    outbound_buffer: ByteBuffer::new(),
                     outbound_msg_seq_num: 1, //Starts at 1. FIXT v1.1, page 5.
                     outbound_heartbeat_timeout: None,
                     outbound_heartbeat_timeout_duration: None,
-                    inbound_buffer: vec![0;1024],
+                    inbound_buffer: ByteBuffer::with_capacity(INBOUND_BYTES_BUFFER_CAPACITY),
                     inbound_msg_seq_num: 1, //Starts at 1 as well.
                     inbound_testrequest_timeout: None,
                     inbound_testrequest_timeout_duration: None,
@@ -706,6 +721,16 @@ impl InternalThread {
                 }
 
                 if let Ok(messages) = result {
+                    //Whenever at least one message is found, we need to assume there might still
+                    //be bytes sitting on the socket to be read. The read() function call above
+                    //might have left them there so we can process the messages that have already
+                    //been parsed. This prevents a flood of messages from stalling the thread. By
+                    //queueing with network_read_retry, we'll try again in a once these messages
+                    //are processed and any other connections are handled.
+                    if !messages.is_empty() {
+                        self.network_read_retry.queue(event.token());
+                    }
+
                     for message in messages {
                         let result = match message {
                             ConnectionReadMessage::Message(message) =>
@@ -1283,6 +1308,7 @@ pub fn internal_client_thread(poll: Poll,
             .num_slots(TIMER_TIMEOUTS_PER_TICK_MAX)
             .capacity(CONNECTION_COUNT_MAX * TIMEOUTS_PER_CONNECTION_MAX)
             .build(),
+        network_read_retry: NetworkReadRetry::new(),
     };
     let mut terminated_connections: Vec<(Connection,ConnectionTerminatedReason)> = Vec::new();
 
@@ -1290,6 +1316,14 @@ pub fn internal_client_thread(poll: Poll,
     //timeout.
     if let Err(e) = internal_thread.poll.register(&internal_thread.timer,TIMEOUT_TOKEN,Ready::readable(),PollOpt::level()) {
         internal_thread.tx.send(ClientEvent::FatalError("Cannot register timer for polling",e)).unwrap();
+        return;
+    }
+
+    //Have poll let us know when we need to retry parsing and/or reading incoming bytes. This
+    //typically occurs when messages are being received faster than they can be parsed in order to
+    //give the already parsed messages a chance to be processed.
+    if let Err(e) = internal_thread.poll.register(&internal_thread.network_read_retry,NETWORK_READ_RETRY_TOKEN,Ready::all(),PollOpt::level()) {
+        internal_thread.tx.send(ClientEvent::FatalError("Cannot register network read retry for polling",e)).unwrap();
         return;
     }
 
@@ -1306,6 +1340,15 @@ pub fn internal_client_thread(poll: Poll,
             let result = match event.token() {
                 INTERNAL_CLIENT_EVENT_TOKEN => internal_thread.on_internal_client_event(),
                 TIMEOUT_TOKEN => internal_thread.on_timeout(),
+                NETWORK_READ_RETRY_TOKEN => {
+                    if let Some(token) = internal_thread.network_read_retry.poll() {
+                        internal_thread.on_network(&Event::new(Ready::readable(),token))
+                    }
+                    else {
+                        //Connection was probably removed before retry could be run.
+                        Ok(())
+                    }
+                },
                 _ => internal_thread.on_network(&event),
             };
 
@@ -1334,6 +1377,8 @@ pub fn internal_client_thread(poll: Poll,
             if let Some(ref timeout) = connection.logout_timeout {
                 internal_thread.timer.cancel_timeout(timeout);
             }
+
+            internal_thread.network_read_retry.remove_all(connection.token);
 
             internal_thread.tx.send(ClientEvent::ConnectionTerminated(connection.token.0,e)).unwrap();
         }

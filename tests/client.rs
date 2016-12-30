@@ -16,6 +16,7 @@ extern crate fix_rs;
 extern crate mio;
 
 use mio::tcp::Shutdown;
+use std::io::Write;
 use std::thread;
 use std::time::Duration;
 
@@ -25,7 +26,9 @@ use common::{TestServer,new_logon_message};
 use fix_rs::dictionary::field_types::other::SessionRejectReason;
 use fix_rs::dictionary::messages::{Heartbeat,Logon,Logout,Reject,ResendRequest,SequenceReset,TestRequest};
 use fix_rs::fixt::client::{ClientEvent,ConnectionTerminatedReason};
+use fix_rs::fixt::tests::{INBOUND_MESSAGES_BUFFER_LEN_MAX,INBOUND_BYTES_BUFFER_CAPACITY};
 use fix_rs::fixt::message::FIXTMessage;
+use fix_rs::message::Message;
 
 #[test]
 fn test_recv_resend_request_invalid_end_seq_no() {
@@ -442,4 +445,46 @@ fn test_wrong_target_comp_id_in_logon_response() {
         assert_eq!(terminated_connection_id,connection_id);
         assert!(if let ConnectionTerminatedReason::TargetCompIDWrongError = reason { true } else { false });
     });
+}
+
+#[test]
+fn test_overflowing_inbound_messages_buffer_does_resume() {
+    //To prevent the client thread from stalling when receiving messages faster than they can be
+    //parsed, it will automatically stop receiving bytes and parsing them into messages once
+    //INBOUND_MESSAGES_BUFFER_LEN_MAX messages have been parsed. This test makes sure the client
+    //thread resumes parsing bytes that have already been read in but not parsed without waiting
+    //for a new network notification.
+
+    define_dictionary!(
+        Logon : Logon,
+        Heartbeat : Heartbeat,
+        TestRequest : TestRequest,
+    );
+
+    //Connect and logon.
+    let (mut test_server,mut client,connection_id) = TestServer::setup_and_logon(build_dictionary());
+
+    //Send INBOUND_MESSAGES_BUFFER_LEN_MAX + 1 TestRequests (hopefully) merged into a single TCP
+    //frame.
+    let mut bytes = Vec::new();
+    for x in 0..INBOUND_MESSAGES_BUFFER_LEN_MAX + 1 {
+        let mut test_request_message = new_fixt_message!(TestRequest);
+        test_request_message.msg_seq_num = (x + 2) as u64;
+        test_request_message.test_req_id = String::from("test");
+
+        test_request_message.read(&mut bytes);
+    }
+    assert!(bytes.len() < 1400); //Make sure the serialized body is reasonably likely to fit within the MTU.
+    assert!(bytes.len() < INBOUND_BYTES_BUFFER_CAPACITY); //Make sure client thread can theoretically store all of the messages in a single recv().
+    let bytes_written = test_server.stream.write(&bytes).unwrap();
+    assert_eq!(bytes_written,bytes.len());
+
+    //Make sure client acknowledges messages as normal.
+    for x in 0..INBOUND_MESSAGES_BUFFER_LEN_MAX + 1 {
+        let message = client_poll_message!(client,connection_id,TestRequest);
+        assert_eq!(message.msg_seq_num,(x + 2) as u64);
+
+        let message = test_server.recv_message::<Heartbeat>();
+        assert_eq!(message.msg_seq_num,(x + 2) as u64);
+    }
 }
