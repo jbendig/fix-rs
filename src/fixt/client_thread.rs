@@ -967,7 +967,7 @@ impl InternalThread {
                 use std::fmt::Write;
 
                 let mut text = String::new();
-                let _ = write!(text,"MsgSeqNum too low, expecting {} but received {}",connection.inbound_msg_seq_num,msg_seq_num);
+                let _ = write!(text,"MsgSeqNum too low, expected {} but received {}",connection.inbound_msg_seq_num,msg_seq_num);
                 connection.initiate_logout(timer,LoggingOutType::Error(ConnectionTerminatedReason::InboundMsgSeqNumLowerThanExpectedError),&text);
             }
         }

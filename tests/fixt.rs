@@ -305,7 +305,7 @@ fn test_2B() {
 
         //Client should automatically send a Logout with an appropriate text message.
         let message = test_server.recv_message::<Logout>();
-        assert_eq!(message.text,"MsgSeqNum too low, expecting 2 but received 1");
+        assert_eq!(message.text,"MsgSeqNum too low, expected 2 but received 1");
 
         //Give client thread a chance to disconnect.
         thread::sleep(Duration::from_millis(500));
@@ -1058,7 +1058,7 @@ fn test_10B() {
 
         //Confirm client sent Logout with an appropriate reason.
         let message = test_server.recv_message::<Logout>();
-        assert_eq!(message.text,"MsgSeqNum too low, expecting 2 but received 1");
+        assert_eq!(message.text,"MsgSeqNum too low, expected 2 but received 1");
 
         //Give client thread a chance to disconnect.
         thread::sleep(Duration::from_millis(500));
