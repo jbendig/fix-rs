@@ -28,7 +28,7 @@ use std::time::Duration;
 
 #[macro_use]
 mod common;
-use common::{SERVER_SENDER_COMP_ID,SERVER_TARGET_COMP_ID,TestServer,new_logon_message,recv_bytes_with_timeout};
+use common::{SERVER_SENDER_COMP_ID,SERVER_TARGET_COMP_ID,TestServer,new_logon_message,recv_bytes_with_timeout,send_message};
 use fix_rs::dictionary::standard_msg_types;
 use fix_rs::dictionary::field_types::generic::{CharFieldType,NoneFieldType,StringFieldType};
 use fix_rs::dictionary::field_types::other::{BusinessRejectReason,OrdType,SecurityIDSource,SessionRejectReason,Side};
@@ -36,6 +36,7 @@ use fix_rs::dictionary::fields::{TestReqID,HeartBtInt,BeginSeqNo,EndSeqNo,SideFi
 use fix_rs::dictionary::messages::{Logon,Logout,NewOrderSingle,ResendRequest,TestRequest,Heartbeat,SequenceReset,Reject,BusinessMessageReject};
 use fix_rs::field::Field;
 use fix_rs::fix::ParseError;
+use fix_rs::fix_version::FIXVersion;
 use fix_rs::fixt::client::{Client,ClientEvent,ConnectionTerminatedReason};
 use fix_rs::fixt::message::FIXTMessage;
 use fix_rs::message::{NOT_REQUIRED,REQUIRED,MessageDetails};
@@ -60,7 +61,7 @@ fn test_1B() {
         let (mut test_server,mut client,connection_id) = TestServer::setup(build_dictionary());
 
         let logon_message = new_logon_message();
-        client.send_message(connection_id,Box::new(logon_message.clone()));
+        client.send_message(connection_id,logon_message.clone());
 
         let message = test_server.recv_message::<Logon>();
         server_response_func(&mut test_server,message.clone());
@@ -247,7 +248,7 @@ fn test_2B() {
 
         let mut message = new_fixt_message!(TestRequest);
         message.test_req_id = String::from("1");
-        client.send_message(connection_id,Box::new(message));
+        client.send_message(connection_id,message);
         let message = test_server.recv_message::<TestRequest>();
         assert_eq!(message.msg_seq_num,2);
 
@@ -259,7 +260,7 @@ fn test_2B() {
         assert_eq!(message.msg_seq_num,2);
 
         let message = new_fixt_message!(Logout);
-        client.send_message(connection_id,Box::new(message));
+        client.send_message(connection_id,message);
         let message = test_server.recv_message::<Logout>();
         assert_eq!(message.msg_seq_num,3);
 
@@ -479,6 +480,40 @@ fn test_2B() {
         });
     }
 
+    //h. BeginStr should match specified value. This test is basically performed in most other
+    //tests so it's skipped here.
+
+    //i. If BeginStr does not match the specified value, Client should respond with a Logout
+    //referencing the incorrect BeginStr value, disconnect, and issue an error.
+    {
+        //Connect and logon.
+        let (mut test_server,mut client,connection_id) = TestServer::setup_and_logon_with_ver(FIXVersion::FIXT_1_1,build_dictionary());
+
+        //Send TestRequest with wrong BeginStr.
+        let mut message = new_fixt_message!(TestRequest);
+        message.msg_seq_num = 2;
+        message.test_req_id = String::from("2");
+        send_message(&mut test_server.stream,&FIXVersion::FIX_4_2,Box::new(message));
+
+        //Client should send Logout and then disconnect.
+        let message = test_server.recv_message::<Logout>();
+        assert_eq!(message.text,"BeginStr is wrong, expected 'FIXT.1.1' but received 'FIX.4.2'");
+
+        client_poll_event!(client,ClientEvent::ConnectionTerminated(terminated_connection_id,reason) => {
+            assert_eq!(terminated_connection_id,connection_id);
+            assert!(
+                if let ConnectionTerminatedReason::BeginStrWrongError{received,expected} = reason {
+                    assert_eq!(received,FIXVersion::FIX_4_2.begin_string());
+                    assert_eq!(expected,FIXVersion::FIXT_1_1.begin_string());
+                    true
+                }
+                else {
+                    false
+                }
+            );
+        });
+    }
+
     //j. and k. SenderCompID and TargetCompID should match specified values. Otherwise, Client
     //should respond with a Reject and then Logout.
     {
@@ -667,7 +702,6 @@ fn test_2B() {
         assert_eq!(message.msg_seq_num,3);
     }
 
-    //h., i.: TODO: BeginStr should match value in specified testing profile. Otherwise, Logout.
     //l., m.: TODO: BodyLength must be correct. Otherwise, ignore and issue warning.
     //n., o.: TODO: SendingTime must be within 2 minutes of current (atomic click-based) time.
     //              Otherwise, Reject and Logout.
@@ -713,7 +747,7 @@ fn test_4B() {
         //Send message to reset Client's output heartbeat.
         let mut message = new_fixt_message!(TestRequest);
         message.test_req_id = String::from("1");
-        client.send_message(connection_id,Box::new(message));
+        client.send_message(connection_id,message);
         let _ = test_server.recv_message::<TestRequest>();
 
         //Sleep a little bit and make sure clienent sends a TestRequest because it didn't receive
@@ -1765,7 +1799,7 @@ fn test_20B() {
     for x in 2..6 {
         let mut message = new_fixt_message!(TestRequest);
         message.test_req_id = x.to_string();
-        client.send_message(connection_id,Box::new(message));
+        client.send_message(connection_id,message);
 
         let message = test_server.recv_message::<TestRequest>();
         assert_eq!(message.msg_seq_num,x);

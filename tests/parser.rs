@@ -25,6 +25,7 @@ use fix_rs::dictionary::fields::{EncryptMethod,HeartBtInt,MsgSeqNum,SendingTime,
 use fix_rs::field::Field;
 use fix_rs::field_type::FieldType;
 use fix_rs::fix::{Parser,ParseError};
+use fix_rs::fix_version::FIXVersion;
 use fix_rs::fixt::message::FIXTMessage;
 use fix_rs::message::{MessageDetails,REQUIRED,NOT_REQUIRED};
 
@@ -120,12 +121,12 @@ fn parse_message<T: FIXTMessage + Default + Any + Clone + PartialEq + Send>(mess
     {
         {
             let mut new_message_bytes = Vec::new();
-            casted_message.read(&mut new_message_bytes);
+            casted_message.read(&FIXVersion::FIX_4_2,&mut new_message_bytes);
             let buffer: Vec<u8> = new_message_bytes.into_iter().map(|c| if c == b'\x01' { b'|' } else { c } ).collect();
             println!("{:?}",String::from_utf8_lossy(&buffer[..]))
         }
         let mut new_message_bytes = Vec::new();
-        casted_message.read(&mut new_message_bytes);
+        casted_message.read(&FIXVersion::FIX_4_2,&mut new_message_bytes);
         parser.messages.clear();
         let(_,result) = parser.parse(&new_message_bytes);
         if result.is_err() {

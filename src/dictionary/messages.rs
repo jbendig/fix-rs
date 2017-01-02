@@ -43,6 +43,10 @@ impl Message for NullMessage {
         unimplemented!();
     }
 
+    fn meta(&self) -> &Option<Meta> {
+        unimplemented!();
+    }
+
     fn set_meta(&mut self,_meta: Meta) {
         unimplemented!();
     }

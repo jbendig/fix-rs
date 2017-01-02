@@ -13,6 +13,7 @@ use std::any::Any;
 use std::collections::{HashMap,HashSet};
 use std::io::Write;
 
+use fix_version::FIXVersion;
 use rule::Rule;
 
 #[derive(Clone,Default,PartialEq)]
@@ -37,6 +38,7 @@ pub trait Message {
     fn fields(&self) -> HashMap<&'static [u8],Rule>;
     fn required_fields(&self) -> HashSet<&'static [u8]>;
     fn conditional_required_fields(&self) -> Vec<&'static [u8]>;
+    fn meta(&self) -> &Option<Meta>;
     fn set_meta(&mut self,meta: Meta);
     fn set_value(&mut self,key: &[u8],value: &[u8]) -> Result<(),SetValueError>;
     fn set_groups(&mut self,key: &[u8],groups: &[Box<Message>]) -> bool;
@@ -45,7 +47,7 @@ pub trait Message {
     fn new_into_box(&self) -> Box<Message + Send>; //TODO: Investigate having a builder type afterall....
     fn msg_type_header(&self) -> Vec<u8>;
     fn read_body(&self,buf: &mut Vec<u8>) -> usize;
-    fn read(&self,buf: &mut Vec<u8>) -> usize {
+    fn read(&self,fix_version: &FIXVersion,buf: &mut Vec<u8>) -> usize {
         //TODO: Try and avoid reallocations by providing a start offset and then inserting
         //the header in a reserved space at the beginning.
 
@@ -54,14 +56,15 @@ pub trait Message {
         self.read_body(&mut body);
 
         //Prepare header.
-        let protocol_header = b"8=FIXT.1.1\x01"; //TODO: Make the protocol version adjustable.
         let message_type = self.msg_type_header();
         let message_type_len = message_type.len();
         let body_length_str = (body.len() + message_type_len).to_string();
 
         //Write header and body of message.
         let write_start_offset = buf.len();
-        let mut byte_count = buf.write(protocol_header).unwrap();
+        let mut byte_count = buf.write(b"8=").unwrap();
+        byte_count += buf.write(fix_version.begin_string()).unwrap();
+        byte_count += buf.write(b"\x01").unwrap();
         byte_count += buf.write(b"9=").unwrap();
         byte_count += buf.write(body_length_str.as_bytes()).unwrap();
         byte_count += buf.write(b"\x01").unwrap();
@@ -166,6 +169,10 @@ macro_rules! define_message {
                 )* )*
 
                 result
+            }
+
+            fn meta(&self) -> &Option<$crate::message::Meta> {
+                &self.meta
             }
 
             fn set_meta(&mut self,meta: $crate::message::Meta) {

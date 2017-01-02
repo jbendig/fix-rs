@@ -26,10 +26,12 @@ use dictionary::fields::{SenderCompID,TargetCompID};
 use field::Field;
 use field_type::FieldType;
 use fix::ParseError;
+use fix_version::FIXVersion;
 
 const CLIENT_EVENT_TOKEN: Token = Token(0);
 
 pub enum ConnectionTerminatedReason {
+    BeginStrWrongError{ received: Vec<u8>, expected: &'static [u8] },
     ClientRequested,
     InboundMsgSeqNumMaxExceededError,
     InboundMsgSeqNumLowerThanExpectedError,
@@ -50,6 +52,11 @@ pub enum ConnectionTerminatedReason {
 impl fmt::Debug for ConnectionTerminatedReason {
     fn fmt(&self,f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
+            ConnectionTerminatedReason::BeginStrWrongError{ref received,ref expected} => {
+                let received_str = String::from_utf8_lossy(received).into_owned();
+                let expected_str = String::from_utf8_lossy(expected).into_owned();
+                write!(f,"Received message with BeginStr containing '{}' but expected '{}'.",received_str,expected_str)
+            },
             ConnectionTerminatedReason::ClientRequested => write!(f,"Client requested logout and it was performed cleanly."),
             ConnectionTerminatedReason::InboundMsgSeqNumMaxExceededError => write!(f,"Expected inbound MsgSeqNum exceeded maximum allowed."),
             ConnectionTerminatedReason::InboundMsgSeqNumLowerThanExpectedError => write!(f,"Received message with lower MsgSeqNum than expected."),
@@ -132,7 +139,7 @@ impl Client {
         })
     }
 
-    pub fn add_connection<A: ToSocketAddrs>(&mut self,address: A) -> Option<usize> {
+    pub fn add_connection<A: ToSocketAddrs>(&mut self,fix_version: FIXVersion,address: A) -> Option<usize> {
         //Use first socket address. This more or less emulates TcpStream::connect.
         let address = match address.to_socket_addrs() {
             Ok(mut address_iter) => {
@@ -151,12 +158,17 @@ impl Client {
         };
 
         //Tell thread to setup this connection by connecting a socket and logging on.
-        self.tx.send(InternalClientToThreadEvent::NewConnection(Token(connection_id),address)).unwrap();
+        self.tx.send(InternalClientToThreadEvent::NewConnection(Token(connection_id),fix_version,address)).unwrap();
 
         Some(connection_id)
     }
 
-    pub fn send_message(&mut self,connection_id: usize,message: Box<FIXTMessage + Send>) {
+    pub fn send_message<T: 'static + FIXTMessage + Send>(&mut self,connection_id: usize,message: T) {
+        let message = Box::new(message);
+        self.send_message_box(connection_id,message);
+    }
+
+    pub fn send_message_box(&mut self,connection_id: usize,message: Box<FIXTMessage + Send>) {
         self.tx.send(InternalClientToThreadEvent::SendMessage(Token(connection_id),message)).unwrap();
     }
 

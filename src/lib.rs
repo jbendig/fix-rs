@@ -25,6 +25,7 @@ pub mod constant;
 pub mod field;
 pub mod field_type;
 pub mod fix;
+pub mod fix_version;
 #[macro_use]
 pub mod message;
 mod network_read_retry;

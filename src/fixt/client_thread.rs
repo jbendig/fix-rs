@@ -32,6 +32,7 @@ use dictionary::messages::{Logon,Logout,ResendRequest,TestRequest,Heartbeat,Sequ
 use field::Field;
 use field_type::FieldType;
 use fix::{Parser,ParseError};
+use fix_version::FIXVersion;
 use fixt::client::{ClientEvent,ConnectionTerminatedReason};
 use fixt::message::FIXTMessage;
 use network_read_retry::NetworkReadRetry;
@@ -257,7 +258,7 @@ fn reset_inbound_timeout(timer: &mut Timer<(TimeoutType,Token)>,inbound_timeout:
 
 #[derive(Debug)]
 pub enum InternalClientToThreadEvent {
-    NewConnection(Token,SocketAddr),
+    NewConnection(Token,FIXVersion,SocketAddr),
     SendMessage(Token,Box<FIXTMessage + Send>),
     Logout(Token),
     Shutdown,
@@ -274,6 +275,7 @@ enum ConnectionReadMessage {
 }
 
 struct Connection {
+    fix_version: FIXVersion,
     socket: TcpStream,
     token: Token,
     outbound_messages: Vec<OutboundMessage>,
@@ -343,7 +345,8 @@ impl Connection {
                     (*self.sender_comp_id).clone(),
                     (*self.target_comp_id).clone()
                 );
-                self.outbound_buffer.clear_and_read_all(|ref mut bytes| { message.message.read(bytes); });
+                let fix_version = &self.fix_version;
+                self.outbound_buffer.clear_and_read_all(|ref mut bytes| { message.message.read(fix_version,bytes); });
 
                 //TODO: Hold onto message and pass it off to the client or some callback so the
                 //library user knows exactly which messages have been sent -- although not
@@ -556,7 +559,7 @@ impl InternalThread {
 
         match client_event {
             //Client wants to setup a new connection.
-            InternalClientToThreadEvent::NewConnection(token,address) => {
+            InternalClientToThreadEvent::NewConnection(token,fix_version,address) => {
                 let socket = match TcpStream::connect(&address) {
                     Ok(socket) => socket,
                     Err(e) => {
@@ -566,6 +569,7 @@ impl InternalThread {
                 };
 
                 let connection = Connection {
+                    fix_version: fix_version,
                     socket: socket,
                     token: token,
                     outbound_messages: Vec::new(),
@@ -1027,6 +1031,37 @@ impl InternalThread {
             }
 
             Ok(Some(message))
+        }
+
+        //Start by making sure the message is using the expected protocol version. Otherwise,we
+        //should logout and disconnect immediately.
+        {
+            let ref received_protocol_version = message.meta().as_ref().expect("Meta should be set by parser").protocol;
+            let expected_protocol_version = connection.fix_version.begin_string();
+            if *received_protocol_version != expected_protocol_version {
+                use std::fmt::Write;
+
+                let mut error_text = String::new();
+                let _ = write!(
+                    &mut error_text,
+                    "BeginStr is wrong, expected '{}' but received '{}'",
+                    String::from_utf8_lossy(&expected_protocol_version[..]),
+                    String::from_utf8_lossy(received_protocol_version)
+                );
+
+                connection.initiate_logout(
+                    timer,
+                    LoggingOutType::Error(
+                        ConnectionTerminatedReason::BeginStrWrongError {
+                            received: received_protocol_version.to_vec(),
+                            expected: expected_protocol_version
+                        }
+                    ),
+                    &error_text[..]
+                );
+
+                return Ok(());
+            }
         }
 
         //Every message must have SenderCompID and TargetCompID set to the expected values or else

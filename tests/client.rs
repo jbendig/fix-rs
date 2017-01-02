@@ -25,6 +25,7 @@ mod common;
 use common::{TestServer,new_logon_message};
 use fix_rs::dictionary::field_types::other::SessionRejectReason;
 use fix_rs::dictionary::messages::{Heartbeat,Logon,Logout,Reject,ResendRequest,SequenceReset,TestRequest};
+use fix_rs::fix_version::FIXVersion;
 use fix_rs::fixt::client::{ClientEvent,ConnectionTerminatedReason};
 use fix_rs::fixt::tests::{INBOUND_MESSAGES_BUFFER_LEN_MAX,INBOUND_BYTES_BUFFER_CAPACITY};
 use fix_rs::fixt::message::FIXTMessage;
@@ -371,7 +372,7 @@ fn test_wrong_sender_comp_id_in_logon_response() {
     let (mut test_server,mut client,connection_id) = TestServer::setup(build_dictionary());
 
     let message = new_logon_message();
-    client.send_message(connection_id,Box::new(message));
+    client.send_message(connection_id,message);
     let _ = test_server.recv_message::<Logon>();
 
     //Respond with a logon messaging containing the wrong SenderCompID.
@@ -415,7 +416,7 @@ fn test_wrong_target_comp_id_in_logon_response() {
     let (mut test_server,mut client,connection_id) = TestServer::setup(build_dictionary());
 
     let message = new_logon_message();
-    client.send_message(connection_id,Box::new(message));
+    client.send_message(connection_id,message);
     let _ = test_server.recv_message::<Logon>();
 
     //Respond with a logon messaging containing the wrong TargetCompID.
@@ -472,7 +473,7 @@ fn test_overflowing_inbound_messages_buffer_does_resume() {
         test_request_message.msg_seq_num = (x + 2) as u64;
         test_request_message.test_req_id = String::from("test");
 
-        test_request_message.read(&mut bytes);
+        test_request_message.read(&FIXVersion::FIXT_1_1,&mut bytes);
     }
     assert!(bytes.len() < 1400); //Make sure the serialized body is reasonably likely to fit within the MTU.
     assert!(bytes.len() < INBOUND_BYTES_BUFFER_CAPACITY); //Make sure client thread can theoretically store all of the messages in a single recv().

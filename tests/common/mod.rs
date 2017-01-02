@@ -27,6 +27,7 @@ use fix_rs::dictionary::CloneDictionary;
 use fix_rs::dictionary::field_types::other::ApplVerID;
 use fix_rs::dictionary::messages::Logon;
 use fix_rs::fix::Parser;
+use fix_rs::fix_version::FIXVersion;
 use fix_rs::fixt::client::{Client,ClientEvent};
 use fix_rs::fixt::message::FIXTMessage;
 
@@ -123,30 +124,41 @@ pub fn recv_bytes_with_timeout(stream: &mut TcpStream,timeout: Duration) -> Opti
     None
 }
 
-pub fn send_message(stream: &mut TcpStream,message: Box<FIXTMessage + Send>) {
+pub fn send_message(stream: &mut TcpStream,fix_version: &FIXVersion,message: Box<FIXTMessage + Send>) {
     let mut bytes = Vec::new();
-    message.read(&mut bytes);
+    message.read(fix_version,&mut bytes);
 
-    let bytes_written = stream.write(&bytes).unwrap();
-    assert_eq!(bytes_written,bytes.len());
+    let mut bytes_written_total = 0;
+    while bytes_written_total < bytes.len() {
+        match  stream.write(&bytes[bytes_written_total..bytes.len()]) {
+            Ok(bytes_written) => bytes_written_total += bytes_written,
+            Err(e) => {
+                if e.kind() == ::std::io::ErrorKind::WouldBlock {
+                    continue;
+                }
+                panic!("Could not write bytes: {}",e);
+            },
+        }
+    }
 }
 
 pub struct TestServer {
     _listener: TcpListener,
+    fix_version: FIXVersion,
     pub stream: TcpStream,
     poll: Poll,
     parser: Parser,
 }
 
 impl TestServer {
-    pub fn setup(message_dictionary: HashMap<&'static [u8],Box<FIXTMessage + Send>>) -> (TestServer,Client,usize) {
+    pub fn setup_with_ver(fix_version: FIXVersion,message_dictionary: HashMap<&'static [u8],Box<FIXTMessage + Send>>) -> (TestServer,Client,usize) {
         //Setup server listener socket.
         let addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127,0,0,1),SOCKET_PORT.fetch_add(1,Ordering::SeqCst) as u16));
         let listener = TcpListener::bind(&addr).unwrap();
 
         //Setup client and connect to socket.
         let mut client = Client::new(message_dictionary.clone(),String::from(CLIENT_SENDER_COMP_ID),String::from(CLIENT_TARGET_COMP_ID)).unwrap();
-        let connection_id = client.add_connection(addr).unwrap();
+        let connection_id = client.add_connection(fix_version.clone(),addr).unwrap();
 
         //Try to accept connection from client. Fails on timeout or socket error.
         let stream = accept_with_timeout(&listener,Duration::from_secs(5)).expect("Could not accept connection");
@@ -160,18 +172,23 @@ impl TestServer {
 
         (TestServer {
             _listener: listener,
+            fix_version: fix_version,
             stream: stream,
             poll: poll,
             parser: Parser::new(message_dictionary),
         },client,connection_id)
     }
 
-    pub fn setup_and_logon(message_dictionary: HashMap<&'static [u8],Box<FIXTMessage + Send>>) -> (TestServer,Client,usize) {
+    pub fn setup(message_dictionary: HashMap<&'static [u8],Box<FIXTMessage + Send>>) -> (TestServer,Client,usize) {
+        Self::setup_with_ver(FIXVersion::FIXT_1_1,message_dictionary)
+    }
+
+    pub fn setup_and_logon_with_ver(fix_version: FIXVersion,message_dictionary: HashMap<&'static [u8],Box<FIXTMessage + Send>>) -> (TestServer,Client,usize) {
         //Connect.
-        let (mut test_server,mut client,connection_id) = TestServer::setup(message_dictionary);
+        let (mut test_server,mut client,connection_id) = TestServer::setup_with_ver(fix_version,message_dictionary);
 
         //Logon.
-        client.send_message(connection_id,Box::new(new_logon_message()));
+        client.send_message(connection_id,new_logon_message());
         let message = test_server.recv_message::<Logon>();
         assert_eq!(message.msg_seq_num,1);
 
@@ -185,6 +202,10 @@ impl TestServer {
         assert_eq!(message.msg_seq_num,1);
 
         (test_server,client,connection_id)
+    }
+
+    pub fn setup_and_logon(message_dictionary: HashMap<&'static [u8],Box<FIXTMessage + Send>>) -> (TestServer,Client,usize) {
+        Self::setup_and_logon_with_ver(FIXVersion::FIXT_1_1,message_dictionary)
     }
 
     pub fn is_stream_closed(&self,timeout: Duration) -> bool {
@@ -255,7 +276,7 @@ impl TestServer {
     }
 
     pub fn send_message<T: FIXTMessage + Any + Send>(&mut self,message: T) {
-        send_message(&mut self.stream,Box::new(message));
+        send_message(&mut self.stream,&self.fix_version,Box::new(message));
     }
 }
 

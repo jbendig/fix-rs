@@ -19,6 +19,7 @@ use chrono::TimeZone;
 use fix_rs::dictionary::field_types::other::ApplVerID;
 use fix_rs::dictionary::messages::Logon;
 use fix_rs::fix::Parser;
+use fix_rs::fix_version::FIXVersion;
 use fix_rs::fixt::client::Client;
 use fix_rs::message::Message;
 
@@ -82,7 +83,7 @@ fn main() {
     }
 
     let message1 = message1.unwrap();
-    message1.read(&mut serialized_bytes);
+    message1.read(&FIXVersion::FIX_4_2,&mut serialized_bytes);
 
     println!("{}",String::from_utf8_lossy(serialized_bytes.as_slice()).into_owned());
     println!("Compared to...");

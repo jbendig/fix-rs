@@ -14,6 +14,7 @@ use std::fmt;
 use dictionary::fields::{MsgSeqNum,OrigSendingTime,SenderCompID,SendingTime,TargetCompID};
 use field::Field;
 use field_type::FieldType;
+use fix_version::FIXVersion;
 use message::Message;
 
 pub trait FIXTMessage: Message {
@@ -34,7 +35,7 @@ pub trait FIXTMessage: Message {
 impl fmt::Debug for FIXTMessage + Send {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut buffer = Vec::new();
-        self.read(&mut buffer);
+        self.read(&FIXVersion::FIXT_1_1,&mut buffer);
         let buffer: Vec<u8> = buffer.into_iter().map(|c| if c == b'\x01' { b'|' } else { c } ).collect();
         write!(f,"{:?}",String::from_utf8_lossy(&buffer[..]))
     }
