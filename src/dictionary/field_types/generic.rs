@@ -995,6 +995,48 @@ impl FieldType for DataFieldType {
     }
 }
 
+pub struct DayOfMonthFieldType;
+
+impl FieldType for DayOfMonthFieldType {
+    type Type = Option<u8>;
+
+    fn default_value() -> Self::Type {
+        None
+    }
+
+    fn set_value(field: &mut Self::Type,bytes: &[u8]) -> Result<(),SetValueError> {
+        let value_string = String::from_utf8_lossy(bytes).into_owned();
+        if let Ok(new_value) = u8::from_str(&value_string) {
+            if new_value < 1 || new_value > 31 {
+                return Err(SetValueError::OutOfRange);
+            }
+
+            *field = Some(new_value);
+
+            return Ok(());
+        }
+
+        Err(SetValueError::WrongFormat)
+    }
+
+    fn is_empty(field: &Self::Type) -> bool {
+        field.is_none()
+    }
+
+    fn len(_field: &Self::Type) -> usize {
+        0
+    }
+
+    fn read(field: &Self::Type,buf: &mut Vec<u8>) -> usize {
+        if let Some(value) = *field {
+            let value_string = value.to_string();
+            return buf.write(value_string.as_bytes()).unwrap()
+        }
+
+        0
+    }
+}
+
 pub struct IntFieldType;
 
 impl FieldType for IntFieldType {

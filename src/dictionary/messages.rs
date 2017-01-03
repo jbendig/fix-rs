@@ -17,29 +17,30 @@ use field::Field;
 use field_type::FieldType;
 use fixt::message::FIXTMessage;
 use message::{REQUIRED,NOT_REQUIRED,Message,Meta,SetValueError};
+use message_version::MessageVersion;
 use rule::Rule;
 
 pub struct NullMessage {
 }
 
 impl Message for NullMessage {
-    fn first_field(&self) -> &'static [u8] {
+    fn first_field(&self,_version: MessageVersion) -> &'static [u8] {
         unimplemented!();
     }
 
-    fn field_count(&self) -> usize {
+    fn field_count(&self,_version: MessageVersion) -> usize {
         unimplemented!();
     }
 
-    fn fields(&self) -> HashMap<&'static [u8],Rule> {
+    fn fields(&self,_version: MessageVersion) -> HashMap<&'static [u8],Rule> {
         unimplemented!();
     }
 
-    fn required_fields(&self) -> HashSet<&'static [u8]> {
+    fn required_fields(&self,_version: MessageVersion) -> HashSet<&'static [u8]> {
         unimplemented!();
     }
 
-    fn conditional_required_fields(&self) -> Vec<&'static [u8]> {
+    fn conditional_required_fields(&self,_version: MessageVersion) -> Vec<&'static [u8]> {
         unimplemented!();
     }
 
@@ -123,111 +124,112 @@ impl FIXTMessage for NullMessage {
 
 //FIXT Administrative Messages
 define_fixt_message!(Heartbeat: b"0" => {
-    NOT_REQUIRED, test_req_id: TestReqID,
+    NOT_REQUIRED, test_req_id: TestReqID [FIX40..],
 });
 
 define_fixt_message!(Logon: b"A" => {
-    REQUIRED, encrypt_method: EncryptMethod,
-    REQUIRED, heart_bt_int: HeartBtInt,
-    NOT_REQUIRED, raw_data_length: RawDataLength,
-    NOT_REQUIRED, raw_data: RawData,
-    NOT_REQUIRED, reset_seq_num_flag: ResetSeqNumFlag,
-    NOT_REQUIRED, next_expected_msg_seq_num: NextExpectedMsgSeqNum,
-    NOT_REQUIRED, max_message_size: MaxMessageSize,
-    NOT_REQUIRED, msg_type_grp: NoMsgTypeGrp,
-    NOT_REQUIRED, test_message_indicator: TestMessageIndicator,
-    NOT_REQUIRED, username: Username,
-    NOT_REQUIRED, password: Password,
-    NOT_REQUIRED, new_password: NewPassword,
-    NOT_REQUIRED, encrypted_password_method: EncryptedPasswordMethod,
-    NOT_REQUIRED, encrypted_password_len: EncryptedPasswordLen,
-    NOT_REQUIRED, encrypted_password: EncryptedPassword,
-    NOT_REQUIRED, encrypted_new_password_len: EncryptedNewPasswordLen,
-    NOT_REQUIRED, encrypted_new_password: EncryptedNewPassword,
-    NOT_REQUIRED, session_status: SessionStatus,
-    REQUIRED, default_appl_ver_id: DefaultApplVerID,
-    NOT_REQUIRED, default_appl_ext_id: DefaultApplExtID,
-    NOT_REQUIRED, default_cstm_appl_ver_id: DefaultCstmApplVerID,
-    NOT_REQUIRED, text: Text,
-    NOT_REQUIRED, encoded_text_len: EncodedTextLen,
-    NOT_REQUIRED, encoded_text: EncodedText,
+    REQUIRED, encrypt_method: EncryptMethod [FIX40..],
+    REQUIRED, heart_bt_int: HeartBtInt [FIX40..],
+    NOT_REQUIRED, raw_data_length: RawDataLength [FIX40..],
+    NOT_REQUIRED, raw_data: RawData [FIX40..],
+    NOT_REQUIRED, reset_seq_num_flag: ResetSeqNumFlag [FIX41..],
+    NOT_REQUIRED, next_expected_msg_seq_num: NextExpectedMsgSeqNum [FIX44..],
+    NOT_REQUIRED, max_message_size: MaxMessageSize [FIX42..],
+    NOT_REQUIRED, msg_type_grp: NoMsgTypeGrp [FIX42..],
+    NOT_REQUIRED, test_message_indicator: TestMessageIndicator [FIX43..],
+    NOT_REQUIRED, username: Username [FIX43..],
+    NOT_REQUIRED, password: Password [FIX43..],
+    NOT_REQUIRED, new_password: NewPassword [FIX50SP1..],
+    NOT_REQUIRED, encrypted_password_method: EncryptedPasswordMethod [FIX50SP1..],
+    NOT_REQUIRED, encrypted_password_len: EncryptedPasswordLen [FIX50SP1..],
+    NOT_REQUIRED, encrypted_password: EncryptedPassword [FIX50SP1..],
+    NOT_REQUIRED, encrypted_new_password_len: EncryptedNewPasswordLen [FIX50SP1..],
+    NOT_REQUIRED, encrypted_new_password: EncryptedNewPassword [FIX50SP1..],
+    NOT_REQUIRED, session_status: SessionStatus [FIX50SP1..],
+    REQUIRED, default_appl_ver_id: DefaultApplVerID [FIX50..],
+    NOT_REQUIRED, default_appl_ext_id: DefaultApplExtID [FIX50SP1..],
+    NOT_REQUIRED, default_cstm_appl_ver_id: DefaultCstmApplVerID [FIX50SP1..],
+    NOT_REQUIRED, text: Text [FIX50SP1..],
+    NOT_REQUIRED, encoded_text_len: EncodedTextLen [FIX50SP1..],
+    NOT_REQUIRED, encoded_text: EncodedText [FIX50SP1..],
 });
 
 define_fixt_message!(TestRequest: b"1" => {
-    REQUIRED, test_req_id: TestReqID,
+    REQUIRED, test_req_id: TestReqID [FIX40..],
 });
 
 define_fixt_message!(ResendRequest: b"2" => {
-    REQUIRED, begin_seq_no: BeginSeqNo,
-    REQUIRED, end_seq_no: EndSeqNo,
+    REQUIRED, begin_seq_no: BeginSeqNo [FIX40..],
+    REQUIRED, end_seq_no: EndSeqNo [FIX40..],
 });
 
 define_fixt_message!(Reject: b"3" => {
-    REQUIRED, ref_seq_num: RefSeqNum,
-    NOT_REQUIRED, ref_tag_id: RefTagID,
-    NOT_REQUIRED, ref_msg_type: RefMsgType,
-    NOT_REQUIRED, ref_appl_ver_id: RefApplVerID,
-    NOT_REQUIRED, ref_appl_ext_id: RefApplExtID,
-    NOT_REQUIRED, ref_cstm_appl_ver_id: RefCstmApplVerID,
-    NOT_REQUIRED, session_reject_reason: SessionRejectReason,
-    NOT_REQUIRED, text: Text,
-    NOT_REQUIRED, encoded_text_len: EncodedTextLen,
-    NOT_REQUIRED, encoded_text: EncodedText,
+    REQUIRED, ref_seq_num: RefSeqNum [FIX40..],
+    NOT_REQUIRED, ref_tag_id: RefTagID [FIX42..],
+    NOT_REQUIRED, ref_msg_type: RefMsgType [FIX42..],
+    NOT_REQUIRED, ref_appl_ver_id: RefApplVerID [FIX50SP1..],
+    NOT_REQUIRED, ref_appl_ext_id: RefApplExtID [FIX50SP1..],
+    NOT_REQUIRED, ref_cstm_appl_ver_id: RefCstmApplVerID [FIX50SP1..],
+    NOT_REQUIRED, session_reject_reason: SessionRejectReason [FIX42..],
+    NOT_REQUIRED, text: Text [FIX40..],
+    NOT_REQUIRED, encoded_text_len: EncodedTextLen [FIX42..],
+    NOT_REQUIRED, encoded_text: EncodedText [FIX42..],
 });
 
 define_fixt_message!(SequenceReset: b"4" => {
-    NOT_REQUIRED, gap_fill_flag: GapFillFlag,
-    REQUIRED, new_seq_no: NewSeqNo,
+    NOT_REQUIRED, gap_fill_flag: GapFillFlag [FIX40..],
+    REQUIRED, new_seq_no: NewSeqNo [FIX40..],
 });
 
 define_fixt_message!(Logout: b"5" => {
-    NOT_REQUIRED, session_status: SessionStatus,
-    NOT_REQUIRED, text: Text,
-    NOT_REQUIRED, encoded_text_len: EncodedTextLen,
-    NOT_REQUIRED, encoded_text: EncodedText,
+    NOT_REQUIRED, session_status: SessionStatus [FIX50SP1..],
+    NOT_REQUIRED, text: Text [FIX40..],
+    NOT_REQUIRED, encoded_text_len: EncodedTextLen [FIX42..],
+    NOT_REQUIRED, encoded_text: EncodedText [FIX42..],
 });
 
 //Other Messages
 
 define_fixt_message!(Email: b"C" => {
-    REQUIRED, email_thread_id: EmailThreadID,
-    REQUIRED, email_type: EmailType,
-    NOT_REQUIRED, orig_time: OrigTime,
-    REQUIRED, subject: Subject,
-    NOT_REQUIRED, encoded_subject_len: EncodedSubjectLen,
-    NOT_REQUIRED, encoded_subject: EncodedSubject,
-    NOT_REQUIRED, no_routing_ids: NoRoutingIDs,
-    NOT_REQUIRED, no_related_sym: NoRelatedSym,
-    NOT_REQUIRED, no_underlyings: NoUnderlyings,
-    NOT_REQUIRED, no_legs: NoLegs,
-    NOT_REQUIRED, order_id: OrderID,
-    NOT_REQUIRED, cl_ord_id: ClOrdID,
-    REQUIRED, no_lines_of_text: NoLinesOfText,
-    NOT_REQUIRED, raw_data_length: RawDataLength,
-    NOT_REQUIRED, raw_data: RawData,
+    REQUIRED, email_thread_id: EmailThreadID [FIX41..],
+    REQUIRED, email_type: EmailType [FIX40..],
+    NOT_REQUIRED, orig_time: OrigTime [FIX40..],
+    NOT_REQUIRED, related_sym: RelatedSym [FIX40..FIX41],
+    REQUIRED, subject: Subject [FIX41..],
+    NOT_REQUIRED, encoded_subject_len: EncodedSubjectLen [FIX42..],
+    NOT_REQUIRED, encoded_subject: EncodedSubject [FIX42..],
+    NOT_REQUIRED, no_routing_ids: NoRoutingIDs [FIX42..],
+    NOT_REQUIRED, no_related_sym: NoRelatedSym [FIX41..],
+    NOT_REQUIRED, no_underlyings: NoUnderlyings [FIX44..],
+    NOT_REQUIRED, no_legs: NoLegs [FIX44..],
+    NOT_REQUIRED, order_id: OrderID [FIX40..],
+    NOT_REQUIRED, cl_ord_id: ClOrdID [FIX40..],
+    REQUIRED, no_lines_of_text: NoLinesOfText [FIX40..],
+    NOT_REQUIRED, raw_data_length: RawDataLength [FIX40..],
+    NOT_REQUIRED, raw_data: RawData [FIX40..],
 });
 
 define_fixt_message!(BusinessMessageReject: b"j" => {
-    NOT_REQUIRED, ref_seq_num: RefSeqNum,
-    REQUIRED, ref_msg_type: RefMsgType,
-    NOT_REQUIRED, ref_appl_ver_id: RefApplVerID,
-    NOT_REQUIRED, ref_appl_ext_id: RefApplExtID,
-    NOT_REQUIRED, ref_cstm_appl_ver_id: RefCstmApplVerID,
-    NOT_REQUIRED, business_reject_ref_id: BusinessRejectRefID,
-    REQUIRED, business_reject_reason: BusinessRejectReason,
-    NOT_REQUIRED, text: Text,
-    NOT_REQUIRED, encoded_text_len: EncodedTextLen,
-    NOT_REQUIRED, encoded_text: EncodedText,
+    NOT_REQUIRED, ref_seq_num: RefSeqNum [FIX42..],
+    REQUIRED, ref_msg_type: RefMsgType [FIX42..],
+    NOT_REQUIRED, ref_appl_ver_id: RefApplVerID [FIX50SP1..],
+    NOT_REQUIRED, ref_appl_ext_id: RefApplExtID [FIX50SP1..],
+    NOT_REQUIRED, ref_cstm_appl_ver_id: RefCstmApplVerID [FIX50SP1..],
+    NOT_REQUIRED, business_reject_ref_id: BusinessRejectRefID [FIX42..],
+    REQUIRED, business_reject_reason: BusinessRejectReason [FIX42..],
+    NOT_REQUIRED, text: Text [FIX42..],
+    NOT_REQUIRED, encoded_text_len: EncodedTextLen [FIX42..],
+    NOT_REQUIRED, encoded_text: EncodedText [FIX42..],
 });
 
-define_fixt_message!(NewOrderSingle: b"D" => {
-    REQUIRED, cl_ord_id: ClOrdID,
+define_fixt_message!(NewOrderSingle: b"D" => { //TODO: All version info for this message is wrong.
+    REQUIRED, cl_ord_id: ClOrdID [FIX40..],
     /*NOT_REQUIRED, secondary_cl_ord_id: SecondaryClOrdID,
     NOT_REQUIRED, cl_ord_link_id: ClOrdLinkID,
     NOT_REQUIRED, parties: NoParties,
     NOT_REQUIRED, trade_origination_date: TradeOriginationDate,
     NOT_REQUIRED, trade_date: TradeDate,*/
-    NOT_REQUIRED, account: Account,
+    NOT_REQUIRED, account: Account [FIX40..],
     /*NOT_REQUIRED, acct_id_source: AcctIDSource,
     NOT_REQUIRED, account_type: AccountType,
     NOT_REQUIRED, day_booking_inst: DayBookingInst,
@@ -235,52 +237,52 @@ define_fixt_message!(NewOrderSingle: b"D" => {
     NOT_REQUIRED, prealloc_method: PreallocMethod,
     NOT_REQUIRED, alloc_id: AllocID,
     NOT_REQUIRED, pre_alloc_grp: NoPreAllocGrp,*/
-    NOT_REQUIRED, settl_type: SettlType,
-    NOT_REQUIRED, settl_date: SettlDate,
+    NOT_REQUIRED, settl_type: SettlType [FIX40..],
+    NOT_REQUIRED, settl_date: SettlDate [FIX40..],
     /*NOT_REQUIRED, cash_margin: CashMargin,
     NOT_REQUIRED, clearing_free_indicator: ClearingFreeIndicator,*/
-    NOT_REQUIRED, handl_inst: HandlInst,
+    NOT_REQUIRED, handl_inst: HandlInst [FIX40..],
     /*NOT_REQUIRED, exec_inst: ExecInst,*/
-    NOT_REQUIRED, min_qty: MinQty,
+    NOT_REQUIRED, min_qty: MinQty [FIX40..],
     /*NOT_REQUIRED, match_increment: MatchIncrement,
     NOT_REQUIRED, max_price_levels: MaxPriceLevels,
     NOT_REQUIRED, display_instruction: NoDisplayInstruction,*/
-    NOT_REQUIRED, max_floor: MaxFloor,
+    NOT_REQUIRED, max_floor: MaxFloor [FIX40..],
     /*NOT_REQUIRED, ex_destination: ExDestination,
     NOT_REQUIRED, ex_destination_id_source: ExDestinationIDSource,
     NOT_REQUIRED, trdg_ses_grp: NoTrdgSesGrp,
     NOT_REQUIRED, process_code: ProcessCode,
     REQUIRED, instrument: NoInstrument,*/
-        REQUIRED, symbol: Symbol, //TODO: Part of the Instrument block.
-        REQUIRED, security_id: SecurityID, //TODO: Part of the Instrument block.
-        REQUIRED, security_id_source: SecurityIDSource, //TODO: Part of the Instrument block.
+        REQUIRED, symbol: Symbol [FIX40..], //TODO: Part of the Instrument block.
+        REQUIRED, security_id: SecurityID [FIX40..], //TODO: Part of the Instrument block.
+        REQUIRED, security_id_source: SecurityIDSource [FIX40..], //TODO: Part of the Instrument block.
     /*NOT_REQUIRED, financing_details: NoFinancingDetails,
     NOT_REQUIRED, und_instrmt_grp: NoUndInstrmtGrp,
     NOT_REQUIRED, prev_close_px: PrevClosePx,*/
-    REQUIRED, side: SideField,
+    REQUIRED, side: SideField [FIX40..],
     /*NOT_REQUIRED, locate_reqd: LocateReqd,*/
-    REQUIRED, transact_time: TransactTime,
+    REQUIRED, transact_time: TransactTime [FIX40..],
     /*NOT_REQUIRED, stipulations: NoStipulations,
     NOT_REQUIRED, qty_type: QtyType,*/
-    REQUIRED, order_qty: OrderQty, //TODO: One and only one of OrderQty, CashOrderQty or OrderPrecent should be specified.
+    REQUIRED, order_qty: OrderQty [FIX40..], //TODO: One and only one of OrderQty, CashOrderQty or OrderPrecent should be specified.
     /*NOT_REQUIRED, cash_order_qty: CashOrderQty,
     NOT_REQUIRED, order_precent: OrderPercent,
     NOT_REQUIRED, rounding_direction: RoundingDirection,
     NOT_REQUIRED, rounding_modulus: RoundingModulus,*/
-    REQUIRED, ord_type: OrdType,
+    REQUIRED, ord_type: OrdType [FIX40..],
     /*NOT_REQUIRED, price_type: PriceType,*/
-    NOT_REQUIRED, price: Price,
+    NOT_REQUIRED, price: Price [FIX40..],
     /*NOT_REQUIRED, price_protection_scope: PriceProtectionScope,
     NOT_REQUIRED, stop_px: StopPx,
     NOT_REQUIRED, triggering_instruction: NoTriggeringInstruction,
     NOT_REQUIRED, spread_or_benchmark_curve_data: NoSpreadOrBenchmarkCurveData,
     NOT_REQUIRED, yield_data: NoYieldData,*/
-    NOT_REQUIRED, currency: Currency,
+    NOT_REQUIRED, currency: Currency [FIX40..],
     /*NOT_REQUIRED, compliance_id: ComplianceID,
     NOT_REQUIRED, solicited_flag: SolicitedFlag,
     NOT_REQUIRED, ioi_id: IOIID,
     NOT_REQUIRED, quote_id: QuoteID,*/
-    NOT_REQUIRED, time_in_force: TimeInForce,
+    NOT_REQUIRED, time_in_force: TimeInForce [FIX40..],
     /*NOT_REQUIRED, effective_time: EffectiveTime,
     NOT_REQUIRED, expire_data: ExpireDate,
     NOT_REQUIRED, expire_time: ExpireTime,

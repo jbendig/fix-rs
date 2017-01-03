@@ -9,7 +9,7 @@
 // at your option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use dictionary::field_types::generic::{BoolTrueOrBlankFieldType,CharFieldType,CountryFieldType,CurrencyFieldType,DataFieldType,IntFieldType,LocalMktDateFieldType,MonthYearFieldType,NoneFieldType,RepeatingGroupFieldType,SeqNumFieldType,StringFieldType,UTCTimeOnlyFieldType,UTCTimestampFieldType};
+use dictionary::field_types::generic::{BoolTrueOrBlankFieldType,CharFieldType,CountryFieldType,CurrencyFieldType,DataFieldType,DayOfMonthFieldType,IntFieldType,LocalMktDateFieldType,MonthYearFieldType,NoneFieldType,RepeatingGroupFieldType,SeqNumFieldType,StringFieldType,UTCTimeOnlyFieldType,UTCTimestampFieldType};
 use dictionary::field_types::other as other_field_types;
 use dictionary::field_types::other::{ApplVerIDFieldType,BusinessRejectReasonFieldType,ComplexEventConditionFieldType,ComplexEventPriceBoundaryMethodFieldType,ComplexEventPriceTimeTypeFieldType,ComplexEventTypeFieldType,ContractMultiplierUnitFieldType,CPProgramFieldType,EmailTypeFieldType,EventTypeFieldType,ExerciseStyleFieldType,FlowScheduleTypeFieldType,HandlInstFieldType,InstrmtAssignmentMethodFieldType,IssuerFieldType,ListMethodFieldType,NotRequiredSecurityIDSourceFieldType,NotRequiredSecurityTypeFieldType as SecurityTypeFieldType,NotRequiredSideFieldType,NotRequiredSymbolSfxFieldType as SymbolSfxFieldType,NotRequiredTimeUnitFieldType as TimeUnitFieldType,OptPayoutTypeFieldType,OrdTypeFieldType,PartyIDSourceFieldType,PartyRoleFieldType,PartySubIDTypeFieldType,PriceQuoteMethodFieldType,ProductFieldType,PutOrCallFieldType,RateSourceFieldType,RateSourceTypeFieldType,RequiredSecurityIDSourceFieldType,RequiredSideFieldType,RequiredStipulationTypeFieldType as StipulationTypeFieldType,RestructuringTypeFieldType,RoutingTypeFieldType,SecurityStatusFieldType,SeniorityFieldType,SessionRejectReasonFieldType,SettlMethodFieldType,SettlTypeFieldType,StrikePriceBoundaryMethodFieldType,StrikePriceDeterminationMethodFieldType,TimeInForceFieldType,UnderlyingCashTypeFieldType,UnderlyingFXRateCalcFieldType,UnderlyingPriceDeterminationMethodFieldType,UnderlyingSettlementTypeFieldType,UnitOfMeasureFieldType,ValuationMethodFieldType};
 use message::{REQUIRED,NOT_REQUIRED};
@@ -41,6 +41,7 @@ define_fields!(
     PossDupFlag: BoolTrueOrBlankFieldType = b"43",
     Price: StringFieldType = b"44", //Price
     RefSeqNum: SeqNumFieldType = b"45",
+    RelatedSym: StringFieldType = b"46", //TODO: Old special field that can be repeated without a repeating group.
     SecurityID: StringFieldType = b"48",
     SenderCompID: StringFieldType = b"49",
     SenderSubID: StringFieldType = b"50",
@@ -93,6 +94,7 @@ define_fields!(
     MaturityMonthYear: MonthYearFieldType = b"200",
     PutOrCall: PutOrCallFieldType = b"201",
     StrikePrice: StringFieldType = b"202", //Price
+    MaturityDay: DayOfMonthFieldType = b"205",
     OptAttribute: CharFieldType = b"206",
     SecurityExchange: ExchangeFieldType = b"207",
     XmlDataLen: NoneFieldType = b"212" => Rule::PrepareForBytes{ bytes_tag: XmlData::tag() },
@@ -153,6 +155,7 @@ define_fields!(
     EncodedUnderlyingSecurityDescLen: NoneFieldType = b"364" => Rule::PrepareForBytes{ bytes_tag: EncodedUnderlyingSecurityDesc::tag() },
     EncodedUnderlyingSecurityDesc: DataFieldType = b"365" => Rule::ConfirmPreviousTag{ previous_tag: EncodedUnderlyingSecurityDescLen::tag() },
     LastMsgSeqNumProcessed: SeqNumFieldType = b"369",
+    OnBehalfOfSendingTime: UTCTimestampFieldType = b"370",
     RefTagID: StringFieldType = b"371", //int
     RefMsgType: StringFieldType = b"372",
     SessionRejectReason: SessionRejectReasonFieldType = b"373",
@@ -388,145 +391,147 @@ define_fields!(
 //Repeating Groups (Sorted Alphabetically)
 
 define_message!(Alloc {
-    REQUIRED, alloc_account: AllocAccount,
+    REQUIRED, alloc_account: AllocAccount [FIX40..FIX50SP2],
 });
 
 define_message!(ComplexEvent {
-    REQUIRED, complex_event_type: ComplexEventType,
-    NOT_REQUIRED, complex_opt_payout_amount: ComplexOptPayoutAmount,
-    NOT_REQUIRED, complex_event_price: ComplexEventPrice,
-    NOT_REQUIRED, complex_event_price_boundary_method: ComplexEventPriceBoundaryMethod,
-    NOT_REQUIRED, complex_event_price_boundary_precision: ComplexEventPriceBoundaryPrecision,
-    NOT_REQUIRED, complex_event_price_time_type: ComplexEventPriceTimeType,
-    NOT_REQUIRED, complex_event_condition: ComplexEventCondition, //TODO: Conditionally required only when there is more than one ComplexEvent.
-    NOT_REQUIRED, no_complex_event_dates: NoComplexEventDates,
+    REQUIRED, complex_event_type: ComplexEventType [FIX50SP2..],
+    NOT_REQUIRED, complex_opt_payout_amount: ComplexOptPayoutAmount [FIX50SP2..],
+    NOT_REQUIRED, complex_event_price: ComplexEventPrice [FIX50SP2..],
+    NOT_REQUIRED, complex_event_price_boundary_method: ComplexEventPriceBoundaryMethod [FIX50SP2..],
+    NOT_REQUIRED, complex_event_price_boundary_precision: ComplexEventPriceBoundaryPrecision [FIX50SP2..],
+    NOT_REQUIRED, complex_event_price_time_type: ComplexEventPriceTimeType [FIX50SP2..],
+    NOT_REQUIRED, complex_event_condition: ComplexEventCondition [FIX50SP2..], //TODO: Conditionally required only when there is more than one ComplexEvent.
+    NOT_REQUIRED, no_complex_event_dates: NoComplexEventDates [FIX50SP2..],
 });
 
 define_message!(ComplexEventDate {
-    REQUIRED, complex_event_start_date: ComplexEventStartDate,
-    REQUIRED, complex_event_end_date: ComplexEventEndDate,
-    NOT_REQUIRED, no_complex_event_times: NoComplexEventTimes,
+    REQUIRED, complex_event_start_date: ComplexEventStartDate [FIX50SP2..],
+    REQUIRED, complex_event_end_date: ComplexEventEndDate [FIX50SP2..],
+    NOT_REQUIRED, no_complex_event_times: NoComplexEventTimes [FIX50SP2..],
 });
 
 define_message!(ComplexEventTime {
-    REQUIRED, complex_event_start_time: ComplexEventStartTime,
-    REQUIRED, complex_event_end_time: ComplexEventEndTime,
+    REQUIRED, complex_event_start_time: ComplexEventStartTime [FIX50SP2..],
+    REQUIRED, complex_event_end_time: ComplexEventEndTime [FIX50SP2..],
 });
 
 define_message!(EvntGrp {
-    REQUIRED, event_type: EventType,
-    NOT_REQUIRED, event_date: EventDate,
-    NOT_REQUIRED, event_time: EventTime,
-    NOT_REQUIRED, event_px: EventPx,
-    NOT_REQUIRED, event_text: EventText,
+    REQUIRED, event_type: EventType [FIX44..],
+    NOT_REQUIRED, event_date: EventDate [FIX44..],
+    NOT_REQUIRED, event_time: EventTime [FIX50SP1..],
+    NOT_REQUIRED, event_px: EventPx [FIX44..],
+    NOT_REQUIRED, event_text: EventText [FIX44..],
 });
 
 define_message!(HopGrp {
-    REQUIRED, hop_comp_id: HopCompID,
-    NOT_REQUIRED, hop_sending_time: HopSendingTime,
-    NOT_REQUIRED, hop_ref_id: HopRefID,
+    REQUIRED, hop_comp_id: HopCompID [FIX43..],
+    NOT_REQUIRED, hop_sending_time: HopSendingTime [FIX43..],
+    NOT_REQUIRED, hop_ref_id: HopRefID [FIX43..],
 });
 
 define_message!(Instrument {
-    REQUIRED, symbol: Symbol,
-    NOT_REQUIRED, symbol_sfx: SymbolSfx,
-    NOT_REQUIRED, security_id: SecurityID,
-    NOT_REQUIRED, security_id_source: SecurityIDSource => EXCEPT_WHEN message, !message.security_id.is_empty(),
-    NOT_REQUIRED, no_security_alt_id: NoSecurityAltID,
-    NOT_REQUIRED, product: Product,
-    NOT_REQUIRED, product_complex: ProductComplex,
-    NOT_REQUIRED, security_group: SecurityGroup,
-    NOT_REQUIRED, cfi_code: CFICode,
-    NOT_REQUIRED, security_type: SecurityType => EXCEPT_WHEN message, !message.security_sub_type.is_empty(),
-    NOT_REQUIRED, security_sub_type: SecuritySubType,
-    NOT_REQUIRED, maturity_month_year: MaturityMonthYear,
-    NOT_REQUIRED, maturity_date: MaturityDate,
-    NOT_REQUIRED, maturity_time: MaturityTime,
-    NOT_REQUIRED, settle_on_open_flag: SettleOnOpenFlag,
-    NOT_REQUIRED, instrmt_assignment_method: InstrmtAssignmentMethod,
-    NOT_REQUIRED, security_status: SecurityStatus,
-    NOT_REQUIRED, coupon_payment_date: CouponPaymentDate,
-    NOT_REQUIRED, restructuring_type: RestructuringType,
-    NOT_REQUIRED, seniority: Seniority,
-    NOT_REQUIRED, notional_percentage_outstanding: NotionalPercentageOutstanding,
-    NOT_REQUIRED, original_notional_percentage_outstanding: OriginalNotionalPercentageOutstanding,
-    NOT_REQUIRED, attachment_point: AttachmentPoint,
-    NOT_REQUIRED, detachment_point: DetachmentPoint,
-    NOT_REQUIRED, issue_date: IssueDate,
-    NOT_REQUIRED, repo_collateral_security_type: RepoCollateralSecurityType,
-    NOT_REQUIRED, repurchase_term: RepurchaseTerm,
-    NOT_REQUIRED, repurchase_rate: RepurchaseRate,
-    NOT_REQUIRED, factor: Factor,
-    NOT_REQUIRED, credit_rating: CreditRating,
-    NOT_REQUIRED, instr_registry: InstrRegistry,
-    NOT_REQUIRED, country_of_issue: CountryOfIssue,
-    NOT_REQUIRED, state_or_province_of_issue: StateOrProvinceOfIssue,
-    NOT_REQUIRED, locale_of_issue: LocaleOfIssue,
-    NOT_REQUIRED, redemption_date: RedemptionDate,
-    NOT_REQUIRED, strike_price: StrikePrice,
-    NOT_REQUIRED, strike_currency: StrikeCurrency,
-    NOT_REQUIRED, strike_multiplier: StrikeMultiplier,
-    NOT_REQUIRED, strike_value: StrikeValue,
-    NOT_REQUIRED, strike_price_determination_method: StrikePriceDeterminationMethod,
-    NOT_REQUIRED, strike_price_boundary_method: StrikePriceBoundaryMethod,
-    NOT_REQUIRED, strike_price_boundary_precision: StrikePriceBoundaryPrecision,
-    NOT_REQUIRED, underlying_price_determination_method: UnderlyingPriceDeterminationMethod,
-    NOT_REQUIRED, opt_attribute: OptAttribute,
-    NOT_REQUIRED, contract_multiplier: ContractMultiplier,
-    NOT_REQUIRED, contract_multiplier_unit: ContractMultiplierUnit,
-    NOT_REQUIRED, flow_schedule_type: FlowScheduleType,
-    NOT_REQUIRED, min_price_increment: MinPriceIncrement,
-    NOT_REQUIRED, min_price_increment_amount: MinPriceIncrementAmount,
-    NOT_REQUIRED, unit_of_measure: UnitOfMeasure,
-    NOT_REQUIRED, unit_of_measure_qty: UnitOfMeasureQty,
-    NOT_REQUIRED, price_unit_of_measure: PriceUnitOfMeasure,
-    NOT_REQUIRED, price_unit_of_measure_qty: PriceUnitOfMeasureQty,
-    NOT_REQUIRED, settl_method: SettlMethod,
-    NOT_REQUIRED, exercise_style: ExerciseStyle,
-    NOT_REQUIRED, opt_payout_type: OptPayoutType,
-    NOT_REQUIRED, opt_payout_amount: OptPayoutAmount => EXCEPT_WHEN message, if let Some(ref opt_payout_type) = message.opt_payout_type { *opt_payout_type == other_field_types::OptPayoutType::Binary } else { false },
-    NOT_REQUIRED, price_quote_method: PriceQuoteMethod,
-    NOT_REQUIRED, valuation_method: ValuationMethod,
-    NOT_REQUIRED, list_method: ListMethod,
-    NOT_REQUIRED, cap_price: CapPrice,
-    NOT_REQUIRED, floor_price: FloorPrice,
-    NOT_REQUIRED, put_or_call: PutOrCall,
-    NOT_REQUIRED, flexible_indicator: FlexibleIndicator,
-    NOT_REQUIRED, flexible_product_eligibility_indicator: FlexibleProductElgibilityIndicator,
-    NOT_REQUIRED, time_unit: TimeUnit,
-    NOT_REQUIRED, coupon_rate: CouponRate,
-    NOT_REQUIRED, security_exchange: SecurityExchange,
-    NOT_REQUIRED, position_limit: PositionLimit,
-    NOT_REQUIRED, nt_position_limit: NTPositionLimit,
-    NOT_REQUIRED, issuer: Issuer,
-    NOT_REQUIRED, encoded_issuer_len: EncodedIssuerLen,
-    NOT_REQUIRED, encoded_issuer: EncodedIssuer,
-    NOT_REQUIRED, security_desc: SecurityDesc,
-    NOT_REQUIRED, encoded_security_desc_len: EncodedSecurityDescLen,
-    NOT_REQUIRED, encoded_security_desc: EncodedSecurityDesc,
-    NOT_REQUIRED, security_xml_len: SecurityXMLLen,
-    NOT_REQUIRED, security_xml: SecurityXML,
-    NOT_REQUIRED, security_xml_schema: SecurityXMLSchema,
-    NOT_REQUIRED, pool: Pool,
-    NOT_REQUIRED, contract_settl_month: ContractSettlMonth,
-    NOT_REQUIRED, cp_program: CPProgram,
-    NOT_REQUIRED, cp_reg_type: CPRegType,
-    NOT_REQUIRED, no_events: NoEvents,
-    NOT_REQUIRED, dated_date: DatedDate,
-    NOT_REQUIRED, interest_accrual_date: InterestAccrualDate,
-    NOT_REQUIRED, no_instrument_parties: NoInstrumentParties,
-    NOT_REQUIRED, no_complex_events: NoComplexEvents,
+    REQUIRED, related_sym: RelatedSym [FIX42],
+    REQUIRED, symbol: Symbol [FIX43..],
+    NOT_REQUIRED, symbol_sfx: SymbolSfx [FIX41..],
+    NOT_REQUIRED, security_id: SecurityID [FIX41..],
+    NOT_REQUIRED, security_id_source: SecurityIDSource [FIX41..] => REQUIRED_WHEN |message: &Instrument,_| { !message.security_id.is_empty() },
+    NOT_REQUIRED, no_security_alt_id: NoSecurityAltID [FIX43..],
+    NOT_REQUIRED, product: Product [FIX43..],
+    NOT_REQUIRED, product_complex: ProductComplex [FIX50SP1..],
+    NOT_REQUIRED, security_group: SecurityGroup [FIX50SP1..],
+    NOT_REQUIRED, cfi_code: CFICode [FIX43..],
+    NOT_REQUIRED, security_type: SecurityType [FIX41..] => REQUIRED_WHEN |message: &Instrument,_| { !message.security_sub_type.is_empty() },
+    NOT_REQUIRED, security_sub_type: SecuritySubType [FIX44..],
+    NOT_REQUIRED, maturity_month_year: MaturityMonthYear [FIX41..],
+    NOT_REQUIRED, maturity_month_day: MaturityDay [FIX41..FIX42],
+    NOT_REQUIRED, maturity_date: MaturityDate [FIX43..],
+    NOT_REQUIRED, maturity_time: MaturityTime [FIX50..],
+    NOT_REQUIRED, settle_on_open_flag: SettleOnOpenFlag [FIX50..],
+    NOT_REQUIRED, instrmt_assignment_method: InstrmtAssignmentMethod [FIX50..],
+    NOT_REQUIRED, security_status: SecurityStatus [FIX50..],
+    NOT_REQUIRED, coupon_payment_date: CouponPaymentDate [FIX43..],
+    NOT_REQUIRED, restructuring_type: RestructuringType [FIX50SP2..],
+    NOT_REQUIRED, seniority: Seniority [FIX50SP2..],
+    NOT_REQUIRED, notional_percentage_outstanding: NotionalPercentageOutstanding [FIX50SP2..],
+    NOT_REQUIRED, original_notional_percentage_outstanding: OriginalNotionalPercentageOutstanding [FIX50SP2..],
+    NOT_REQUIRED, attachment_point: AttachmentPoint [FIX50SP2..],
+    NOT_REQUIRED, detachment_point: DetachmentPoint [FIX50SP2..],
+    NOT_REQUIRED, issue_date: IssueDate [FIX43..],
+    NOT_REQUIRED, repo_collateral_security_type: RepoCollateralSecurityType [FIX43..],
+    NOT_REQUIRED, repurchase_term: RepurchaseTerm [FIX43..],
+    NOT_REQUIRED, repurchase_rate: RepurchaseRate [FIX43..],
+    NOT_REQUIRED, factor: Factor [FIX43..],
+    NOT_REQUIRED, credit_rating: CreditRating [FIX43..],
+    NOT_REQUIRED, instr_registry: InstrRegistry [FIX43..],
+    NOT_REQUIRED, country_of_issue: CountryOfIssue [FIX43..],
+    NOT_REQUIRED, state_or_province_of_issue: StateOrProvinceOfIssue [FIX43..],
+    NOT_REQUIRED, locale_of_issue: LocaleOfIssue [FIX43..],
+    NOT_REQUIRED, redemption_date: RedemptionDate [FIX43..],
+    NOT_REQUIRED, strike_price: StrikePrice [FIX41..],
+    NOT_REQUIRED, strike_currency: StrikeCurrency [FIX44..],
+    NOT_REQUIRED, strike_multiplier: StrikeMultiplier [FIX50..],
+    NOT_REQUIRED, strike_value: StrikeValue [FIX50..],
+    NOT_REQUIRED, strike_price_determination_method: StrikePriceDeterminationMethod [FIX50SP2..],
+    NOT_REQUIRED, strike_price_boundary_method: StrikePriceBoundaryMethod [FIX50SP2..],
+    NOT_REQUIRED, strike_price_boundary_precision: StrikePriceBoundaryPrecision [FIX50SP2..],
+    NOT_REQUIRED, underlying_price_determination_method: UnderlyingPriceDeterminationMethod [FIX50SP2..],
+    NOT_REQUIRED, opt_attribute: OptAttribute [FIX41..],
+    NOT_REQUIRED, contract_multiplier: ContractMultiplier [FIX42..],
+    NOT_REQUIRED, contract_multiplier_unit: ContractMultiplierUnit [FIX50SP2..],
+    NOT_REQUIRED, flow_schedule_type: FlowScheduleType [FIX50SP2..],
+    NOT_REQUIRED, min_price_increment: MinPriceIncrement [FIX50..],
+    NOT_REQUIRED, min_price_increment_amount: MinPriceIncrementAmount [FIX50SP1..],
+    NOT_REQUIRED, unit_of_measure: UnitOfMeasure [FIX50..],
+    NOT_REQUIRED, unit_of_measure_qty: UnitOfMeasureQty [FIX50SP1..],
+    NOT_REQUIRED, price_unit_of_measure: PriceUnitOfMeasure [FIX50SP1..],
+    NOT_REQUIRED, price_unit_of_measure_qty: PriceUnitOfMeasureQty [FIX50SP1..],
+    NOT_REQUIRED, settl_method: SettlMethod [FIX50SP1..],
+    NOT_REQUIRED, exercise_style: ExerciseStyle [FIX50SP1..],
+    NOT_REQUIRED, opt_payout_type: OptPayoutType [FIX50SP2..],
+    NOT_REQUIRED, opt_payout_amount: OptPayoutAmount [FIX50SP1..] => REQUIRED_WHEN |message: &Instrument,_| { if let Some(ref opt_payout_type) = message.opt_payout_type { *opt_payout_type == other_field_types::OptPayoutType::Binary } else { false } },
+    NOT_REQUIRED, price_quote_method: PriceQuoteMethod [FIX50SP1..],
+    NOT_REQUIRED, valuation_method: ValuationMethod [FIX50SP1..],
+    NOT_REQUIRED, list_method: ListMethod [FIX50SP1..],
+    NOT_REQUIRED, cap_price: CapPrice [FIX50SP1..],
+    NOT_REQUIRED, floor_price: FloorPrice [FIX50SP1..],
+    NOT_REQUIRED, put_or_call: PutOrCall [FIX41..],
+    NOT_REQUIRED, flexible_indicator: FlexibleIndicator [FIX50SP1..],
+    NOT_REQUIRED, flexible_product_eligibility_indicator: FlexibleProductElgibilityIndicator [FIX50SP1..],
+    NOT_REQUIRED, time_unit: TimeUnit [FIX50..],
+    NOT_REQUIRED, coupon_rate: CouponRate [FIX42..],
+    NOT_REQUIRED, security_exchange: SecurityExchange [FIX41..],
+    NOT_REQUIRED, position_limit: PositionLimit [FIX50..],
+    NOT_REQUIRED, nt_position_limit: NTPositionLimit [FIX50..],
+    NOT_REQUIRED, issuer: Issuer [FIX41..],
+    NOT_REQUIRED, encoded_issuer_len: EncodedIssuerLen [FIX42..],
+    NOT_REQUIRED, encoded_issuer: EncodedIssuer [FIX42..],
+    NOT_REQUIRED, security_desc: SecurityDesc [FIX41..],
+    NOT_REQUIRED, encoded_security_desc_len: EncodedSecurityDescLen [FIX42..],
+    NOT_REQUIRED, encoded_security_desc: EncodedSecurityDesc [FIX42..],
+    NOT_REQUIRED, security_xml_len: SecurityXMLLen [FIX50SP1..],
+    NOT_REQUIRED, security_xml: SecurityXML [FIX50SP1..],
+    NOT_REQUIRED, security_xml_schema: SecurityXMLSchema [FIX50SP1..],
+    NOT_REQUIRED, pool: Pool [FIX44..],
+    NOT_REQUIRED, contract_settl_month: ContractSettlMonth [FIX44..],
+    NOT_REQUIRED, cp_program: CPProgram [FIX44..],
+    NOT_REQUIRED, cp_reg_type: CPRegType [FIX44..],
+    NOT_REQUIRED, no_events: NoEvents [FIX44..],
+    NOT_REQUIRED, dated_date: DatedDate [FIX44..],
+    NOT_REQUIRED, interest_accrual_date: InterestAccrualDate [FIX44..],
+    NOT_REQUIRED, no_instrument_parties: NoInstrumentParties [FIX50..],
+    NOT_REQUIRED, no_complex_events: NoComplexEvents [FIX50SP2..],
 });
 
 define_message!(InstrumentLeg {
     REQUIRED, leg_symbol: LegSymbol,
     NOT_REQUIRED, leg_symbol_sfx: LegSymbolSfx,
     NOT_REQUIRED, leg_security_id: LegSecurityID,
-    NOT_REQUIRED, leg_security_id_source: LegSecurityIDSource => EXCEPT_WHEN message, !message.leg_security_id.is_empty(),
+    NOT_REQUIRED, leg_security_id_source: LegSecurityIDSource => REQUIRED_WHEN |message: &InstrumentLeg,_| { !message.leg_security_id.is_empty() },
     NOT_REQUIRED, no_leg_security_alt_id: NoLegSecurityAltID,
     NOT_REQUIRED, leg_product: LegProduct,
     NOT_REQUIRED, leg_cfi_code: LegCFICode,
-    NOT_REQUIRED, leg_security_type: LegSecurityType => EXCEPT_WHEN message, !message.leg_security_sub_type.is_empty(),
+    NOT_REQUIRED, leg_security_type: LegSecurityType => REQUIRED_WHEN |message: &InstrumentLeg,_| { !message.leg_security_sub_type.is_empty() },
     NOT_REQUIRED, leg_security_sub_type: LegSecuritySubType,
     NOT_REQUIRED, leg_maturity_month_year: LegMaturityMonthYear,
     NOT_REQUIRED, leg_maturity_date: LegMaturityDate,
@@ -576,15 +581,15 @@ define_message!(InstrumentLeg {
 });
 
 define_message!(InstrumentParty {
-    REQUIRED, instrument_party_id: InstrumentPartyID,
-    REQUIRED, instrument_party_id_source: InstrumentPartyIDSource, //Conditionally required if InstrumentPartyID is specified, but InstrumentPartyID is required, so this is also required.
-    NOT_REQUIRED, instrument_party_role: InstrumentPartyRole,
-    NOT_REQUIRED, no_instrument_party_sub_ids: NoInstrumentPartySubIDs,
+    REQUIRED, instrument_party_id: InstrumentPartyID [FIX50..],
+    REQUIRED, instrument_party_id_source: InstrumentPartyIDSource [FIX50..], //Conditionally required if InstrumentPartyID is specified, but InstrumentPartyID is required, so this is also required.
+    NOT_REQUIRED, instrument_party_role: InstrumentPartyRole [FIX50..],
+    NOT_REQUIRED, no_instrument_party_sub_ids: NoInstrumentPartySubIDs [FIX50..],
 });
 
 define_message!(InstrumentPtysSubGrp {
-    REQUIRED, instrument_party_sub_id: InstrumentPartySubID,
-    REQUIRED, instrument_party_sub_id_type: InstrumentPartySubIDType,
+    REQUIRED, instrument_party_sub_id: InstrumentPartySubID [FIX50..],
+    REQUIRED, instrument_party_sub_id_type: InstrumentPartySubIDType [FIX50..],
 });
 
 define_message!(LegSecAltIDGrp {
@@ -593,18 +598,18 @@ define_message!(LegSecAltIDGrp {
 });
 
 define_message!(LinesOfTextGrp {
-    REQUIRED, text: Text,
-    NOT_REQUIRED, encoded_text_len: EncodedTextLen,
-    NOT_REQUIRED, encoded_text: EncodedText,
+    REQUIRED, text: Text [FIX40..],
+    NOT_REQUIRED, encoded_text_len: EncodedTextLen [FIX42..],
+    NOT_REQUIRED, encoded_text: EncodedText [FIX42..],
 });
 
 define_message!(MsgTypeGrp {
-    REQUIRED, ref_msg_type: RefMsgType,
-    REQUIRED, msg_direction: MsgDirection,
-    NOT_REQUIRED, ref_appl_ver_id: RefApplVerID,
-    NOT_REQUIRED, ref_appl_ext_id: RefApplExtID,
-    NOT_REQUIRED, ref_cstm_appl_ver_id: RefCstmApplVerID,
-    NOT_REQUIRED, default_ver_indicator: DefaultVerIndicator,
+    REQUIRED, ref_msg_type: RefMsgType [FIX42..],
+    REQUIRED, msg_direction: MsgDirection [FIX42..],
+    NOT_REQUIRED, ref_appl_ver_id: RefApplVerID [FIX50..],
+    NOT_REQUIRED, ref_appl_ext_id: RefApplExtID [FIX50..],
+    NOT_REQUIRED, ref_cstm_appl_ver_id: RefCstmApplVerID [FIX50..],
+    NOT_REQUIRED, default_ver_indicator: DefaultVerIndicator [FIX50SP1..],
 });
 
 define_message!(Order {
@@ -615,28 +620,28 @@ define_message!(Order {
 define_message!(RateSourceGrp {
     REQUIRED, rate_source: RateSource,
     REQUIRED, rate_source_type: RateSourceType,
-    NOT_REQUIRED, reference_page: ReferencePage => EXCEPT_WHEN message, message.rate_source == other_field_types::RateSource::Other,
+    NOT_REQUIRED, reference_page: ReferencePage => REQUIRED_WHEN |message: &RateSourceGrp,_| { message.rate_source == other_field_types::RateSource::Other },
 });
 
 define_message!(RoutingGrp {
-    REQUIRED, routing_type: RoutingType,
-    REQUIRED, routing_id: RoutingID,
+    REQUIRED, routing_type: RoutingType [FIX42..],
+    REQUIRED, routing_id: RoutingID [FIX42..],
 });
 
 define_message!(SecAltIDGrp {
-    REQUIRED, security_alt_id: SecurityAltID,
-    REQUIRED, security_alt_id_source: SecurityAltIDSource,
+    REQUIRED, security_alt_id: SecurityAltID [FIX43..],
+    REQUIRED, security_alt_id_source: SecurityAltIDSource [FIX43..],
 });
 
 define_message!(UnderlyingInstrument {
     REQUIRED, underlying_symbol: UnderlyingSymbol,
     NOT_REQUIRED, underlying_symbol_sfx: UnderlyingSymbolSfx,
     NOT_REQUIRED, underlying_security_id: UnderlyingSecurityID,
-    NOT_REQUIRED, underlying_security_id_source: UnderlyingSecurityIDSource => EXCEPT_WHEN message, !message.underlying_security_id.is_empty(),
+    NOT_REQUIRED, underlying_security_id_source: UnderlyingSecurityIDSource => REQUIRED_WHEN |message: &UnderlyingInstrument,_| { !message.underlying_security_id.is_empty() },
     NOT_REQUIRED, no_underlying_security_alt_id: NoUnderlyingSecurityAltID,
     NOT_REQUIRED, underlying_product: UnderlyingProduct,
     NOT_REQUIRED, underlying_cfi_code: UnderlyingCFICode,
-    NOT_REQUIRED, underlying_security_type: UnderlyingSecurityType => EXCEPT_WHEN message, !message.underlying_security_sub_type.is_empty(),
+    NOT_REQUIRED, underlying_security_type: UnderlyingSecurityType => REQUIRED_WHEN |message: &UnderlyingInstrument,_| { !message.underlying_security_sub_type.is_empty() },
     NOT_REQUIRED, underlying_security_sub_type: UnderlyingSecuritySubType,
     NOT_REQUIRED, underlying_maturity_month_year: UnderlyingMaturityMonthYear,
     NOT_REQUIRED, underlying_maturity_date: UnderlyingMaturityDate,

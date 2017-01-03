@@ -20,6 +20,7 @@ use constant::{TAG_END,VALUE_END};
 use dictionary::messages::NullMessage;
 use fixt::message::FIXTMessage;
 use message::{Meta,Message,SetValueError};
+use message_version::MessageVersion;
 use rule::Rule;
 
 //TODO: Support configuration settings for things like MAX_VALUE_LENGTH, MAX_BODY_LENGTH,
@@ -130,7 +131,7 @@ impl ParseRepeatingGroupState {
 
             //TODO: Add test to confirm conditional require works for this and outer message
             //fields.
-            for tag in last_group.message.conditional_required_fields() {
+            for tag in last_group.message.conditional_required_fields(MessageVersion::FIX50SP2) {
                 if last_group.remaining_fields.contains_key(&tag) {
                     *missing_conditional_tag = tag.to_vec();
                     return;
@@ -202,7 +203,7 @@ impl Parser {
         let mut value_to_length_tags = HashMap::new();
         let mut message_stack = Vec::from_iter(message_dictionary.iter().map(|(_,message)| { Message::new_into_box(&**message) }));
         while let Some(message) = message_stack.pop() {
-            for (tag,rule) in message.fields() {
+            for (tag,rule) in message.fields(MessageVersion::FIX50SP2) {
                 match rule {
                     Rule::ConfirmPreviousTag{ previous_tag } => {
                         value_to_length_tags.insert(tag,previous_tag);
@@ -265,91 +266,94 @@ impl Parser {
             RepeatingGroup,
         }
 
-        //Start by walking the message_dictionary and collecting every possible message format --
-        //including repeating and nested repeating groups.
-        let mut all_messages = Vec::new();
-        let mut message_stack = Vec::from_iter(message_dictionary.iter().map(|(_,message)| { (MessageType::Standard,Message::new_into_box(&**message)) }));
-        while let Some((message_type,message)) = message_stack.pop() {
-            for rule in message.fields().values() {
-                if let Rule::BeginGroup{ ref message } = *rule {
-                    message_stack.push((MessageType::RepeatingGroup,Message::new_into_box(&**message)));
+        //Run validation against every supported message version.
+        for message_version in vec![MessageVersion::FIX40,MessageVersion::FIX41,MessageVersion::FIX42,MessageVersion::FIX43,MessageVersion::FIX44,MessageVersion::FIX50,MessageVersion::FIX50SP1,MessageVersion::FIX50SP2] {
+            //Start by walking the message_dictionary and collecting every possible message format --
+            //including repeating and nested repeating groups.
+            let mut all_messages = Vec::new();
+            let mut message_stack = Vec::from_iter(message_dictionary.iter().map(|(_,message)| { (MessageType::Standard,Message::new_into_box(&**message)) }));
+            while let Some((message_type,message)) = message_stack.pop() {
+                for rule in message.fields(message_version).values() {
+                    if let Rule::BeginGroup{ ref message } = *rule {
+                        message_stack.push((MessageType::RepeatingGroup,Message::new_into_box(&**message)));
+                    }
+                }
+                all_messages.push((message_type,message));
+            }
+
+            //All messages must have at least one field. All repeating group messages must make the
+            //first field required.
+            for &(ref message_type,ref message) in &all_messages {
+                let first_field = message.first_field(message_version);
+                let fields = message.fields(message_version);
+                let required_fields = message.required_fields(message_version);
+
+                if fields.is_empty() {
+                    panic!("Found message with no fields.");
+                }
+
+                if !fields.contains_key(first_field) {
+                    panic!("Found message where first_field() is not in fields().");
+                }
+
+                if let MessageType::RepeatingGroup = *message_type {
+                    if !required_fields.contains(first_field) {
+                        panic!("Found message where first_field() is not in required_fields().");
+                    }
                 }
             }
-            all_messages.push((message_type,message));
-        }
 
-        //All messages must have at least one field. All repeating group messages must make the
-        //first field required.
-        for &(ref message_type,ref message) in &all_messages {
-            let first_field = message.first_field();
-            let fields = message.fields();
-            let required_fields = message.required_fields();
+            //The required fields specified in a message must be a subset of the fields.
+            for &(_,ref message) in &all_messages {
+                let fields = message.fields(message_version);
+                let required_fields = message.required_fields(message_version);
 
-            if fields.is_empty() {
-                panic!("Found message with no fields.");
-            }
-
-            if !fields.contains_key(first_field) {
-                panic!("Found message where first_field() is not in fields().");
-            }
-
-            if let MessageType::RepeatingGroup = *message_type {
-                if !required_fields.contains(first_field) {
-                    panic!("Found message where first_field() is not in required_fields().");
+                for required_field in required_fields {
+                    if !fields.contains_key(required_field) {
+                        panic!("Found message where required_fields() is not a subset of fields().");
+                    }
                 }
             }
-        }
 
-        //The required fields specified in a message must be a subset of the fields.
-        for &(_,ref message) in &all_messages {
-            let fields = message.fields();
-            let required_fields = message.required_fields();
+            //Fields that specify Rule::PrepareForBytes have exactly one matching field that
+            //specifies Rule::ConfirmPreviousTag within the same message.
+            for &(_,ref message) in &all_messages {
+                let fields = message.fields(message_version);
 
-            for required_field in required_fields {
-                if !fields.contains_key(required_field) {
-                    panic!("Found message where required_fields() is not a subset of fields().");
-                }
-            }
-        }
-
-        //Fields that specify Rule::PrepareForBytes have exactly one matching field that
-        //specifies Rule::ConfirmPreviousTag within the same message.
-        for &(_,ref message) in &all_messages {
-            let fields = message.fields();
-
-            for (tag,rule) in &fields {
-                match *rule {
-                    Rule::PrepareForBytes{ bytes_tag } => {
-                        if let Some(bytes_tag_rule) = fields.get(bytes_tag) {
-                            if let Rule::ConfirmPreviousTag{ previous_tag } = *bytes_tag_rule {
-                                if previous_tag != *tag {
-                                    panic!("Found field \"{}\" that defines Rule::PrepareForBytes but matching \"{}\" field's Rule::ConfirmPreviousTag is not circular.",tag_to_string(tag),tag_to_string(bytes_tag));
+                for (tag,rule) in &fields {
+                    match *rule {
+                        Rule::PrepareForBytes{ bytes_tag } => {
+                            if let Some(bytes_tag_rule) = fields.get(bytes_tag) {
+                                if let Rule::ConfirmPreviousTag{ previous_tag } = *bytes_tag_rule {
+                                    if previous_tag != *tag {
+                                        panic!("Found field \"{}\" that defines Rule::PrepareForBytes but matching \"{}\" field's Rule::ConfirmPreviousTag is not circular.",tag_to_string(tag),tag_to_string(bytes_tag));
+                                    }
+                                }
+                                else {
+                                    panic!("Found field \"{}\" that defines Rule::PrepareForBytes but matching \"{}\" field does not define Rule::ConfirmPreviousTag.",tag_to_string(tag),tag_to_string(bytes_tag));
                                 }
                             }
                             else {
-                                panic!("Found field \"{}\" that defines Rule::PrepareForBytes but matching \"{}\" field does not define Rule::ConfirmPreviousTag.",tag_to_string(tag),tag_to_string(bytes_tag));
+                                panic!("Found field \"{}\" that defines Rule::PrepareForBytes but no matching \"{}\" field was found.",tag_to_string(tag),tag_to_string(bytes_tag));
                             }
-                        }
-                        else {
-                            panic!("Found field \"{}\" that defines Rule::PrepareForBytes but no matching \"{}\" field was found.",tag_to_string(tag),tag_to_string(bytes_tag));
-                        }
-                    },
-                    Rule::ConfirmPreviousTag{ previous_tag } => {
-                        if let Some(previous_tag_rule) = fields.get(previous_tag) {
-                            if let Rule::PrepareForBytes{ bytes_tag } = *previous_tag_rule {
-                                if bytes_tag != *tag {
-                                    panic!("Found field \"{}\" that defines Rule::ConfirmPreviousTag but matching \"{}\" field's Rule::PrepareForBytes is not circular.",tag_to_string(tag),tag_to_string(previous_tag));
+                        },
+                        Rule::ConfirmPreviousTag{ previous_tag } => {
+                            if let Some(previous_tag_rule) = fields.get(previous_tag) {
+                                if let Rule::PrepareForBytes{ bytes_tag } = *previous_tag_rule {
+                                    if bytes_tag != *tag {
+                                        panic!("Found field \"{}\" that defines Rule::ConfirmPreviousTag but matching \"{}\" field's Rule::PrepareForBytes is not circular.",tag_to_string(tag),tag_to_string(previous_tag));
+                                    }
+                                }
+                                else {
+                                    panic!("Found field \"{}\" that defines Rule::ConfirmPreviousTag but matching \"{}\" field does not define Rule::PrepareForBytes.",tag_to_string(tag),tag_to_string(previous_tag))
                                 }
                             }
                             else {
-                                panic!("Found field \"{}\" that defines Rule::ConfirmPreviousTag but matching \"{}\" field does not define Rule::PrepareForBytes.",tag_to_string(tag),tag_to_string(previous_tag))
+                                panic!("Found field \"{}\" that defines Rule::ConfirmPreviousTag but no matching \"{}\" field was found.",tag_to_string(tag),tag_to_string(previous_tag));
                             }
-                        }
-                        else {
-                            panic!("Found field \"{}\" that defines Rule::ConfirmPreviousTag but no matching \"{}\" field was found.",tag_to_string(tag),tag_to_string(previous_tag));
-                        }
-                    },
-                    _ => {},
+                        },
+                        _ => {},
+                    }
                 }
             }
         }
@@ -476,11 +480,11 @@ impl Parser {
             Rule::BeginGroup{ message: repeating_group_template } => {
                 match ascii_to_integer::<usize>(&self.current_bytes) {
                     Ok(group_count) if group_count > 0 => {
-                        let first_field = repeating_group_template.first_field();
+                        let first_field = repeating_group_template.first_field(MessageVersion::FIX50SP2);
                         self.tag_rule_mode_stack.push(Box::new(TagRuleMode::RepeatingGroups(Box::new(ParseRepeatingGroupState {
                             number_of_tag: self.current_tag.clone(),
                             group_count: group_count,
-                            first_tag: repeating_group_template.first_field(),
+                            first_tag: repeating_group_template.first_field(MessageVersion::FIX50SP2),
                             groups: Vec::new(),
                             group_template: repeating_group_template,
                         }))));
@@ -616,8 +620,8 @@ impl Parser {
             }
             else if let Some(message) = self.message_dictionary.get(self.current_bytes.as_slice()) {
                 self.current_message = FIXTMessage::new_into_box(&**message);
-                self.remaining_fields = message.fields();
-                self.remaining_required_fields = message.required_fields();
+                self.remaining_fields = message.fields(MessageVersion::FIX50SP2);
+                self.remaining_required_fields = message.required_fields(MessageVersion::FIX50SP2);
             }
             else {
                 return Err(ParseError::MsgTypeUnknown(self.current_bytes.clone()));
@@ -651,8 +655,8 @@ impl Parser {
 
                             //Begin a new group.
                             let group = prgs.group_template.new_into_box();
-                            let remaining_fields = prgs.group_template.fields();
-                            let remaining_required_fields = prgs.group_template.required_fields();
+                            let remaining_fields = prgs.group_template.fields(MessageVersion::FIX50SP2);
+                            let remaining_required_fields = prgs.group_template.required_fields(MessageVersion::FIX50SP2);
                             prgs.groups.push(ParseGroupState {
                                 message: group,
                                 remaining_fields: remaining_fields,
@@ -691,7 +695,7 @@ impl Parser {
 
                         if !tag_in_group {
                             //Figure out if this is an error or the end of the group.
-                            if prgs.group_template.fields().contains_key(self.current_tag.as_slice()) {
+                            if prgs.group_template.fields(MessageVersion::FIX50SP2).contains_key(self.current_tag.as_slice()) {
                                 return Err(ParseError::DuplicateTag(self.current_tag.clone()));
                             }
                             else if prgs.groups.len() < prgs.group_count {
@@ -737,7 +741,7 @@ impl Parser {
                 }
                 else {
                     if self.is_tag_known(&self.current_tag) {
-                        if self.current_message.fields().contains_key(&self.current_tag[..]) {
+                        if self.current_message.fields(MessageVersion::FIX50SP2).contains_key(&self.current_tag[..]) {
                             return Err(ParseError::DuplicateTag(self.current_tag.clone()));
                         }
                         else {
@@ -787,7 +791,7 @@ impl Parser {
                             mem::replace(&mut self.current_message,Box::new(NullMessage {}))));
                 }
 
-                for tag in self.current_message.conditional_required_fields() {
+                for tag in self.current_message.conditional_required_fields(MessageVersion::FIX50SP2) {
                     if self.remaining_fields.contains_key(&tag) {
                         return Err(
                             ParseError::MissingConditionallyRequiredTag(
@@ -828,7 +832,7 @@ impl Parser {
 
     fn is_tag_known(&self,tag: &[u8]) -> bool {
         for message in self.message_dictionary.values() {
-            if message.fields().contains_key(tag) {
+            if message.fields(MessageVersion::FIX50SP2).contains_key(tag) {
                 return true;
             }
         }

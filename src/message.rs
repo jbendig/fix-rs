@@ -14,6 +14,7 @@ use std::collections::{HashMap,HashSet};
 use std::io::Write;
 
 use fix_version::FIXVersion;
+use message_version::MessageVersion;
 use rule::Rule;
 
 #[derive(Clone,Default,PartialEq)]
@@ -33,11 +34,11 @@ pub enum SetValueError {
 }
 
 pub trait Message {
-    fn first_field(&self) -> &'static [u8];
-    fn field_count(&self) -> usize;
-    fn fields(&self) -> HashMap<&'static [u8],Rule>;
-    fn required_fields(&self) -> HashSet<&'static [u8]>;
-    fn conditional_required_fields(&self) -> Vec<&'static [u8]>;
+    fn first_field(&self,version: MessageVersion) -> &'static [u8];
+    fn field_count(&self,version: MessageVersion) -> usize;
+    fn fields(&self,version: MessageVersion) -> HashMap<&'static [u8],Rule>;
+    fn required_fields(&self,version: MessageVersion) -> HashSet<&'static [u8]>;
+    fn conditional_required_fields(&self,version: MessageVersion) -> Vec<&'static [u8]>;
     fn meta(&self) -> &Option<Meta>;
     fn set_meta(&mut self,meta: Meta);
     fn set_value(&mut self,key: &[u8],value: &[u8]) -> Result<(),SetValueError>;
@@ -96,8 +97,45 @@ pub const REQUIRED: bool = true;
 pub const NOT_REQUIRED: bool = false;
 
 #[macro_export]
+macro_rules! symbol_to_message_version {
+    ( FIX40 ) => { $crate::message_version::MessageVersion::FIX40 };
+    ( FIX41 ) => { $crate::message_version::MessageVersion::FIX41 };
+    ( FIX42 ) => { $crate::message_version::MessageVersion::FIX42 };
+    ( FIX43 ) => { $crate::message_version::MessageVersion::FIX43 };
+    ( FIX44 ) => { $crate::message_version::MessageVersion::FIX44 };
+    ( FIX50 ) => { $crate::message_version::MessageVersion::FIX50 };
+    ( FIX50SP1 ) => { $crate::message_version::MessageVersion::FIX50SP1 };
+    ( FIX50SP2 ) => { $crate::message_version::MessageVersion::FIX50SP2 };
+}
+
+#[macro_export]
+macro_rules! match_message_version {
+    ( $version:ident, $minimum_version:tt ) => {{
+        match_message_version!($version,$minimum_version .. $minimum_version)
+    }};
+
+    ( $version:ident, $minimum_version:tt .. ) => {{
+        match_message_version!($version,$minimum_version .. FIX50SP2)
+    }};
+
+    ( $version:ident, $minimum_version:tt .. $maximum_version:tt ) => {
+        if $version.as_value() >= symbol_to_message_version!($minimum_version).as_value() && $version.as_value() <= symbol_to_message_version!($maximum_version).as_value() {
+            true
+        }
+        else {
+            false
+        }
+    };
+}
+
+#[macro_export]
 macro_rules! define_message {
-    ( $message_name:ident $( : $message_type:expr => )* { $( $field_required:expr, $field_name:ident : $field_type:ty $(=> EXCEPT_WHEN $message_ident:ident, $required_when_expr:expr)* ),* $(),* } ) => {
+    //TODO: Remove this helper when version is added to all fields.
+    ( $message_name:ident $( : $message_type:expr => )* { $( $field_required:expr, $field_name:ident : $field_type:ty $(=> REQUIRED_WHEN $required_when_expr:expr)* ),* $(),* } ) => {
+        define_message!($message_name $( : $message_type => )* { $( $field_required, $field_name : $field_type [FIX40..] $(=> REQUIRED_WHEN $required_when_expr)*, )* });
+    };
+
+    ( $message_name:ident $( : $message_type:expr => )* { $( $field_required:expr, $field_name:ident : $field_type:ty [$( $version:tt )*] $(=> REQUIRED_WHEN $required_when_expr:expr)* ),* $(),* } ) => {
         #[derive(Clone)]
         pub struct $message_name {
             pub meta: Option<$crate::message::Meta>,
@@ -130,40 +168,47 @@ macro_rules! define_message {
 
         impl $crate::message::Message for $message_name {
             #[allow(unreachable_code)]
-            fn first_field(&self) -> &'static [u8] {
-                $( return { <$field_type as $crate::field::Field>::tag() }; )*
+            fn first_field(&self,version: $crate::message_version::MessageVersion) -> &'static [u8] {
+                $( if match_message_version!(version,$( $version)*) {
+                    return { <$field_type as $crate::field::Field>::tag() };
+                } )*
 
                 b""
             }
 
-            fn field_count(&self) -> usize {
+            fn field_count(&self,version: $crate::message_version::MessageVersion) -> usize {
                 let mut result = 0;
-                $( let _ = $field_required; result += 1; )*
+                $( if match_message_version!(version,$( $version )*) {
+                    let _ = $field_required; result += 1;
+                } )*
 
                 result
             }
 
-            fn fields(&self) -> ::std::collections::HashMap<&'static [u8],$crate::rule::Rule> {
-                let mut result = ::std::collections::HashMap::with_capacity(self.field_count() * 2);
-                $( result.insert(<$field_type as $crate::field::Field>::tag(),<$field_type as $crate::field::Field>::rule()); )*
+            fn fields(&self,version: $crate::message_version::MessageVersion) -> ::std::collections::HashMap<&'static [u8],$crate::rule::Rule> {
+                let mut result = ::std::collections::HashMap::with_capacity(self.field_count(version) * 2);
+                $( if match_message_version!(version,$( $version )*) {
+                    result.insert(<$field_type as $crate::field::Field>::tag(),<$field_type as $crate::field::Field>::rule());
+                } )*
 
                 result
             }
 
-            fn required_fields(&self) -> ::std::collections::HashSet<&'static [u8]> {
+            fn required_fields(&self,version: $crate::message_version::MessageVersion) -> ::std::collections::HashSet<&'static [u8]> {
                 let mut result = ::std::collections::HashSet::new();
-                $( if $field_required { result.insert(<$field_type as $crate::field::Field>::tag()); } )*
+                $( if match_message_version!(version,$( $version )*) {
+                    if $field_required { result.insert(<$field_type as $crate::field::Field>::tag()); }
+                } )*
 
                 result
             }
 
-            #[allow(unused_mut)]
-            fn conditional_required_fields(&self) -> Vec<&'static [u8]> {
+            #[allow(unused_mut,unused_variables)]
+            fn conditional_required_fields(&self,version: $crate::message_version::MessageVersion) -> Vec<&'static [u8]> {
                 let mut result = Vec::new();
                 $( $(
                 assert!(!$field_required); //Required fields are always required. Do not add conditional.
-                let $message_ident = self;
-                if $required_when_expr {
+                if $required_when_expr(self,version) {
                     result.push(<$field_type as $crate::field::Field>::tag());
                 }
                 )* )*

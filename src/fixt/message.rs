@@ -43,46 +43,47 @@ impl fmt::Debug for FIXTMessage + Send {
 
 #[macro_export]
 macro_rules! define_fixt_message {
-    ( $message_name:ident $( : $message_type:expr => )* { $( $field_required:expr, $field_name:ident : $field_type:ty $(=> EXCEPT_WHEN $message_ident:ident, $required_when_expr:expr)* ),* $(),* } ) => {
+    ( $message_name:ident $( : $message_type:expr => )* { $( $field_required:expr, $field_name:ident : $field_type:ty [$( $version:tt )*] $(=> REQUIRED_WHEN $required_when_expr:expr)* ),* $(),* } ) => {
         define_message!($message_name $( : $message_type => )* {
             //Standard Header
             //Note: BeginStr, BodyLength, and MsgType are built into parser.
-            $crate::message::REQUIRED, sender_comp_id: $crate::dictionary::fields::SenderCompID, //Must be first here to be 4th field when serialized.
-            $crate::message::REQUIRED, target_comp_id: $crate::dictionary::fields::TargetCompID, //Must be second here to be 5th field when serialized.
+            $crate::message::REQUIRED, sender_comp_id: $crate::dictionary::fields::SenderCompID [FIX40..], //Must be first here to be 4th field when serialized.
+            $crate::message::REQUIRED, target_comp_id: $crate::dictionary::fields::TargetCompID [FIX40..], //Must be second here to be 5th field when serialized.
             //TODO: This and the following three tags should not be ever used with Logon, Logout, Reject, ResendRequest, SequenceReset, TestRequest, and Heartbeat.
-            $crate::message::NOT_REQUIRED, appl_ver_id: $crate::dictionary::fields::ApplVerID,  //Must be third here to be 6th field when serialized.
-            $crate::message::NOT_REQUIRED, appl_ext_id: $crate::dictionary::fields::ApplExtID,
-            $crate::message::NOT_REQUIRED, cstm_appl_ver_id: $crate::dictionary::fields::CstmApplVerID,
-            $crate::message::NOT_REQUIRED, on_behalf_of_comp_id: $crate::dictionary::fields::OnBehalfOfCompID,
-            $crate::message::NOT_REQUIRED, deliver_to_comp_id: $crate::dictionary::fields::DeliverToCompID,
-            $crate::message::NOT_REQUIRED, secure_data_len: $crate::dictionary::fields::SecureDataLen,
-            $crate::message::NOT_REQUIRED, secure_data: $crate::dictionary::fields::SecureData,
-            $crate::message::REQUIRED, msg_seq_num: $crate::dictionary::fields::MsgSeqNum,
-            $crate::message::NOT_REQUIRED, sender_sub_id: $crate::dictionary::fields::SenderSubID,
-            $crate::message::NOT_REQUIRED, sender_location_id: $crate::dictionary::fields::SenderLocationID,
-            $crate::message::NOT_REQUIRED, target_sub_id: $crate::dictionary::fields::TargetSubID,
-            $crate::message::NOT_REQUIRED, target_location_id: $crate::dictionary::fields::TargetLocationID,
-            $crate::message::NOT_REQUIRED, on_behalf_of_sub_id: $crate::dictionary::fields::OnBehalfOfSubID,
-            $crate::message::NOT_REQUIRED, on_behalf_of_location_id: $crate::dictionary::fields::OnBehalfOfLocationID,
-            $crate::message::NOT_REQUIRED, deliver_to_sub_id: $crate::dictionary::fields::DeliverToSubID,
-            $crate::message::NOT_REQUIRED, deliver_to_location_id: $crate::dictionary::fields::DeliverToLocationID,
-            $crate::message::NOT_REQUIRED, poss_dup_flag: $crate::dictionary::fields::PossDupFlag,
-            $crate::message::NOT_REQUIRED, poss_resend: $crate::dictionary::fields::PossResend,
-            $crate::message::REQUIRED, sending_time: $crate::dictionary::fields::SendingTime,
-            $crate::message::NOT_REQUIRED, orig_sending_time: $crate::dictionary::fields::OrigSendingTime => EXCEPT_WHEN message, message.poss_dup_flag,
-            $crate::message::NOT_REQUIRED, xml_data_len: $crate::dictionary::fields::XmlDataLen,
-            $crate::message::NOT_REQUIRED, xml_data: $crate::dictionary::fields::XmlData,
-            $crate::message::NOT_REQUIRED, message_encoding: $crate::dictionary::fields::MessageEncoding,
-            $crate::message::NOT_REQUIRED, last_msg_seq_num_processed: $crate::dictionary::fields::LastMsgSeqNumProcessed,
-            $crate::message::NOT_REQUIRED, hops: $crate::dictionary::fields::NoHops,
+            $crate::message::NOT_REQUIRED, appl_ver_id: $crate::dictionary::fields::ApplVerID [FIX50..],  //Must be third here to be 6th field when serialized.
+            $crate::message::NOT_REQUIRED, appl_ext_id: $crate::dictionary::fields::ApplExtID [FIX50SP1..],
+            $crate::message::NOT_REQUIRED, cstm_appl_ver_id: $crate::dictionary::fields::CstmApplVerID [FIX50..],
+            $crate::message::NOT_REQUIRED, on_behalf_of_comp_id: $crate::dictionary::fields::OnBehalfOfCompID [FIX40..],
+            $crate::message::NOT_REQUIRED, deliver_to_comp_id: $crate::dictionary::fields::DeliverToCompID [FIX40..],
+            $crate::message::NOT_REQUIRED, secure_data_len: $crate::dictionary::fields::SecureDataLen [FIX40..],
+            $crate::message::NOT_REQUIRED, secure_data: $crate::dictionary::fields::SecureData [FIX40..],
+            $crate::message::REQUIRED, msg_seq_num: $crate::dictionary::fields::MsgSeqNum [FIX40..],
+            $crate::message::NOT_REQUIRED, sender_sub_id: $crate::dictionary::fields::SenderSubID [FIX40..],
+            $crate::message::NOT_REQUIRED, sender_location_id: $crate::dictionary::fields::SenderLocationID [FIX41..],
+            $crate::message::NOT_REQUIRED, target_sub_id: $crate::dictionary::fields::TargetSubID [FIX40..],
+            $crate::message::NOT_REQUIRED, target_location_id: $crate::dictionary::fields::TargetLocationID [FIX41..],
+            $crate::message::NOT_REQUIRED, on_behalf_of_sub_id: $crate::dictionary::fields::OnBehalfOfSubID [FIX40..],
+            $crate::message::NOT_REQUIRED, on_behalf_of_location_id: $crate::dictionary::fields::OnBehalfOfLocationID [FIX41..],
+            $crate::message::NOT_REQUIRED, deliver_to_sub_id: $crate::dictionary::fields::DeliverToSubID [FIX40..],
+            $crate::message::NOT_REQUIRED, deliver_to_location_id: $crate::dictionary::fields::DeliverToLocationID [FIX41..],
+            $crate::message::NOT_REQUIRED, poss_dup_flag: $crate::dictionary::fields::PossDupFlag [FIX40..],
+            $crate::message::NOT_REQUIRED, poss_resend: $crate::dictionary::fields::PossResend [FIX40..],
+            $crate::message::REQUIRED, sending_time: $crate::dictionary::fields::SendingTime [FIX40..],
+            $crate::message::NOT_REQUIRED, orig_sending_time: $crate::dictionary::fields::OrigSendingTime [FIX40..] => REQUIRED_WHEN |message: &$message_name,_| { message.poss_dup_flag },
+            $crate::message::NOT_REQUIRED, xml_data_len: $crate::dictionary::fields::XmlDataLen [FIX42..],
+            $crate::message::NOT_REQUIRED, xml_data: $crate::dictionary::fields::XmlData [FIX42..],
+            $crate::message::NOT_REQUIRED, message_encoding: $crate::dictionary::fields::MessageEncoding [FIX42..],
+            $crate::message::NOT_REQUIRED, last_msg_seq_num_processed: $crate::dictionary::fields::LastMsgSeqNumProcessed [FIX42..],
+            $crate::message::NOT_REQUIRED, on_behalf_of_sending_time: $crate::dictionary::fields::OnBehalfOfSendingTime [FIX42..FIX43],
+            $crate::message::NOT_REQUIRED, hops: $crate::dictionary::fields::NoHops [FIX43..],
 
             //Other
-            $( $field_required, $field_name : $field_type $(=> EXCEPT_WHEN $message_ident, $required_when_expr)*, )*
+            $( $field_required, $field_name : $field_type [$( $version )*] $(=> REQUIRED_WHEN $required_when_expr)*, )*
 
             //Standard Footer
             //Note: Checksum is built into parser.
-            $crate::message::NOT_REQUIRED, signature_length: $crate::dictionary::fields::SignatureLength,
-            $crate::message::NOT_REQUIRED, signature: $crate::dictionary::fields::Signature,
+            $crate::message::NOT_REQUIRED, signature_length: $crate::dictionary::fields::SignatureLength [FIX40..],
+            $crate::message::NOT_REQUIRED, signature: $crate::dictionary::fields::Signature [FIX40..],
         });
 
         impl $crate::fixt::message::FIXTMessage for $message_name {

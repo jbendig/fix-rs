@@ -28,6 +28,7 @@ pub mod fix;
 pub mod fix_version;
 #[macro_use]
 pub mod message;
+pub mod message_version;
 mod network_read_retry;
 pub mod rule;
 

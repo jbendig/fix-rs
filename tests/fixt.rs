@@ -614,7 +614,7 @@ fn test_2B() {
         );
 
         define_fixt_message!(MessageWithInvalidMsgType: b"99999" => {
-            NOT_REQUIRED, test_req_id: TestReqID,
+            NOT_REQUIRED, test_req_id: TestReqID [FIX40..],
         });
 
         let message = new_fixt_message!(MessageWithInvalidMsgType);
@@ -662,7 +662,7 @@ fn test_2B() {
         );
 
         define_fixt_message!(MessageWithUnsupportedMsgType: b"AA" => {
-            NOT_REQUIRED, test_req_id: TestReqID,
+            NOT_REQUIRED, test_req_id: TestReqID [FIX40..],
         });
 
         //Confirm message type is standard but not supported.
@@ -1412,31 +1412,31 @@ fn test_14B() {
     );
 
     define_fixt_message!(TestRequestWithUndefinedField: b"1" => {
-        REQUIRED, test_req_id: TestReqID,
-        REQUIRED, undefined: UndefinedField,
+        REQUIRED, test_req_id: TestReqID [FIX40..],
+        REQUIRED, undefined: UndefinedField [FIX40..],
     });
 
     define_fixt_message!(TestRequestWithNotRequiredField: b"1" => {
-        NOT_REQUIRED, test_req_id: TestReqID,
+        NOT_REQUIRED, test_req_id: TestReqID [FIX40..],
     });
 
     define_fixt_message!(TestRequestWithWrongField: b"1" => {
-        REQUIRED, test_req_id: TestReqID,
-        REQUIRED, heart_bt_int: HeartBtInt,
+        REQUIRED, test_req_id: TestReqID [FIX40..],
+        REQUIRED, heart_bt_int: HeartBtInt [FIX40..],
     });
 
     define_fixt_message!(TestRequestWithEmptyField: b"1" => {
-        REQUIRED, test_req_id: TestReqIDEmpty,
+        REQUIRED, test_req_id: TestReqIDEmpty [FIX40..],
     });
 
     define_fixt_message!(ResendRequestWithStringBeginSeqNo: b"2" => {
-        REQUIRED, begin_seq_no: BeginSeqNoString,
-        REQUIRED, end_seq_no: EndSeqNo,
+        REQUIRED, begin_seq_no: BeginSeqNoString [FIX40..],
+        REQUIRED, end_seq_no: EndSeqNo [FIX40..],
     });
 
     define_fixt_message!(TestRequestWithDuplicateField: b"1" => {
-        REQUIRED, test_req_id_1: TestReqID,
-        REQUIRED, test_req_id_2: TestReqID,
+        REQUIRED, test_req_id_1: TestReqID [FIX40..],
+        REQUIRED, test_req_id_2: TestReqID [FIX40..],
     });
 
     fn do_garbled_test_with_dict<F: Fn(&mut TestServer,&mut Client,usize),TestRequestResponse: FIXTMessage + Any + Clone>(session_reject_reason: SessionRejectReason,ref_tag_id: &'static [u8],test_func: F,dict: HashMap<&'static [u8],Box<FIXTMessage + Send>>) {
@@ -1549,8 +1549,8 @@ fn test_14B() {
     //respond with Reject, increment inbound sequence number, and issue an error.
     {
         define_fixt_message!(TestRequestWithEnumeratedField: b"1" => {
-            REQUIRED, test_req_id: TestReqID,
-            NOT_REQUIRED, enumerated_field: SideField,
+            REQUIRED, test_req_id: TestReqID [FIX40..],
+            NOT_REQUIRED, enumerated_field: SideField [FIX40..],
         });
 
         define_fields!(
@@ -1558,8 +1558,8 @@ fn test_14B() {
         );
 
         define_fixt_message!(TestRequestWithIncorrectField: b"1" => {
-            REQUIRED, test_req_id: TestReqID,
-            NOT_REQUIRED, enumerated_field: SideChar,
+            REQUIRED, test_req_id: TestReqID [FIX40..],
+            NOT_REQUIRED, enumerated_field: SideChar [FIX40..],
         });
 
         define_dictionary!(
