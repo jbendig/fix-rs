@@ -15,6 +15,7 @@ use std::collections::{HashMap,HashSet};
 use dictionary::fields::*;
 use field::Field;
 use field_type::FieldType;
+use fix_version::FIXVersion;
 use fixt::message::FIXTMessage;
 use message::{REQUIRED,NOT_REQUIRED,Message,Meta,SetValueError};
 use message_version::MessageVersion;
@@ -76,7 +77,7 @@ impl Message for NullMessage {
         Vec::new()
     }
 
-    fn read_body(&self,_buf: &mut Vec<u8>) -> usize {
+    fn read_body(&self,_fix_version: FIXVersion,_message_version: MessageVersion,_buf: &mut Vec<u8>) -> usize {
         unimplemented!();
     }
 }
@@ -99,6 +100,10 @@ impl FIXTMessage for NullMessage {
     }
 
     fn target_comp_id(&self) -> &<<TargetCompID as Field>::Type as FieldType>::Type {
+        unimplemented!();
+    }
+
+    fn set_appl_ver_id(&mut self,_message_version: MessageVersion) {
         unimplemented!();
     }
 

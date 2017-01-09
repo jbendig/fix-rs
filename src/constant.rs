@@ -11,3 +11,10 @@
 
 pub const TAG_END: u8 = b'=';
 pub const VALUE_END: u8 = b'\x01'; //SOH
+
+pub const FIXT_1_1_BEGIN_STRING: &'static [u8] = b"FIXT.1.1";
+pub const FIX_4_0_BEGIN_STRING: &'static [u8] = b"FIX.4.0";
+pub const FIX_4_1_BEGIN_STRING: &'static [u8] = b"FIX.4.1";
+pub const FIX_4_2_BEGIN_STRING: &'static [u8] = b"FIX.4.2";
+pub const FIX_4_3_BEGIN_STRING: &'static [u8] = b"FIX.4.3";
+pub const FIX_4_4_BEGIN_STRING: &'static [u8] = b"FIX.4.4";

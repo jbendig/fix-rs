@@ -27,11 +27,12 @@ use field::Field;
 use field_type::FieldType;
 use fix::ParseError;
 use fix_version::FIXVersion;
+use message_version::MessageVersion;
 
 const CLIENT_EVENT_TOKEN: Token = Token(0);
 
 pub enum ConnectionTerminatedReason {
-    BeginStrWrongError{ received: Vec<u8>, expected: &'static [u8] },
+    BeginStrWrongError{ received: FIXVersion, expected: FIXVersion },
     ClientRequested,
     InboundMsgSeqNumMaxExceededError,
     InboundMsgSeqNumLowerThanExpectedError,
@@ -53,8 +54,8 @@ impl fmt::Debug for ConnectionTerminatedReason {
     fn fmt(&self,f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             ConnectionTerminatedReason::BeginStrWrongError{ref received,ref expected} => {
-                let received_str = String::from_utf8_lossy(received).into_owned();
-                let expected_str = String::from_utf8_lossy(expected).into_owned();
+                let received_str = String::from_utf8_lossy(received.begin_string()).into_owned();
+                let expected_str = String::from_utf8_lossy(expected.begin_string()).into_owned();
                 write!(f,"Received message with BeginStr containing '{}' but expected '{}'.",received_str,expected_str)
             },
             ConnectionTerminatedReason::ClientRequested => write!(f,"Client requested logout and it was performed cleanly."),
@@ -139,7 +140,7 @@ impl Client {
         })
     }
 
-    pub fn add_connection<A: ToSocketAddrs>(&mut self,fix_version: FIXVersion,address: A) -> Option<usize> {
+    pub fn add_connection<A: ToSocketAddrs>(&mut self,fix_version: FIXVersion,mut default_message_version: MessageVersion,address: A) -> Option<usize> {
         //Use first socket address. This more or less emulates TcpStream::connect.
         let address = match address.to_socket_addrs() {
             Ok(mut address_iter) => {
@@ -151,6 +152,17 @@ impl Client {
             Err(_) => return None,
         };
 
+        //Force older FIX versions that don't support message versioning to use their respective
+        //message versions.
+        default_message_version = match fix_version {
+            FIXVersion::FIX_4_0 => MessageVersion::FIX40,
+            FIXVersion::FIX_4_1 => MessageVersion::FIX41,
+            FIXVersion::FIX_4_2 => MessageVersion::FIX42,
+            FIXVersion::FIX_4_3 => MessageVersion::FIX43,
+            FIXVersion::FIX_4_4 => MessageVersion::FIX44,
+            FIXVersion::FIXT_1_1 => default_message_version,
+        };
+
         //Create unique id to refer to connection by.
         let connection_id = match self.generate_connection_id() {
             Some(connection_id) => connection_id,
@@ -158,7 +170,7 @@ impl Client {
         };
 
         //Tell thread to setup this connection by connecting a socket and logging on.
-        self.tx.send(InternalClientToThreadEvent::NewConnection(Token(connection_id),fix_version,address)).unwrap();
+        self.tx.send(InternalClientToThreadEvent::NewConnection(Token(connection_id),fix_version,default_message_version,address)).unwrap();
 
         Some(connection_id)
     }
@@ -169,7 +181,11 @@ impl Client {
     }
 
     pub fn send_message_box(&mut self,connection_id: usize,message: Box<FIXTMessage + Send>) {
-        self.tx.send(InternalClientToThreadEvent::SendMessage(Token(connection_id),message)).unwrap();
+        self.send_message_box_with_message_version(connection_id,None,message);
+    }
+
+    pub fn send_message_box_with_message_version<MV: Into<Option<MessageVersion>>>(&mut self,connection_id: usize,message_version: MV,message: Box<FIXTMessage + Send>) {
+        self.tx.send(InternalClientToThreadEvent::SendMessage(Token(connection_id),message_version.into(),message)).unwrap();
     }
 
     pub fn logout(&mut self,connection_id: usize) {

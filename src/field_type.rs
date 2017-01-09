@@ -9,7 +9,9 @@
 // at your option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use fix_version::FIXVersion;
 use message::{Message,SetValueError};
+use message_version::MessageVersion;
 use rule::Rule;
 
 pub trait FieldType {
@@ -31,6 +33,6 @@ pub trait FieldType {
 
     fn is_empty(field: &Self::Type) -> bool;
     fn len(field: &Self::Type) -> usize;
-    fn read(field: &Self::Type,buf: &mut Vec<u8>) -> usize;
+    fn read(field: &Self::Type,fix_version: FIXVersion,message_version: MessageVersion,buf: &mut Vec<u8>) -> usize;
 }
 

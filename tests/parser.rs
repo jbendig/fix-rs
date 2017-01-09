@@ -21,13 +21,15 @@ use std::any::Any;
 use std::collections::HashMap;
 
 use fix_rs::dictionary::field_types::other::{RateSource,RateSourceType};
-use fix_rs::dictionary::fields::{EncryptMethod,HeartBtInt,MsgSeqNum,SendingTime,SenderCompID,TargetCompID,NoMsgTypeGrp,RawData,RawDataLength,NoRateSources,Symbol,NoOrders,Text,OrigSendingTime};
+use fix_rs::dictionary::fields::{EncryptMethod,HeartBtInt,MsgSeqNum,SendingTime,SenderCompID,TargetCompID,NoMsgTypeGrp,RawData,RawDataLength,NoRateSources,Symbol,NoOrders,TestReqID,Text,OrigSendingTime};
+use fix_rs::dictionary::messages::Heartbeat;
 use fix_rs::field::Field;
 use fix_rs::field_type::FieldType;
 use fix_rs::fix::{Parser,ParseError};
 use fix_rs::fix_version::FIXVersion;
 use fix_rs::fixt::message::FIXTMessage;
 use fix_rs::message::{MessageDetails,REQUIRED,NOT_REQUIRED};
+use fix_rs::message_version::MessageVersion;
 
 const PARSE_MESSAGE_BY_STREAM : bool = true;
 
@@ -65,6 +67,10 @@ impl FIXTMessage for LogonTest {
         unimplemented!();
     }
 
+    fn set_appl_ver_id(&mut self,_message_version: MessageVersion) {
+        unimplemented!();
+    }
+
     fn is_poss_dup(&self) -> bool {
         unimplemented!();
     }
@@ -85,9 +91,9 @@ impl FIXTMessage for LogonTest {
     }
 }
 
-fn parse_message<T: FIXTMessage + Default + Any + Clone + PartialEq + Send>(message: &[u8]) -> Result<T,ParseError> {
+fn parse_message_with_ver<T: FIXTMessage + MessageDetails + Default + Any + Clone + PartialEq + Send>(fix_version: FIXVersion,message_version: MessageVersion, message: &[u8]) -> Result<T,ParseError> {
     let mut message_dictionary: HashMap<&'static [u8],Box<FIXTMessage + Send>> = HashMap::new();
-    message_dictionary.insert(<LogonTest as MessageDetails>::msg_type(),Box::new(<T as Default>::default()));
+    message_dictionary.insert(<T as MessageDetails>::msg_type(),Box::new(<T as Default>::default()));
 
     let mut parser = Parser::new(message_dictionary);
 
@@ -121,12 +127,12 @@ fn parse_message<T: FIXTMessage + Default + Any + Clone + PartialEq + Send>(mess
     {
         {
             let mut new_message_bytes = Vec::new();
-            casted_message.read(&FIXVersion::FIX_4_2,&mut new_message_bytes);
+            casted_message.read(fix_version,message_version,&mut new_message_bytes);
             let buffer: Vec<u8> = new_message_bytes.into_iter().map(|c| if c == b'\x01' { b'|' } else { c } ).collect();
             println!("{:?}",String::from_utf8_lossy(&buffer[..]))
         }
         let mut new_message_bytes = Vec::new();
-        casted_message.read(&FIXVersion::FIX_4_2,&mut new_message_bytes);
+        casted_message.read(fix_version,message_version,&mut new_message_bytes);
         parser.messages.clear();
         let(_,result) = parser.parse(&new_message_bytes);
         if result.is_err() {
@@ -140,6 +146,10 @@ fn parse_message<T: FIXTMessage + Default + Any + Clone + PartialEq + Send>(mess
     }
 
     Ok(casted_message)
+}
+
+fn parse_message<T: FIXTMessage + MessageDetails + Default + Any + Clone + PartialEq + Send>(message: &[u8]) -> Result<T,ParseError> {
+    parse_message_with_ver::<T>(FIXVersion::FIX_4_2,MessageVersion::FIX42,message)
 }
 
 #[test]
@@ -217,6 +227,113 @@ fn msg_type_third_tag_test() {
 }
 
 #[test]
+fn sender_comp_id_fourth_tag_test() {
+    //FIXT.1.1
+    {
+        let sender_comp_id_fourth_tag_message = b"8=FIXT.1.1\x019=52\x0135=0\x0149=SERVER\x0156=CLIENT\x0134=10\x0152=20170105-01:01:01\x0110=012\x01";
+        parse_message::<Heartbeat>(sender_comp_id_fourth_tag_message).unwrap();
+
+        let sender_comp_id_fifth_tag_message = b"8=FIXT.1.1\x019=52\x0135=0\x0156=CLIENT\x0149=SERVER\x0134=10\x0152=20170105-01:01:01\x0110=012\x01";
+        let result = parse_message::<Heartbeat>(sender_comp_id_fifth_tag_message);
+        match result.err().unwrap() {
+            fix_rs::fix::ParseError::SenderCompIDNotFourthTag => {},
+            _ => assert!(false),
+        }
+
+        let missing_sender_comp_id_tag_message = b"8=FIXT.1.1\x019=49\x0135=0\x0156=CLIENT\x0134=10\x0152=20170105-01:01:01\x0110=086\x01";
+        let result = parse_message::<Heartbeat>(missing_sender_comp_id_tag_message);
+        match result.err().unwrap() {
+            fix_rs::fix::ParseError::SenderCompIDNotFourthTag => {},
+            _ => assert!(false),
+        }
+    }
+
+    //FIX.4.0
+    {
+        let sender_comp_id_fourth_tag_message = b"8=FIX.4.0\x019=52\x0135=0\x0149=SERVER\x0156=CLIENT\x0134=10\x0152=20170105-01:01:01\x0110=186\x01";
+        parse_message::<Heartbeat>(sender_comp_id_fourth_tag_message).unwrap();
+
+        let sender_comp_id_fifth_tag_message = b"8=FIX.4.0\x019=52\x0135=0\x0156=CLIENT\x0149=SERVER\x0134=10\x0152=20170105-01:01:01\x0110=186\x01";
+        parse_message::<Heartbeat>(sender_comp_id_fifth_tag_message).unwrap(); //Okay! Order doesn't matter here.
+
+        let missing_sender_comp_id_tag_message = b"8=FIX.4.0\x019=42\x0135=0\x0156=CLIENT\x0134=10\x0152=20170105-01:01:01\x0110=055\x01";
+        let result = parse_message::<Heartbeat>(missing_sender_comp_id_tag_message);
+        match result.err().unwrap() {
+            fix_rs::fix::ParseError::MissingRequiredTag(tag,_) => { assert_eq!(tag,b"49"); },
+            _ => assert!(false),
+        }
+    }
+}
+
+#[test]
+fn target_comp_id_fifth_tag_test() {
+    //FIXT.1.1
+    {
+        let target_comp_id_fifth_tag_message = b"8=FIXT.1.1\x019=52\x0135=0\x0149=SERVER\x0156=CLIENT\x0134=10\x0152=20170105-01:01:01\x0110=012\x01";
+        parse_message::<Heartbeat>(target_comp_id_fifth_tag_message).unwrap();
+
+        let target_comp_id_sixth_tag_message = b"8=FIXT.1.1\x019=52\x0135=0\x0149=SERVER\x0134=10\x0156=CLIENT\x0152=20170105-01:01:01\x0110=012\x01";
+        let result = parse_message::<Heartbeat>(target_comp_id_sixth_tag_message);
+        match result.err().unwrap() {
+            fix_rs::fix::ParseError::TargetCompIDNotFifthTag => {},
+            _ => assert!(false),
+        }
+
+        let missing_target_comp_id_tag_message = b"8=FIXT.1.1\x019=49\x0135=0\x0149=SERVER\x0134=10\x0152=20170105-01:01:01\x0110=086\x01";
+        let result = parse_message::<Heartbeat>(missing_target_comp_id_tag_message);
+        match result.err().unwrap() {
+            fix_rs::fix::ParseError::TargetCompIDNotFifthTag => {},
+            _ => assert!(false),
+        }
+    }
+
+    //FIX.4.0
+    {
+        let target_comp_id_fifth_tag_message = b"8=FIX.4.0\x019=52\x0135=0\x0149=SERVER\x0156=CLIENT\x0134=10\x0152=20170105-01:01:01\x0110=186\x01";
+        parse_message::<Heartbeat>(target_comp_id_fifth_tag_message).unwrap();
+
+        let target_comp_id_sixth_tag_message = b"8=FIX.4.0\x019=52\x0135=0\x0149=SERVER\x0134=10\x0156=CLIENT\x0152=20170105-01:01:01\x0110=186\x01";
+        parse_message::<Heartbeat>(target_comp_id_sixth_tag_message).unwrap(); //Okay! Order doesn't matter here.
+
+        let missing_target_comp_id_tag_message = b"8=FIX.4.0\x019=42\x0135=0\x0156=CLIENT\x0134=10\x0152=20170105-01:01:01\x0110=055\x01";
+        let result = parse_message::<Heartbeat>(missing_target_comp_id_tag_message);
+        match result.err().unwrap() {
+            fix_rs::fix::ParseError::MissingRequiredTag(tag,_) => { assert_eq!(tag,b"49"); },
+            _ => assert!(false),
+        }
+    }
+}
+
+#[test]
+fn appl_ver_id_sixth_tag_test() {
+    define_fixt_message!(TestMessage: b"9999" => {
+        NOT_REQUIRED, test_req_id: TestReqID [FIX50..],
+    });
+
+    let appl_ver_id_sixth_tag_message = b"8=FIXT.1.1\x019=62\x0135=9999\x0149=SERVER\x0156=CLIENT\x011128=9\x0134=10\x0152=20170105-01:01:01\x0110=004\x01";
+    parse_message_with_ver::<TestMessage>(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,appl_ver_id_sixth_tag_message).unwrap();
+
+    let appl_ver_id_fourth_tag_message = b"8=FIXT.1.1\x019=34\x0135=9999\x011128=9\x0156=CLIENT\x01112=Test\x0110=000\x01";
+    let result = parse_message::<TestMessage>(appl_ver_id_fourth_tag_message);
+    assert!(result.is_err());
+    match result.err().unwrap() {
+        fix_rs::fix::ParseError::SenderCompIDNotFourthTag => {},
+        _ => assert!(false),
+    }
+
+    let appl_ver_id_seventh_tag_message = b"8=FIXT.1.1\x019=44\x0135=9999\x0149=SERVER\x0156=CLIENT\x01112=Test\x011128=9\x0110=000\x01";
+    let result = parse_message::<TestMessage>(appl_ver_id_seventh_tag_message);
+    assert!(result.is_err());
+    match result.err().unwrap() {
+        fix_rs::fix::ParseError::ApplVerIDNotSixthTag => {},
+        _ => assert!(false),
+    }
+
+    let missing_appl_ver_id_tag_message = b"8=FIXT.1.1\x019=55\x0135=9999\x0149=SERVER\x0156=CLIENT\x0134=10\x0152=20170105-01:01:01\x0110=195\x01";
+    parse_message_with_ver::<TestMessage>(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,missing_appl_ver_id_tag_message).unwrap();
+}
+
+#[test]
 fn checksum_tag_test() {
     let valid_checksum_tag_message = b"8=FIX.4.2\x019=65\x0135=A\x0149=SERVER\x0156=CLIENT\x0134=177\x0152=20090107-18:15:16\x0198=0\x01108=30\x0110=062\x01";
     let message = parse_message::<LogonTest>(valid_checksum_tag_message).unwrap();
@@ -281,7 +398,7 @@ fn length_tag_test() {
         }
 
         fn msg_type(&self) -> &'static [u8] {
-            unimplemented!();
+            b"A"
         }
 
         fn msg_seq_num(&self) -> <<MsgSeqNum as Field>::Type as FieldType>::Type {
@@ -293,6 +410,10 @@ fn length_tag_test() {
         }
 
         fn target_comp_id(&self) -> &<<TargetCompID as Field>::Type as FieldType>::Type {
+            unimplemented!();
+        }
+
+        fn set_appl_ver_id(&mut self,_message_version: MessageVersion) {
             unimplemented!();
         }
 
@@ -318,7 +439,7 @@ fn length_tag_test() {
 
     let valid_length_tag_message = b"8=FIX.4.2\x019=28\x0135=A\x0195=13\x0196=This\x01is=atest\x0110=119\x01";
     let message = parse_message::<LengthTagTestMessage>(valid_length_tag_message).unwrap();
-    assert_eq!(message.meta.clone().unwrap().protocol,b"FIX.4.2");
+    assert_eq!(message.meta.clone().unwrap().begin_string,FIXVersion::FIX_4_2);
     assert_eq!(message.meta.clone().unwrap().body_length,28);
     assert_eq!(message.meta.clone().unwrap().checksum,119);
     assert_eq!(message.raw_data,b"This\x01is=atest");
@@ -361,7 +482,7 @@ fn repeating_groups_test() {
         }
 
         fn msg_type(&self) -> &'static [u8] {
-            unimplemented!();
+            b"A"
         }
 
         fn msg_seq_num(&self) -> <<MsgSeqNum as Field>::Type as FieldType>::Type {
@@ -373,6 +494,10 @@ fn repeating_groups_test() {
         }
 
         fn target_comp_id(&self) -> &<<TargetCompID as Field>::Type as FieldType>::Type {
+            unimplemented!();
+        }
+
+        fn set_appl_ver_id(&mut self,_message_version: MessageVersion) {
             unimplemented!();
         }
 
@@ -398,7 +523,7 @@ fn repeating_groups_test() {
 
     let no_repeating_groups_message = b"8=FIX.4.2\x019=12\x0135=A\x011445=0\x0110=28\x01";
     let message = parse_message::<RepeatingGroupsTestMessage>(no_repeating_groups_message).unwrap();
-    assert_eq!(message.meta.clone().unwrap().protocol,b"FIX.4.2");
+    assert_eq!(message.meta.clone().unwrap().begin_string,FIXVersion::FIX_4_2);
     assert_eq!(message.meta.clone().unwrap().body_length,12);
     assert_eq!(message.meta.clone().unwrap().checksum,28);
     assert_eq!(message.rate_sources.len(),0);
@@ -521,7 +646,7 @@ fn nested_repeating_groups_test() {
         }
 
         fn msg_type(&self) -> &'static [u8] {
-            unimplemented!();
+            b"A"
         }
 
         fn msg_seq_num(&self) -> <<MsgSeqNum as Field>::Type as FieldType>::Type {
@@ -533,6 +658,10 @@ fn nested_repeating_groups_test() {
         }
 
         fn target_comp_id(&self) -> &<<TargetCompID as Field>::Type as FieldType>::Type {
+            unimplemented!();
+        }
+
+        fn set_appl_ver_id(&mut self,_message_version: MessageVersion) {
             unimplemented!();
         }
 
@@ -558,7 +687,7 @@ fn nested_repeating_groups_test() {
 
     let one_nested_repeating_group_message = b"8=FIX.4.2\x019=35\x0135=A\x0173=1\x0111=uniqueid\x0178=1\x0179=acct\x0110=233\x01";
     let message = parse_message::<NestedRepeatingGroupsTestMessage>(one_nested_repeating_group_message).unwrap();
-    assert_eq!(message.meta.clone().unwrap().protocol,b"FIX.4.2");
+    assert_eq!(message.meta.clone().unwrap().begin_string,FIXVersion::FIX_4_2);
     assert_eq!(message.meta.clone().unwrap().body_length,35);
     assert_eq!(message.meta.clone().unwrap().checksum,233);
     assert_eq!(message.orders.len(),1);
@@ -581,7 +710,7 @@ fn stream_test() {
     assert_eq!(parser.messages.len(),2);
     for message in parser.messages {
         let casted_message = message.as_any().downcast_ref::<LogonTest>().unwrap();
-        assert_eq!(casted_message.meta.clone().unwrap().protocol,b"FIX.4.2");
+        assert_eq!(casted_message.meta.clone().unwrap().begin_string,FIXVersion::FIX_4_2);
         assert_eq!(casted_message.meta.clone().unwrap().body_length,65);
         assert_eq!(casted_message.meta.clone().unwrap().checksum,62);
         assert_eq!(casted_message.sender_comp_id,"SERVER");
@@ -598,7 +727,7 @@ fn stream_test() {
     assert_eq!(bytes_read,garbage_before_message.len());
     assert!(result.is_ok());
     let casted_message = parser.messages.first().unwrap().as_any().downcast_ref::<LogonTest>().unwrap();
-    assert_eq!(casted_message.meta.clone().unwrap().protocol,b"FIX.4.2");
+    assert_eq!(casted_message.meta.clone().unwrap().begin_string,FIXVersion::FIX_4_2);
     assert_eq!(casted_message.meta.clone().unwrap().body_length,65);
     assert_eq!(casted_message.meta.clone().unwrap().checksum,62);
     assert_eq!(casted_message.sender_comp_id,"SERVER");
@@ -616,7 +745,7 @@ fn stream_test() {
     assert_eq!(parser.messages.len(),2);
     for message in parser.messages {
         let casted_message = message.as_any().downcast_ref::<LogonTest>().unwrap();
-        assert_eq!(casted_message.meta.clone().unwrap().protocol,b"FIX.4.2");
+        assert_eq!(casted_message.meta.clone().unwrap().begin_string,FIXVersion::FIX_4_2);
         assert_eq!(casted_message.meta.clone().unwrap().body_length,65);
         assert_eq!(casted_message.meta.clone().unwrap().checksum,62);
         assert_eq!(casted_message.sender_comp_id,"SERVER");
@@ -640,7 +769,7 @@ fn stream_test() {
     assert_eq!(bytes_read_failure + bytes_read_success,invalid_message_before_valid_message.len());
     assert_eq!(parser.messages.len(),1);
     let casted_message = parser.messages.first().unwrap().as_any().downcast_ref::<LogonTest>().unwrap();
-    assert_eq!(casted_message.meta.clone().unwrap().protocol,b"FIX.4.2");
+    assert_eq!(casted_message.meta.clone().unwrap().begin_string,FIXVersion::FIX_4_2);
     assert_eq!(casted_message.meta.clone().unwrap().body_length,65);
     assert_eq!(casted_message.meta.clone().unwrap().checksum,62);
     assert_eq!(casted_message.sender_comp_id,"SERVER");
@@ -672,3 +801,4 @@ fn no_value_after_tag_test() {
         _ => assert!(false),
     }
 }
+

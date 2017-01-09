@@ -54,14 +54,14 @@ macro_rules! define_enum_field_type {
     };
 
     ( READ_FUNC_DEF $field_type_type:ident ) => {
-        fn read(field: &Self::Type,buf: &mut Vec<u8>) -> usize {
+        fn read(field: &Self::Type,_fix_version: $crate::fix_version::FIXVersion,_message_version: $crate::message_version::MessageVersion,buf: &mut Vec<u8>) -> usize {
             let bytes = field.to_bytes();
             buf.write(bytes).unwrap()
         }
     };
 
     ( READ_FUNC_DEF $field_type_type:ty ) => {
-        fn read(field: &Self::Type,buf: &mut Vec<u8>) -> usize {
+        fn read(field: &Self::Type,_fix_version: $crate::fix_version::FIXVersion,_message_version: $crate::message_version::MessageVersion,buf: &mut Vec<u8>) -> usize {
             if let Some(ref field) = *field {
                 let bytes = field.to_bytes();
                 return buf.write(bytes).unwrap()
@@ -194,7 +194,7 @@ macro_rules! define_enum_field_type_with_reserved {
     };
 
     ( READ_FUNC_DEF $field_type_type:ident ) => {
-        fn read(field: &Self::Type,buf: &mut Vec<u8>) -> usize {
+        fn read(field: &Self::Type,_fix_version: $crate::fix_version::FIXVersion,_message_version: $crate::message_version::MessageVersion,buf: &mut Vec<u8>) -> usize {
             let value = field.to_value();
             let value_string = value.to_string();
             let value_bytes = value_string.as_bytes();
@@ -203,7 +203,7 @@ macro_rules! define_enum_field_type_with_reserved {
     };
 
     ( READ_FUNC_DEF $field_type_type:ty ) => {
-        fn read(field: &Self::Type,buf: &mut Vec<u8>) -> usize {
+        fn read(field: &Self::Type,_fix_version: $crate::fix_version::FIXVersion,_message_version: $crate::message_version::MessageVersion,buf: &mut Vec<u8>) -> usize {
             if let Some(ref field) = *field {
                 let value = field.to_value();
                 let value_string = value.to_string();
@@ -301,7 +301,7 @@ macro_rules! define_enum_field_type_with_reserved {
                 0 //Unused for this type
             }
 
-            fn read(field: &Self::Type,buf: &mut Vec<u8>) -> usize {
+            fn read(field: &Self::Type,_fix_version: $crate::fix_version::FIXVersion,_message_version: $crate::message_version::MessageVersion,buf: &mut Vec<u8>) -> usize {
                 let value_bytes = field.as_bytes();
                 return buf.write(value_bytes).unwrap()
             }
@@ -333,7 +333,7 @@ macro_rules! define_enum_field_type_with_reserved {
                 0 //Unused for this type.
             }
 
-            fn read(field: &Self::Type,buf: &mut Vec<u8>) -> usize {
+            fn read(field: &Self::Type,_fix_version: $crate::fix_version::FIXVersion,_message_version: $crate::message_version::MessageVersion,buf: &mut Vec<u8>) -> usize {
                 if let Some(ref field) = *field {
                     let value_bytes = field.as_bytes();
                     return buf.write(value_bytes).unwrap()

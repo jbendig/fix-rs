@@ -41,6 +41,22 @@ impl MessageVersion {
         }
     }
 
+    pub fn from_bytes(bytes: &[u8]) -> Option<MessageVersion> {
+        match bytes {
+            //Unsupported b"0" => MessageVersion::FIX27,
+            //Unsupported b"1" => MessageVersion::FIX30,
+            b"2" => Some(MessageVersion::FIX40),
+            b"3" => Some(MessageVersion::FIX41),
+            b"4" => Some(MessageVersion::FIX42),
+            b"5" => Some(MessageVersion::FIX43),
+            b"6" => Some(MessageVersion::FIX44),
+            b"7" => Some(MessageVersion::FIX50),
+            b"8" => Some(MessageVersion::FIX50SP1),
+            b"9" => Some(MessageVersion::FIX50SP2),
+            _ => None,
+        }
+    }
+
     pub fn as_value(&self) -> u8 {
         match *self {
             //Unsupported MessageVersion::FIX27 => 0,
@@ -54,6 +70,34 @@ impl MessageVersion {
             MessageVersion::FIX50SP1 => 8,
             MessageVersion::FIX50SP2 => 9,
         }
+    }
+
+    pub fn as_bytes(&self) -> &[u8] {
+        match *self {
+            //Unsupported MessageVersion::FIX27 => b"0",
+            //Unsupported MessageVersion::FIX30 => b"1",
+            MessageVersion::FIX40 => b"2",
+            MessageVersion::FIX41 => b"3",
+            MessageVersion::FIX42 => b"4",
+            MessageVersion::FIX43 => b"5",
+            MessageVersion::FIX44 => b"6",
+            MessageVersion::FIX50 => b"7",
+            MessageVersion::FIX50SP1 => b"8",
+            MessageVersion::FIX50SP2 => b"9",
+        }
+    }
+
+    pub fn all() -> Vec<MessageVersion> {
+        vec![
+            MessageVersion::FIX40,
+            MessageVersion::FIX41,
+            MessageVersion::FIX42,
+            MessageVersion::FIX43,
+            MessageVersion::FIX44,
+            MessageVersion::FIX50,
+            MessageVersion::FIX50SP1,
+            MessageVersion::FIX50SP2
+        ]
     }
 }
 

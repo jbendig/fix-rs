@@ -16,6 +16,7 @@ use field::Field;
 use field_type::FieldType;
 use fix_version::FIXVersion;
 use message::Message;
+use message_version::MessageVersion;
 
 pub trait FIXTMessage: Message {
     fn new_into_box(&self) -> Box<FIXTMessage + Send>;
@@ -23,6 +24,7 @@ pub trait FIXTMessage: Message {
     fn msg_seq_num(&self) -> <<MsgSeqNum as Field>::Type as FieldType>::Type;
     fn sender_comp_id(&self) -> &<<SenderCompID as Field>::Type as FieldType>::Type;
     fn target_comp_id(&self) -> &<<TargetCompID as Field>::Type as FieldType>::Type;
+    fn set_appl_ver_id(&mut self,message_version: MessageVersion);
     fn is_poss_dup(&self) -> bool;
     fn sending_time(&self) -> <<SendingTime as Field>::Type as FieldType>::Type;
     fn orig_sending_time(&self) -> <<OrigSendingTime as Field>::Type as FieldType>::Type;
@@ -35,7 +37,7 @@ pub trait FIXTMessage: Message {
 impl fmt::Debug for FIXTMessage + Send {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut buffer = Vec::new();
-        self.read(&FIXVersion::FIXT_1_1,&mut buffer);
+        self.read(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,&mut buffer);
         let buffer: Vec<u8> = buffer.into_iter().map(|c| if c == b'\x01' { b'|' } else { c } ).collect();
         write!(f,"{:?}",String::from_utf8_lossy(&buffer[..]))
     }
@@ -50,7 +52,7 @@ macro_rules! define_fixt_message {
             $crate::message::REQUIRED, sender_comp_id: $crate::dictionary::fields::SenderCompID [FIX40..], //Must be first here to be 4th field when serialized.
             $crate::message::REQUIRED, target_comp_id: $crate::dictionary::fields::TargetCompID [FIX40..], //Must be second here to be 5th field when serialized.
             //TODO: This and the following three tags should not be ever used with Logon, Logout, Reject, ResendRequest, SequenceReset, TestRequest, and Heartbeat.
-            $crate::message::NOT_REQUIRED, appl_ver_id: $crate::dictionary::fields::ApplVerID [FIX50..],  //Must be third here to be 6th field when serialized.
+            $crate::message::NOT_REQUIRED, appl_ver_id: $crate::dictionary::fields::ApplVerID [FIX40..],  //Must be third here to be 6th field when serialized. Note: This field uses Rule::RequiresFIXVersion(FIXVersion::FIXT_1_1) to be excluded at the FIX level instead of the message level. This way it's processed correctly when using versioned messages. So leave message version as [FIX40..].
             $crate::message::NOT_REQUIRED, appl_ext_id: $crate::dictionary::fields::ApplExtID [FIX50SP1..],
             $crate::message::NOT_REQUIRED, cstm_appl_ver_id: $crate::dictionary::fields::CstmApplVerID [FIX50..],
             $crate::message::NOT_REQUIRED, on_behalf_of_comp_id: $crate::dictionary::fields::OnBehalfOfCompID [FIX40..],
@@ -86,16 +88,22 @@ macro_rules! define_fixt_message {
             $crate::message::NOT_REQUIRED, signature: $crate::dictionary::fields::Signature [FIX40..],
         });
 
+        impl $message_name {
+            #[allow(unreachable_code)]
+            pub fn msg_type() -> &'static [u8] {
+                $( return $message_type )*; //Only one message type can be specified.
+
+                b""
+            }
+        }
+
         impl $crate::fixt::message::FIXTMessage for $message_name {
             fn new_into_box(&self) -> Box<$crate::fixt::message::FIXTMessage + Send> {
                 Box::new($message_name::new())
             }
 
-            #[allow(unreachable_code)]
             fn msg_type(&self) -> &'static [u8] {
-                $( return $message_type )*; //Only one message type can be specified.
-
-                b""
+                $message_name::msg_type()
             }
 
             fn msg_seq_num(&self) -> <<$crate::dictionary::fields::MsgSeqNum as $crate::field::Field>::Type as $crate::field_type::FieldType>::Type {
@@ -108,6 +116,10 @@ macro_rules! define_fixt_message {
 
             fn target_comp_id(&self) -> &<<$crate::dictionary::fields::TargetCompID as $crate::field::Field>::Type as $crate::field_type::FieldType>::Type {
                 &self.target_comp_id
+            }
+
+            fn set_appl_ver_id(&mut self,appl_ver_id: $crate::message_version::MessageVersion) {
+                self.appl_ver_id = Some(appl_ver_id);
             }
 
             fn is_poss_dup(&self) -> bool {

@@ -22,14 +22,18 @@ use std::time::Duration;
 
 #[macro_use]
 mod common;
-use common::{TestServer,new_logon_message};
+use common::{SERVER_SENDER_COMP_ID,SERVER_TARGET_COMP_ID,TestServer,new_logon_message};
 use fix_rs::dictionary::field_types::other::SessionRejectReason;
+use fix_rs::dictionary::fields::{SenderCompID,TargetCompID,Text};
 use fix_rs::dictionary::messages::{Heartbeat,Logon,Logout,Reject,ResendRequest,SequenceReset,TestRequest};
+use fix_rs::field::Field;
+use fix_rs::fix::ParseError;
 use fix_rs::fix_version::FIXVersion;
 use fix_rs::fixt::client::{ClientEvent,ConnectionTerminatedReason};
 use fix_rs::fixt::tests::{INBOUND_MESSAGES_BUFFER_LEN_MAX,INBOUND_BYTES_BUFFER_CAPACITY};
 use fix_rs::fixt::message::FIXTMessage;
-use fix_rs::message::Message;
+use fix_rs::message::{NOT_REQUIRED,REQUIRED,Message};
+use fix_rs::message_version::MessageVersion;
 
 #[test]
 fn test_recv_resend_request_invalid_end_seq_no() {
@@ -473,7 +477,7 @@ fn test_overflowing_inbound_messages_buffer_does_resume() {
         test_request_message.msg_seq_num = (x + 2) as u64;
         test_request_message.test_req_id = String::from("test");
 
-        test_request_message.read(&FIXVersion::FIXT_1_1,&mut bytes);
+        test_request_message.read(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,&mut bytes);
     }
     assert!(bytes.len() < 1400); //Make sure the serialized body is reasonably likely to fit within the MTU.
     assert!(bytes.len() < INBOUND_BYTES_BUFFER_CAPACITY); //Make sure client thread can theoretically store all of the messages in a single recv().
@@ -487,5 +491,323 @@ fn test_overflowing_inbound_messages_buffer_does_resume() {
 
         let message = test_server.recv_message::<Heartbeat>();
         assert_eq!(message.msg_seq_num,(x + 2) as u64);
+    }
+}
+
+#[test]
+fn test_sender_comp_id() {
+    define_fixt_message!(TestMessage: b"9999" => {
+        NOT_REQUIRED, text: Text [FIX50..],
+    });
+
+    define_dictionary!(
+        Logon : Logon,
+        Reject : Reject,
+        TestMessage : TestMessage,
+    );
+
+    //FIXT.1.1: Make sure SenderCompID has to be the fourth field.
+    {
+        //Connect and logon.
+        let (mut test_server,mut client,connection_id) = TestServer::setup_and_logon_with_ver(FIXVersion::FIXT_1_1,MessageVersion::FIX50,build_dictionary());
+
+        //Accept when SenderCompID is the fourth tag.
+        let target_comp_id_fifth_tag_message = b"8=FIXT.1.1\x019=48\x0135=9999\x0149=TX\x0156=TEST\x0134=2\x0152=20170105-01:01:01\x0110=236\x01";
+        let bytes_written = test_server.stream.write(target_comp_id_fifth_tag_message).unwrap();
+        assert_eq!(bytes_written,target_comp_id_fifth_tag_message.len());
+
+        let message = client_poll_message!(client,connection_id,TestMessage);
+        assert_eq!(message.msg_seq_num,2);
+        assert_eq!(message.sender_comp_id,SERVER_SENDER_COMP_ID);
+
+        //Reject when SenderCompID is the fifth tag.
+        let sender_comp_id_fifth_tag_message = b"8=FIXT.1.1\x019=48\x0135=9999\x0156=TEST\x0149=TX\x0134=3\x0152=20170105-01:01:01\x0110=012\x01";
+        let bytes_written = test_server.stream.write(sender_comp_id_fifth_tag_message).unwrap();
+        assert_eq!(bytes_written,sender_comp_id_fifth_tag_message.len());
+
+        let message = test_server.recv_message::<Reject>();
+        assert_eq!(message.msg_seq_num,2);
+        assert_eq!(message.session_reject_reason.expect("SessionRejectReason must be provided"),SessionRejectReason::TagSpecifiedOutOfRequiredOrder);
+        assert_eq!(message.text,"SenderCompID must be the 4th tag");
+
+        client_poll_event!(client,ClientEvent::MessageReceivedGarbled(msg_connection_id,parse_error) => {
+            assert_eq!(msg_connection_id,connection_id);
+            assert!(if let ParseError::SenderCompIDNotFourthTag = parse_error { true } else { false });
+        });
+
+        //Reject when SenderCompID is missing.
+        let missing_sender_comp_id_tag_message = b"8=FIXT.1.1\x019=50\x0135=9999\x0156=TEST\x0134=10\x0152=20170105-01:01:01\x0110=086\x01";
+        let bytes_written = test_server.stream.write(missing_sender_comp_id_tag_message).unwrap();
+        assert_eq!(bytes_written,missing_sender_comp_id_tag_message.len());
+
+        let message = test_server.recv_message::<Reject>();
+        assert_eq!(message.msg_seq_num,3);
+        assert_eq!(message.session_reject_reason.expect("SessionRejectReason must be provided"),SessionRejectReason::TagSpecifiedOutOfRequiredOrder);
+        assert_eq!(message.text,"SenderCompID must be the 4th tag");
+
+        client_poll_event!(client,ClientEvent::MessageReceivedGarbled(msg_connection_id,parse_error) => {
+            assert_eq!(msg_connection_id,connection_id);
+            assert!(if let ParseError::SenderCompIDNotFourthTag = parse_error { true } else { false });
+        });
+    }
+
+    //FIX.4.0: Make sure SenderCompID does not have to be the fourth field.
+    {
+        //Connect and logon.
+        let (mut test_server,mut client,connection_id) = TestServer::setup_and_logon_with_ver(FIXVersion::FIX_4_0,MessageVersion::FIX40,build_dictionary());
+
+        //Accept when SenderCompID is the fourth tag.
+        let target_comp_id_fifth_tag_message = b"8=FIX.4.0\x019=48\x0135=9999\x0149=TX\x0156=TEST\x0134=2\x0152=20170105-01:01:01\x0110=154\x01";
+        let bytes_written = test_server.stream.write(target_comp_id_fifth_tag_message).unwrap();
+        assert_eq!(bytes_written,target_comp_id_fifth_tag_message.len());
+
+        let message = client_poll_message!(client,connection_id,TestMessage);
+        assert_eq!(message.msg_seq_num,2);
+        assert_eq!(message.sender_comp_id,SERVER_SENDER_COMP_ID);
+
+        //Accept when SenderCompID is the fifth tag.
+        let sender_comp_id_fifth_tag_message = b"8=FIX.4.0\x019=48\x0135=9999\x0156=TEST\x0149=TX\x0134=3\x0152=20170105-01:01:01\x0110=155\x01";
+        let bytes_written = test_server.stream.write(sender_comp_id_fifth_tag_message).unwrap();
+        assert_eq!(bytes_written,sender_comp_id_fifth_tag_message.len());
+
+        let message = client_poll_message!(client,connection_id,TestMessage);
+        assert_eq!(message.msg_seq_num,3);
+        assert_eq!(message.sender_comp_id,SERVER_SENDER_COMP_ID);
+
+        //Reject when SenderCompID is missing.
+        let missing_sender_comp_id_tag_message = b"8=FIX.4.0\x019=42\x0135=9999\x0156=TEST\x0134=4\x0152=20170105-01:01:01\x0110=063\x01";
+        let bytes_written = test_server.stream.write(missing_sender_comp_id_tag_message).unwrap();
+        assert_eq!(bytes_written,missing_sender_comp_id_tag_message.len());
+
+       let message = test_server.recv_message::<Reject>();
+        assert_eq!(message.msg_seq_num,2);
+        assert_eq!(message.text,"Required tag missing");
+
+        client_poll_event!(client,ClientEvent::MessageReceivedGarbled(msg_connection_id,parse_error) => {
+            assert_eq!(msg_connection_id,connection_id);
+            assert!(if let ParseError::MissingRequiredTag(ref tag,_) = parse_error { *tag == SenderCompID::tag() } else { false });
+        });
+    }
+}
+
+#[test]
+fn test_target_comp_id() {
+    define_fixt_message!(TestMessage: b"9999" => {
+        NOT_REQUIRED, text: Text [FIX50..],
+    });
+
+    define_dictionary!(
+        Logon : Logon,
+        Reject : Reject,
+        TestMessage : TestMessage,
+    );
+
+    //FIXT.1.1: Make sure TargetCompID has to be the fifth field.
+    {
+        //Connect and logon.
+        let (mut test_server,mut client,connection_id) = TestServer::setup_and_logon_with_ver(FIXVersion::FIXT_1_1,MessageVersion::FIX50,build_dictionary());
+
+        //Accept when TargetCompID is the fifth tag.
+        let target_comp_id_fifth_tag_message = b"8=FIXT.1.1\x019=48\x0135=9999\x0149=TX\x0156=TEST\x0134=2\x0152=20170105-01:01:01\x0110=236\x01";
+        let bytes_written = test_server.stream.write(target_comp_id_fifth_tag_message).unwrap();
+        assert_eq!(bytes_written,target_comp_id_fifth_tag_message.len());
+
+        let message = client_poll_message!(client,connection_id,TestMessage);
+        assert_eq!(message.msg_seq_num,2);
+        assert_eq!(message.target_comp_id,SERVER_TARGET_COMP_ID);
+
+        //Reject when TargetCompID is the sixth tag.
+        let target_comp_id_sixth_tag_message = b"8=FIXT.1.1\x019=48\x0135=9999\x0149=TX\x0134=3\x0156=TEST\x0152=20170105-01:01:01\x0110=237\x01";
+        let bytes_written = test_server.stream.write(target_comp_id_sixth_tag_message).unwrap();
+        assert_eq!(bytes_written,target_comp_id_sixth_tag_message.len());
+
+        let message = test_server.recv_message::<Reject>();
+        assert_eq!(message.msg_seq_num,2);
+        assert_eq!(message.session_reject_reason.expect("SessionRejectReason must be provided"),SessionRejectReason::TagSpecifiedOutOfRequiredOrder);
+        assert_eq!(message.text,"TargetCompID must be the 5th tag");
+
+        client_poll_event!(client,ClientEvent::MessageReceivedGarbled(msg_connection_id,parse_error) => {
+            assert_eq!(msg_connection_id,connection_id);
+            assert!(if let ParseError::TargetCompIDNotFifthTag = parse_error { true } else { false });
+        });
+
+        //Reject when TargetCompID is missing.
+        let missing_target_comp_id_tag_message = b"8=FIXT.1.1\x019=59\x0135=9999\x0149=TX\x0134=3\x0152=20170105-01:01:01\x0110=086\x01";
+        let bytes_written = test_server.stream.write(missing_target_comp_id_tag_message).unwrap();
+        assert_eq!(bytes_written,missing_target_comp_id_tag_message.len());
+
+        let message = test_server.recv_message::<Reject>();
+        assert_eq!(message.msg_seq_num,3);
+        assert_eq!(message.session_reject_reason.expect("SessionRejectReason must be provided"),SessionRejectReason::TagSpecifiedOutOfRequiredOrder);
+        assert_eq!(message.text,"TargetCompID must be the 5th tag");
+
+        client_poll_event!(client,ClientEvent::MessageReceivedGarbled(msg_connection_id,parse_error) => {
+            assert_eq!(msg_connection_id,connection_id);
+            assert!(if let ParseError::TargetCompIDNotFifthTag = parse_error { true } else { false });
+        });
+    }
+
+    //FIX.4.0: Make sure TargetCompID does not have to be the fifth field.
+    {
+        //Connect and logon.
+        let (mut test_server,mut client,connection_id) = TestServer::setup_and_logon_with_ver(FIXVersion::FIX_4_0,MessageVersion::FIX40,build_dictionary());
+
+        //Accept when TargetCompID is the fifth tag.
+        let target_comp_id_fifth_tag_message = b"8=FIX.4.0\x019=48\x0135=9999\x0149=TX\x0156=TEST\x0134=2\x0152=20170105-01:01:01\x0110=154\x01";
+        let bytes_written = test_server.stream.write(target_comp_id_fifth_tag_message).unwrap();
+        assert_eq!(bytes_written,target_comp_id_fifth_tag_message.len());
+
+        let message = client_poll_message!(client,connection_id,TestMessage);
+        assert_eq!(message.msg_seq_num,2);
+        assert_eq!(message.target_comp_id,SERVER_TARGET_COMP_ID);
+
+        //Accept when TargetCompID is the sixth tag.
+        let target_comp_id_sixth_tag_message = b"8=FIX.4.0\x019=48\x0135=9999\x0149=TX\x0134=3\x0156=TEST\x0152=20170105-01:01:01\x0110=155\x01";
+        let bytes_written = test_server.stream.write(target_comp_id_sixth_tag_message).unwrap();
+        assert_eq!(bytes_written,target_comp_id_sixth_tag_message.len());
+
+        let message = client_poll_message!(client,connection_id,TestMessage);
+        assert_eq!(message.msg_seq_num,3);
+        assert_eq!(message.target_comp_id,SERVER_TARGET_COMP_ID);
+
+        //Reject when TargetCompID is missing.
+        let missing_target_comp_id_tag_message = b"8=FIX.4.0\x019=40\x0135=9999\x0149=TX\x0134=4\x0152=20170105-01:01:01\x0110=171\x01";
+        let bytes_written = test_server.stream.write(missing_target_comp_id_tag_message).unwrap();
+        assert_eq!(bytes_written,missing_target_comp_id_tag_message.len());
+
+        let message = test_server.recv_message::<Reject>();
+        assert_eq!(message.msg_seq_num,2);
+        assert_eq!(message.text,"Required tag missing");
+
+        client_poll_event!(client,ClientEvent::MessageReceivedGarbled(msg_connection_id,parse_error) => {
+            assert_eq!(msg_connection_id,connection_id);
+            assert!(if let ParseError::MissingRequiredTag(ref tag,_) = parse_error { *tag == TargetCompID::tag() } else { false });
+        });
+    }
+}
+
+#[test]
+fn test_default_appl_ver_id() {
+    define_fixt_message!(TestMessage: b"9999" => {
+        REQUIRED, text: Text [FIX50..],
+    });
+
+    define_fixt_message!(TestMessage2: b"9999" => {
+        REQUIRED, text: Text [FIX40..],
+    });
+
+    define_dictionary!(
+        Logon : Logon,
+        TestMessage : TestMessage,
+    );
+
+    //Connect and logon.
+    let (mut test_server,mut client,connection_id) = TestServer::setup_and_logon_with_ver(FIXVersion::FIXT_1_1,MessageVersion::FIX40,build_dictionary());
+
+    //Make sure DefaultApplVerID is respected for sent messages.
+    {
+        //Make client send a TestMessage.
+        let mut message = new_fixt_message!(TestMessage);
+        message.text = String::from("text");
+        client.send_message(connection_id,message);
+
+        //Confirm text field was excluded by server due to requiring >= FIX50 but default is FIX40.
+        let message = test_server.recv_message::<TestMessage>();
+        assert_eq!(message.text.len(),0);
+    }
+
+    //Make sure DefaultApplVerID is respected for received messages.
+    {
+        //Make server send a TestMessage.
+        let mut message = new_fixt_message!(TestMessage);
+        message.msg_seq_num = 2;
+        message.text = String::from("text");
+        test_server.send_message(message);
+
+        //Confirm text field was excluded by client due to requiring >= FIX50 but default is FIX40.
+        let message = client_poll_message!(client,connection_id,TestMessage);
+        assert_eq!(message.text.len(),0);
+
+        //Make sever send a TestMessage again but force the text field to be sent.
+        let mut message = new_fixt_message!(TestMessage2);
+        message.msg_seq_num = 3;
+        message.text = String::from("text");
+        test_server.send_message(message);
+
+        //Make sure message is considered invalid.
+        client_poll_event!(client,ClientEvent::MessageReceivedGarbled(msg_connection_id,parse_error) => {
+            assert_eq!(msg_connection_id,connection_id);
+            assert!(if let ParseError::UnknownTag(ref tag) = parse_error { *tag == b"58" } else { false });
+        });
+    }
+}
+
+#[test]
+fn test_appl_ver_id() {
+    define_fixt_message!(TestMessage: b"9999" => {
+        REQUIRED, text: Text [FIX50..],
+    });
+
+    define_dictionary!(
+        Logon : Logon,
+        Reject : Reject,
+        TestMessage : TestMessage,
+    );
+
+    //Make sure when ApplVerID is specified after the sixth field, Client responds with an
+    //appropriate Reject message and notification.
+    {
+        //Connect and logon.
+        let (mut test_server,mut client,connection_id) = TestServer::setup_and_logon(build_dictionary());
+
+        //Send TestMessage with ApplVerID field as the seventh tag.
+        let appl_ver_id_seventh_tag_message = b"8=FIXT.1.1\x019=44\x0135=9999\x0149=SERVER\x0156=CLIENT\x0134=2\x011128=9\x0110=000\x01";
+        let bytes_written = test_server.stream.write(appl_ver_id_seventh_tag_message).unwrap();
+        assert_eq!(bytes_written,appl_ver_id_seventh_tag_message.len());
+
+        //Make sure Client responds with an appropriate reject.
+        let message = test_server.recv_message::<Reject>();
+        assert_eq!(message.session_reject_reason.unwrap(),SessionRejectReason::TagSpecifiedOutOfRequiredOrder);
+        assert_eq!(message.text,"ApplVerID must be the 6th tag if specified");
+
+        //Make sure Client indicates that it rejected the message.
+        client_poll_event!(client,ClientEvent::MessageReceivedGarbled(msg_connection_id,parse_error) => {
+            assert_eq!(msg_connection_id,connection_id);
+            assert!(if let ParseError::ApplVerIDNotSixthTag = parse_error { true } else { false });
+        });
+    }
+
+    //Make sure ApplVerID overrides the default message version set in the initial Logon message.
+    {
+        //Connect and logon.
+        let (mut test_server,mut client,connection_id) = TestServer::setup_and_logon(build_dictionary());
+
+        //Send TestMessage with ApplVerID < FIX50 and without text field.
+        let mut message = new_fixt_message!(TestMessage);
+        message.msg_seq_num = 2;
+        message.appl_ver_id = Some(MessageVersion::FIX40);
+        test_server.send_message_with_ver(FIXVersion::FIXT_1_1,message.appl_ver_id.unwrap(),message);
+
+        //Confirm Client accepted message correctly.
+        let message = client_poll_message!(client,connection_id,TestMessage);
+        assert_eq!(message.appl_ver_id,Some(MessageVersion::FIX40));
+        assert_eq!(message.text.len(),0);
+
+        //Send TestMessage with ApplVerID < FIX50 and with text field.
+        let mut message = new_fixt_message!(TestMessage);
+        message.msg_seq_num = 3;
+        message.appl_ver_id = Some(MessageVersion::FIX40);
+        message.text = String::from("text");
+        test_server.send_message_with_ver(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,message); //Force text field to be included.
+
+        //Confirm Client rejected message because text field is unsupported for this version.
+        let message = test_server.recv_message::<Reject>();
+        assert_eq!(message.session_reject_reason.unwrap(),SessionRejectReason::TagNotDefinedForThisMessageType);
+        assert_eq!(message.text,"Tag not defined for this message type");
+
+        client_poll_event!(client,ClientEvent::MessageReceivedGarbled(msg_connection_id,parse_error) => {
+            assert_eq!(msg_connection_id,connection_id);
+            assert!(if let ParseError::UnexpectedTag(ref tag) = parse_error { *tag == Text::tag()  } else { false });
+        });
     }
 }

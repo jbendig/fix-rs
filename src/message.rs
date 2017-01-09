@@ -17,9 +17,9 @@ use fix_version::FIXVersion;
 use message_version::MessageVersion;
 use rule::Rule;
 
-#[derive(Clone,Default,PartialEq)]
+#[derive(Clone,PartialEq)]
 pub struct Meta {
-    pub protocol: Vec<u8>,
+    pub begin_string: FIXVersion,
     pub body_length: u64,
     pub checksum: u8,
 }
@@ -47,14 +47,14 @@ pub trait Message {
     fn as_any_mut(&mut self) -> &mut Any;
     fn new_into_box(&self) -> Box<Message + Send>; //TODO: Investigate having a builder type afterall....
     fn msg_type_header(&self) -> Vec<u8>;
-    fn read_body(&self,buf: &mut Vec<u8>) -> usize;
-    fn read(&self,fix_version: &FIXVersion,buf: &mut Vec<u8>) -> usize {
+    fn read_body(&self,fix_version: FIXVersion,message_version: MessageVersion,buf: &mut Vec<u8>) -> usize;
+    fn read(&self,fix_version: FIXVersion,message_version: MessageVersion,buf: &mut Vec<u8>) -> usize {
         //TODO: Try and avoid reallocations by providing a start offset and then inserting
         //the header in a reserved space at the beginning.
 
         //Read entire body first so we can get the body length.
         let mut body = Vec::new();
-        self.read_body(&mut body);
+        self.read_body(fix_version,message_version,&mut body);
 
         //Prepare header.
         let message_type = self.msg_type_header();
@@ -170,7 +170,7 @@ macro_rules! define_message {
             #[allow(unreachable_code)]
             fn first_field(&self,version: $crate::message_version::MessageVersion) -> &'static [u8] {
                 $( if match_message_version!(version,$( $version)*) {
-                    return { <$field_type as $crate::field::Field>::tag() };
+                    return <$field_type as $crate::field::Field>::tag();
                 } )*
 
                 b""
@@ -196,8 +196,8 @@ macro_rules! define_message {
 
             fn required_fields(&self,version: $crate::message_version::MessageVersion) -> ::std::collections::HashSet<&'static [u8]> {
                 let mut result = ::std::collections::HashSet::new();
-                $( if match_message_version!(version,$( $version )*) {
-                    if $field_required { result.insert(<$field_type as $crate::field::Field>::tag()); }
+                $( if match_message_version!(version,$( $version )*) && $field_required {
+                    result.insert(<$field_type as $crate::field::Field>::tag());
                 } )*
 
                 result
@@ -278,9 +278,11 @@ macro_rules! define_message {
                 buffer
             }
 
-            fn read_body(&self,buf: &mut Vec<u8>) -> usize {
+            fn read_body(&self,fix_version: $crate::fix_version::FIXVersion,message_version: $crate::message_version::MessageVersion,buf: &mut Vec<u8>) -> usize {
                 let mut byte_count: usize = 0;
-                $( byte_count += <$field_type as $crate::field::Field>::read(&self.$field_name,buf,$field_required); )*
+                $( if match_message_version!(message_version,$( $version )*) {
+                    byte_count += <$field_type as $crate::field::Field>::read(&self.$field_name,fix_version,message_version,buf,$field_required);
+                } )*
 
                 byte_count
             }

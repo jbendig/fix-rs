@@ -13,36 +13,52 @@ use std::io::Write;
 use std::str::FromStr;
 
 use field_type::FieldType;
+use fix_version::FIXVersion;
 use message::SetValueError;
+use message_version::MessageVersion;
 
 //Enumerated Fields (Sorted Alphabetically)
 
-#[derive(Clone,Debug,PartialEq)]
-pub enum ApplVerID {
-    FIX27,
-    FIX30,
-    FIX40,
-    FIX41,
-    FIX42,
-    FIX43,
-    FIX44,
-    FIX50,
-    FIX50SP1,
-    FIX50SP2,
-}
+//TODO: Make this public if the following issue ever gets fixed:
+//      https://github.com/rust-lang/rust/pull/31179
+//      Until then, just use MessageVersion directly outside of this module.
+type ApplVerID = MessageVersion;
 
-define_enum_field_type!(NOT_REQUIRED, ApplVerID, ApplVerIDFieldType {
-    ApplVerID::FIX27 => b"0",
-    ApplVerID::FIX30 => b"1",
-    ApplVerID::FIX40 => b"2",
-    ApplVerID::FIX41 => b"3",
-    ApplVerID::FIX42 => b"4",
-    ApplVerID::FIX43 => b"5",
-    ApplVerID::FIX44 => b"6",
-    ApplVerID::FIX50 => b"7",
-    ApplVerID::FIX50SP1 => b"8",
-    ApplVerID::FIX50SP2 => b"9",
-} MUST_BE_STRING);
+pub struct ApplVerIDFieldType;
+
+impl FieldType for ApplVerIDFieldType {
+    type Type = Option<ApplVerID>;
+
+    fn default_value() -> Self::Type {
+        None
+    }
+
+    fn set_value(field: &mut Self::Type,bytes: &[u8]) -> Result<(),SetValueError> {
+        if let Some(value) = ApplVerID::from_bytes(bytes) {
+            *field = Some(value);
+            return Ok(());
+        }
+
+        return Err(SetValueError::OutOfRange);
+    }
+
+    fn is_empty(field: &Self::Type) -> bool {
+        field.is_none()
+    }
+
+    fn len(_field: &Self::Type) -> usize {
+        0
+    }
+
+    fn read(field: &Self::Type,_fix_version: FIXVersion,_message_version: MessageVersion,buf: &mut Vec<u8>) -> usize {
+        if let Some(field) = *field {
+            let bytes_value = field.as_bytes();
+            return buf.write(bytes_value).unwrap();
+        }
+
+        0
+    }
+}
 
 #[derive(Clone,Debug,PartialEq)]
 pub enum BusinessRejectReason {
@@ -161,6 +177,39 @@ define_enum_field_type_with_reserved!(NOT_REQUIRED, CPProgram, CPProgramFieldTyp
     CPProgram::_42 => 2,
     CPProgram::Other => 99,
 } CPProgram::Reserved100Plus => WITH_MINIMUM 100);
+
+pub struct DefaultApplVerIDFieldType;
+
+impl FieldType for DefaultApplVerIDFieldType {
+    type Type = ApplVerID;
+
+    fn default_value() -> Self::Type {
+        //Default to FIX.5.0 because that's the first version to support versioned messages.
+        MessageVersion::FIX50
+    }
+
+    fn set_value(field: &mut Self::Type,bytes: &[u8]) -> Result<(),SetValueError> {
+        if let Some(value) = ApplVerID::from_bytes(bytes) {
+            *field = value;
+            return Ok(());
+        }
+
+        return Err(SetValueError::OutOfRange);
+    }
+
+    fn is_empty(_field: &Self::Type) -> bool {
+        false
+    }
+
+    fn len(_field: &Self::Type) -> usize {
+        0
+    }
+
+    fn read(field: &Self::Type,_fix_version: FIXVersion,_message_version: MessageVersion,buf: &mut Vec<u8>) -> usize {
+        let bytes_value = field.as_bytes();
+        return buf.write(bytes_value).unwrap();
+    }
+}
 
 #[derive(Clone,PartialEq)]
 pub enum EmailType {
@@ -1468,7 +1517,7 @@ impl FieldType for SettlTypeFieldType {
         0 //Unused for this type.
     }
 
-    fn read(field: &Self::Type,buf: &mut Vec<u8>) -> usize {
+    fn read(field: &Self::Type,_fix_version: FIXVersion,_message_version: MessageVersion,buf: &mut Vec<u8>) -> usize {
         if let Some(ref field) = *field {
             return field.read(buf)
         }

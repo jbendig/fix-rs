@@ -40,6 +40,7 @@ use fix_rs::fix_version::FIXVersion;
 use fix_rs::fixt::client::{Client,ClientEvent,ConnectionTerminatedReason};
 use fix_rs::fixt::message::FIXTMessage;
 use fix_rs::message::{NOT_REQUIRED,REQUIRED,MessageDetails};
+use fix_rs::message_version::MessageVersion;
 
 fn is_logon_valid(message: &Logon) -> bool {
     //TODO: Confirm Logon message is valid.
@@ -94,6 +95,8 @@ fn test_1B() {
         message.sender_comp_id = logon_message.sender_comp_id.clone();
         assert_eq!(message.target_comp_id,SERVER_TARGET_COMP_ID);
         message.target_comp_id = logon_message.target_comp_id.clone();
+        assert_eq!(message.appl_ver_id.unwrap(),MessageVersion::FIX50);
+        message.appl_ver_id = logon_message.appl_ver_id.clone();
         assert!(message == logon_message);
     }
 
@@ -487,13 +490,13 @@ fn test_2B() {
     //referencing the incorrect BeginStr value, disconnect, and issue an error.
     {
         //Connect and logon.
-        let (mut test_server,mut client,connection_id) = TestServer::setup_and_logon_with_ver(FIXVersion::FIXT_1_1,build_dictionary());
+        let (mut test_server,mut client,connection_id) = TestServer::setup_and_logon_with_ver(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,build_dictionary());
 
         //Send TestRequest with wrong BeginStr.
         let mut message = new_fixt_message!(TestRequest);
         message.msg_seq_num = 2;
         message.test_req_id = String::from("2");
-        send_message(&mut test_server.stream,&FIXVersion::FIX_4_2,Box::new(message));
+        send_message(&mut test_server.stream,FIXVersion::FIX_4_2,MessageVersion::FIX42,Box::new(message));
 
         //Client should send Logout and then disconnect.
         let message = test_server.recv_message::<Logout>();
@@ -503,8 +506,8 @@ fn test_2B() {
             assert_eq!(terminated_connection_id,connection_id);
             assert!(
                 if let ConnectionTerminatedReason::BeginStrWrongError{received,expected} = reason {
-                    assert_eq!(received,FIXVersion::FIX_4_2.begin_string());
-                    assert_eq!(expected,FIXVersion::FIXT_1_1.begin_string());
+                    assert_eq!(received,FIXVersion::FIX_4_2);
+                    assert_eq!(expected,FIXVersion::FIXT_1_1);
                     true
                 }
                 else {
@@ -1663,9 +1666,9 @@ fn test_14B() {
     //respond with Reject, increment inbound sequence number, and issue an error.
     {
         let mut messages_bytes: Vec<(&'static [u8],&'static [u8])> = Vec::new();
-        messages_bytes.push((NoHops::tag(),b"8=FIX.4.2\x019=999\x0135=1\x0149=TEST\x0156=TX\x0134=1\x0152=20090107-18:15:16\x01627=2\x01112=1\x0110=204\x01")); //Claim two groups but have zero.
-        messages_bytes.push((TestReqID::tag(),b"8=FIX.4.2\x019=999\x0135=1\x0149=TEST\x0156=TX\x0134=1\x0152=20090107-18:15:16\x01627=2\x01628=1\x01112=1\x0110=204\x01")); //Claim two groups but have one.
-        messages_bytes.push((HopCompID::tag(),b"8=FIX.4.2\x019=999\x0135=1\x0149=TEST\x0156=TX\x0134=1\x0152=20090107-18:15:16\x01627=2\x01628=1\x01628=2\x01628=3\x01112=1\x0110=204\x01")); //Claim two groups but have three.
+        messages_bytes.push((NoHops::tag(),b"8=FIX.4.3\x019=999\x0135=1\x0149=TEST\x0156=TX\x0134=1\x0152=20090107-18:15:16\x01627=2\x01112=1\x0110=204\x01")); //Claim two groups but have zero.
+        messages_bytes.push((TestReqID::tag(),b"8=FIX.4.3\x019=999\x0135=1\x0149=TEST\x0156=TX\x0134=1\x0152=20090107-18:15:16\x01627=2\x01628=1\x01112=1\x0110=204\x01")); //Claim two groups but have one.
+        messages_bytes.push((HopCompID::tag(),b"8=FIX.4.3\x019=999\x0135=1\x0149=TEST\x0156=TX\x0134=1\x0152=20090107-18:15:16\x01627=2\x01628=1\x01628=2\x01628=3\x01112=1\x0110=204\x01")); //Claim two groups but have three.
         for (ref_tag_id,message_bytes) in messages_bytes {
             do_garbled_test(SessionRejectReason::IncorrectNumInGroupCountForRepeatingGroup,ref_tag_id,|test_server,client,connection_id| {
                 //Send message.
@@ -1679,7 +1682,7 @@ fn test_14B() {
                         ParseError::NonRepeatingGroupTagInRepeatingGroup(tag) => assert_eq!(tag,ref_tag_id),
                         ParseError::RepeatingGroupTagWithNoRepeatingGroup(tag) => assert_eq!(tag,ref_tag_id),
                         ParseError::MissingFirstRepeatingGroupTagAfterNumberOfRepeatingGroupTag(tag) => assert_eq!(tag,ref_tag_id),
-                        _ => panic!("Wrong parse error"),
+                        _ => panic!("Wrong parse error: {}",&parse_error),
                     };
                 });
             });

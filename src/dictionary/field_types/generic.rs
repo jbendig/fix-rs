@@ -20,7 +20,9 @@ use std::str::FromStr;
 
 use constant::VALUE_END;
 use field_type::FieldType;
+use fix_version::FIXVersion;
 use message::{Message,SetValueError};
+use message_version::MessageVersion;
 use rule::Rule;
 
 //Generic Field Types (Sorted Alphabetically)
@@ -56,7 +58,7 @@ impl FieldType for BoolTrueOrBlankFieldType {
         1
     }
 
-    fn read(field: &Self::Type,buf: &mut Vec<u8>) -> usize {
+    fn read(field: &Self::Type,_fix_version: FIXVersion,_message_version: MessageVersion,buf: &mut Vec<u8>) -> usize {
         buf.write(if *field { b"Y" } else { b"N" }).unwrap()
     }
 }
@@ -88,7 +90,7 @@ impl FieldType for CharFieldType {
         1
     }
 
-    fn read(field: &Self::Type,buf: &mut Vec<u8>) -> usize {
+    fn read(field: &Self::Type,_fix_version: FIXVersion,_message_version: MessageVersion,buf: &mut Vec<u8>) -> usize {
         buf.write(&[*field]).unwrap()
     }
 }
@@ -990,7 +992,7 @@ impl FieldType for DataFieldType {
         field.len()
     }
 
-    fn read(field: &Self::Type,buf: &mut Vec<u8>) -> usize {
+    fn read(field: &Self::Type,_fix_version: FIXVersion,_message_version: MessageVersion,buf: &mut Vec<u8>) -> usize {
         buf.write(field).unwrap()
     }
 }
@@ -1027,7 +1029,7 @@ impl FieldType for DayOfMonthFieldType {
         0
     }
 
-    fn read(field: &Self::Type,buf: &mut Vec<u8>) -> usize {
+    fn read(field: &Self::Type,_fix_version: FIXVersion,_message_version: MessageVersion,buf: &mut Vec<u8>) -> usize {
         if let Some(value) = *field {
             let value_string = value.to_string();
             return buf.write(value_string.as_bytes()).unwrap()
@@ -1068,7 +1070,7 @@ impl FieldType for IntFieldType {
         0
     }
 
-    fn read(field: &Self::Type,buf: &mut Vec<u8>) -> usize {
+    fn read(field: &Self::Type,_fix_version: FIXVersion,_message_version: MessageVersion,buf: &mut Vec<u8>) -> usize {
         let value_string = field.to_string();
         buf.write(value_string.as_bytes()).unwrap()
     }
@@ -1114,7 +1116,7 @@ impl FieldType for LocalMktDateFieldType {
         0
     }
 
-    fn read(field: &Self::Type,buf: &mut Vec<u8>) -> usize {
+    fn read(field: &Self::Type,_fix_version: FIXVersion,_message_version: MessageVersion,buf: &mut Vec<u8>) -> usize {
         assert!(!Self::is_empty(&field)); //Was required field not set?
 
         let value_string = field.format("%Y%m%d").to_string();
@@ -1139,7 +1141,7 @@ impl FieldType for NoneFieldType {
         0
     }
 
-    fn read(_field: &Self::Type,_buf: &mut Vec<u8>) -> usize {
+    fn read(_field: &Self::Type,_fix_version: FIXVersion,_message_version: MessageVersion,_buf: &mut Vec<u8>) -> usize {
         0
     }
 }
@@ -1268,7 +1270,7 @@ impl FieldType for MonthYearFieldType {
         0
     }
 
-    fn read(field: &Self::Type,buf: &mut Vec<u8>) -> usize {
+    fn read(field: &Self::Type,_fix_version: FIXVersion,_message_version: MessageVersion,buf: &mut Vec<u8>) -> usize {
         let month_year_string = format!("{:04}{:02}",field.year,field.month);
         let mut result = buf.write(month_year_string.as_bytes()).unwrap();
 
@@ -1316,7 +1318,7 @@ impl FieldType for SeqNumFieldType {
         0
     }
 
-    fn read(field: &Self::Type,buf: &mut Vec<u8>) -> usize {
+    fn read(field: &Self::Type,_fix_version: FIXVersion,_message_version: MessageVersion,buf: &mut Vec<u8>) -> usize {
         let value_string = field.to_string();
         buf.write(value_string.as_bytes()).unwrap()
     }
@@ -1344,7 +1346,7 @@ impl FieldType for StringFieldType {
         field.len()
     }
 
-    fn read(field: &Self::Type,buf: &mut Vec<u8>) -> usize {
+    fn read(field: &Self::Type,_fix_version: FIXVersion,_message_version: MessageVersion,buf: &mut Vec<u8>) -> usize {
         buf.write(field.as_bytes()).unwrap()
     }
 }
@@ -1386,7 +1388,7 @@ impl<T: Message + Any + Clone + Default + PartialEq> FieldType for RepeatingGrou
         field.len()
     }
 
-    fn read(field: &Self::Type,buf: &mut Vec<u8>) -> usize {
+    fn read(field: &Self::Type,fix_version: FIXVersion,message_version: MessageVersion,buf: &mut Vec<u8>) -> usize {
         let group_count_str = field.len().to_string();
         let mut result = 1;
 
@@ -1394,7 +1396,7 @@ impl<T: Message + Any + Clone + Default + PartialEq> FieldType for RepeatingGrou
         buf.push(VALUE_END);
 
         for group in field {
-            result += group.read_body(buf);
+            result += group.read_body(fix_version,message_version,buf);
         }
 
         result
@@ -1443,7 +1445,7 @@ impl FieldType for UTCTimeOnlyFieldType {
         0
     }
 
-    fn read(field: &Self::Type,buf: &mut Vec<u8>) -> usize {
+    fn read(field: &Self::Type,_fix_version: FIXVersion,_message_version: MessageVersion,buf: &mut Vec<u8>) -> usize {
         let value_string = field.format("%T%.3f").to_string();
         buf.write(value_string.as_bytes()).unwrap()
     }
@@ -1499,7 +1501,7 @@ impl FieldType for UTCTimestampFieldType {
         0
     }
 
-    fn read(field: &Self::Type,buf: &mut Vec<u8>) -> usize {
+    fn read(field: &Self::Type,_fix_version: FIXVersion,_message_version: MessageVersion,buf: &mut Vec<u8>) -> usize {
         assert!(!Self::is_empty(&field)); //Was required field not set?
 
         let value_string = field.format("%Y%m%d-%T%.3f").to_string();

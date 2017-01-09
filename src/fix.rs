@@ -16,16 +16,20 @@ use std::iter::FromIterator;
 use std::mem;
 use std::str::FromStr;
 
-use constant::{TAG_END,VALUE_END};
-use dictionary::messages::NullMessage;
+use constant::{FIX_4_0_BEGIN_STRING,FIX_4_1_BEGIN_STRING,FIX_4_2_BEGIN_STRING,FIX_4_3_BEGIN_STRING,FIX_4_4_BEGIN_STRING,FIXT_1_1_BEGIN_STRING,TAG_END,VALUE_END};
+use dictionary::messages::{Logon,NullMessage};
+use dictionary::fields::{ApplVerID,SenderCompID,TargetCompID};
+use dictionary::field_types::other::DefaultApplVerIDFieldType;
+use field::Field;
+use field_type::FieldType;
+use fix_version::FIXVersion;
 use fixt::message::FIXTMessage;
 use message::{Meta,Message,SetValueError};
 use message_version::MessageVersion;
 use rule::Rule;
 
 //TODO: Support configuration settings for things like MAX_VALUE_LENGTH, MAX_BODY_LENGTH,
-//      MAX_TAG_LENGTH, MAX_CHECKSUM_LENGTH(might just hard code it...), the size of a "Length" and
-//      other types.
+//      MAX_TAG_LENGTH, the size of a "Length" and other types.
 
 const BEGINSTR_TAG: &'static [u8] = b"8";
 const BODYLENGTH_TAG: &'static [u8] = b"9";
@@ -40,6 +44,9 @@ pub enum ParseError {
     BodyLengthNotNumber,
     MsgTypeNotThirdTag,
     MsgTypeUnknown(Vec<u8>), //Message type not in dictionary passed to Parser::new().
+    SenderCompIDNotFourthTag,
+    TargetCompIDNotFifthTag,
+    ApplVerIDNotSixthTag, //ApplVerID must be the sixth tag if specified at all.
     ChecksumNotLastTag, //Checksum is not exactly where BodyLength says it should be.
     ChecksumDoesNotMatch(u8,u8), //Calculated checksum, Stated checksum
     ChecksumNotNumber,
@@ -70,6 +77,9 @@ impl fmt::Display for ParseError {
             ParseError::BodyLengthNotNumber => write!(f,"ParseError::BodyLengthNotNumber"),
             ParseError::MsgTypeNotThirdTag => write!(f,"ParseError::MsgTypeNotThirdTag"),
             ParseError::MsgTypeUnknown(ref msg_type) => write!(f,"ParseError::MsgTypeUnknown({})",tag_to_string(msg_type)),
+            ParseError::SenderCompIDNotFourthTag => write!(f,"ParseError::SenderCompIDNotFourthTag"),
+            ParseError::TargetCompIDNotFifthTag => write!(f,"ParseError::TargetCompIDNotFifthTag"),
+            ParseError::ApplVerIDNotSixthTag => write!(f,"ParseError::ApplVerIDNotSixthTag"),
             ParseError::ChecksumNotLastTag => write!(f,"ParseError::ChecksumNotLastTag"),
             ParseError::ChecksumDoesNotMatch(ref calculated_checksum,ref stated_checksum) => write!(f,"ParseError::ChecksumDoesNotMatch({},{})",calculated_checksum,stated_checksum),
             ParseError::ChecksumNotNumber => write!(f,"ParseError::ChecksumNotNumber"),
@@ -109,7 +119,7 @@ struct ParseRepeatingGroupState {
 }
 
 impl ParseRepeatingGroupState {
-    fn check_last_group_complete(&self,missing_tag: &mut Vec<u8>,missing_conditional_tag: &mut Vec<u8>) {
+    fn check_last_group_complete(&self,message_version: MessageVersion,missing_tag: &mut Vec<u8>,missing_conditional_tag: &mut Vec<u8>) {
         //Mark the missing tag so we can emit an error when done parsing.
         //The error cannot be emitted immediately because the MsgSeqNum
         //might not have been parsed yet and it's required in order to
@@ -131,7 +141,7 @@ impl ParseRepeatingGroupState {
 
             //TODO: Add test to confirm conditional require works for this and outer message
             //fields.
-            for tag in last_group.message.conditional_required_fields(MessageVersion::FIX50SP2) {
+            for tag in last_group.message.conditional_required_fields(message_version) {
                 if last_group.remaining_fields.contains_key(&tag) {
                     *missing_conditional_tag = tag.to_vec();
                     return;
@@ -166,15 +176,37 @@ fn ascii_to_integer<T: FromStr>(ascii_bytes: &Vec<u8>) -> Result<T,<T as FromStr
     T::from_str(String::from_utf8_lossy(ascii_bytes.as_slice()).borrow())
 }
 
+fn set_message_value<T: Message + ?Sized>(message: &mut T,tag: &[u8],bytes: &[u8]) -> Result<(),ParseError> {
+    if let Err(e) = message.set_value(tag,bytes) {
+        match e {
+            //This means either the key could not be found in the message (an
+            //internal error) or the bytes are not formatted correctly. For
+            //example, maybe it was suppose to be a number but non-digit characters
+            //were used.
+            SetValueError::WrongFormat => return Err(ParseError::WrongFormatTag(tag.to_vec())),
+            //Value was formatted correctly but outside of the defined range or not
+            //part of the list of allowed choices.
+            SetValueError::OutOfRange => return Err(ParseError::OutOfRangeTag(tag.to_vec())),
+        };
+    }
+
+    Ok(())
+}
+
 pub struct Parser {
     message_dictionary: HashMap<&'static [u8],Box<FIXTMessage + Send>>,
+    default_message_version: MessageVersion,
     value_to_length_tags: HashMap<&'static [u8],&'static [u8]>,
     found_message: FoundMessage,
     current_tag: Vec<u8>, //Tag if completely parsed, otherwise empty.
     current_bytes: Vec<u8>, //Bytes being parsed for current tag or value.
-    protocol: Vec<u8>,
+    fix_version: FIXVersion,
+    message_version: MessageVersion,
     body_length: u64,
+    message_type: Vec<u8>,
     checksum: u8,
+    sender_comp_id: Vec<u8>,
+    target_comp_id: Vec<u8>,
     body_remaining_length: u64, //TODO: Do we really need this to be this long?
     previous_tag: Vec<u8>,
     next_tag_checksum: bool,
@@ -203,28 +235,35 @@ impl Parser {
         let mut value_to_length_tags = HashMap::new();
         let mut message_stack = Vec::from_iter(message_dictionary.iter().map(|(_,message)| { Message::new_into_box(&**message) }));
         while let Some(message) = message_stack.pop() {
-            for (tag,rule) in message.fields(MessageVersion::FIX50SP2) {
-                match rule {
-                    Rule::ConfirmPreviousTag{ previous_tag } => {
-                        value_to_length_tags.insert(tag,previous_tag);
-                    },
-                    Rule::BeginGroup{ message } => {
-                        message_stack.push(Message::new_into_box(&*message));
-                    },
-                    _ => {}
+            for message_version in MessageVersion::all() {
+                for (tag,rule) in message.fields(message_version) {
+                    match rule {
+                        Rule::ConfirmPreviousTag{ previous_tag } => {
+                            value_to_length_tags.insert(tag,previous_tag);
+                        },
+                        Rule::BeginGroup{ message } => {
+                            message_stack.push(Message::new_into_box(&*message));
+                        },
+                        _ => {}
+                    }
                 }
             }
         }
 
         Parser {
             message_dictionary: message_dictionary,
+            default_message_version: DefaultApplVerIDFieldType::default_value(),
             value_to_length_tags: value_to_length_tags,
             found_message: FoundMessage::NotFound,
             current_tag: Vec::new(),
             current_bytes: Vec::new(),
-            protocol: Vec::new(),
+            fix_version: FIXVersion::FIX_4_0,
+            message_version: MessageVersion::FIX40,
             body_length: 0,
+            message_type: Vec::new(),
             checksum: 0,
+            sender_comp_id: Vec::new(),
+            target_comp_id: Vec::new(),
             body_remaining_length: 0,
             previous_tag: Vec::new(),
             next_tag_checksum: false,
@@ -244,9 +283,11 @@ impl Parser {
         self.found_message = FoundMessage::NotFound;
         self.current_tag.clear();
         self.current_bytes.clear();
-        self.protocol.clear();
         self.body_length = 0;
+        self.message_type.clear();
         self.checksum = 0;
+        self.sender_comp_id.clear();
+        self.target_comp_id.clear();
         self.body_remaining_length = 0;
         self.previous_tag.clear();
         self.next_tag_checksum = false;
@@ -260,49 +301,83 @@ impl Parser {
         self.current_message = Box::new(NullMessage {});
     }
 
+    pub fn set_default_message_version(&mut self,message_version: MessageVersion) {
+        self.default_message_version = message_version;
+    }
+
     pub fn validate_message_dictionary(message_dictionary: &HashMap<&'static [u8],Box<FIXTMessage + Send>>) {
         enum MessageType {
             Standard,
             RepeatingGroup,
         }
 
-        //Run validation against every supported message version.
-        for message_version in vec![MessageVersion::FIX40,MessageVersion::FIX41,MessageVersion::FIX42,MessageVersion::FIX43,MessageVersion::FIX44,MessageVersion::FIX50,MessageVersion::FIX50SP1,MessageVersion::FIX50SP2] {
-            //Start by walking the message_dictionary and collecting every possible message format --
-            //including repeating and nested repeating groups.
-            let mut all_messages = Vec::new();
-            let mut message_stack = Vec::from_iter(message_dictionary.iter().map(|(_,message)| { (MessageType::Standard,Message::new_into_box(&**message)) }));
-            while let Some((message_type,message)) = message_stack.pop() {
-                for rule in message.fields(message_version).values() {
-                    if let Rule::BeginGroup{ ref message } = *rule {
+        //Start by walking the message_dictionary and collecting every possible message format --
+        //including repeating and nested repeating groups.
+        let mut all_messages = Vec::new();
+        let mut message_stack = Vec::from_iter(message_dictionary.iter().map(|(_,message)| { (MessageType::Standard,Message::new_into_box(&**message)) }));
+        while let Some((message_type,message)) = message_stack.pop() {
+            //Prevent lots of duplicates from different message versions.
+            let mut found_repeating_groups = HashSet::new();
+
+            for message_version in MessageVersion::all() {
+                for (tag,rule) in message.fields(message_version) {
+                    if found_repeating_groups.contains(tag) {
+                        continue;
+                    }
+
+                    if let Rule::BeginGroup{ ref message } = rule {
                         message_stack.push((MessageType::RepeatingGroup,Message::new_into_box(&**message)));
+                        found_repeating_groups.insert(tag);
                     }
                 }
-                all_messages.push((message_type,message));
             }
 
-            //All messages must have at least one field. All repeating group messages must make the
-            //first field required.
-            for &(ref message_type,ref message) in &all_messages {
-                let first_field = message.first_field(message_version);
+            all_messages.push((message_type,message));
+        }
+
+        //All messages must have at least one field. All repeating group messages must make the
+        //first field required. This must all be true for at least one message version.
+        for &(ref message_type,ref message) in &all_messages {
+            let mut no_fields = true;
+            let mut first_field_not_in_fields = true;
+            let mut repeating_group_first_field_not_in_required_fields = true;
+
+            for message_version in MessageVersion::all() {
                 let fields = message.fields(message_version);
-                let required_fields = message.required_fields(message_version);
+                no_fields = fields.is_empty();
 
-                if fields.is_empty() {
-                    panic!("Found message with no fields.");
+                let first_field = message.first_field(message_version);
+                first_field_not_in_fields = !fields.contains_key(first_field);
+
+                repeating_group_first_field_not_in_required_fields = false;
+                let repeating_group = if let MessageType::RepeatingGroup = *message_type {
+                    let required_fields = message.required_fields(message_version);
+                    repeating_group_first_field_not_in_required_fields = !required_fields.contains(first_field);
+                    true
                 }
+                else {
+                    false
+                };
 
-                if !fields.contains_key(first_field) {
-                    panic!("Found message where first_field() is not in fields().");
-                }
-
-                if let MessageType::RepeatingGroup = *message_type {
-                    if !required_fields.contains(first_field) {
-                        panic!("Found message where first_field() is not in required_fields().");
-                    }
+                if !no_fields && !first_field_not_in_fields && (!repeating_group_first_field_not_in_required_fields || !repeating_group) {
+                    repeating_group_first_field_not_in_required_fields = false;
+                    break;
                 }
             }
 
+            if no_fields {
+                panic!("Found message with no fields.");
+            }
+            else if first_field_not_in_fields {
+                panic!("Found message where first_field() is not in fields().");
+            }
+            else if repeating_group_first_field_not_in_required_fields {
+                panic!("Found message where first_field() is not in required_fields().");
+            }
+        }
+
+        //Run remaining validation against every supported message version.
+        for message_version in MessageVersion::all() {
             //The required fields specified in a message must be a subset of the fields.
             for &(_,ref message) in &all_messages {
                 let fields = message.fields(message_version);
@@ -374,6 +449,18 @@ impl Parser {
         }
 
         Ok(())
+    }
+
+    fn prepare_for_message(&mut self) -> Result<(),ParseError> {
+        if let Some(message) = self.message_dictionary.get(&self.message_type[..]) {
+            self.current_message = FIXTMessage::new_into_box(&**message);
+            self.remaining_fields = message.fields(self.message_version);
+            self.remaining_required_fields = message.required_fields(self.message_version);
+
+            return Ok(());
+        }
+
+        Err(ParseError::MsgTypeUnknown(self.message_type.clone()))
     }
 
     fn if_checksum_then_is_last_tag(&self) -> Result<(),ParseError> {
@@ -472,19 +559,14 @@ impl Parser {
 
         match rule {
             Rule::Nothing => {}, //Nothing special to be done
-            Rule::AddRequiredTags(_) => { //Make the stated tags required.
-                //TODO: Need to make sure these new tags have not already been
-                //found before adding them to the required tag set.
-                unimplemented!();
-            },
             Rule::BeginGroup{ message: repeating_group_template } => {
                 match ascii_to_integer::<usize>(&self.current_bytes) {
                     Ok(group_count) if group_count > 0 => {
-                        let first_field = repeating_group_template.first_field(MessageVersion::FIX50SP2);
+                        let first_field = repeating_group_template.first_field(self.message_version);
                         self.tag_rule_mode_stack.push(Box::new(TagRuleMode::RepeatingGroups(Box::new(ParseRepeatingGroupState {
                             number_of_tag: self.current_tag.clone(),
                             group_count: group_count,
-                            first_tag: repeating_group_template.first_field(MessageVersion::FIX50SP2),
+                            first_tag: repeating_group_template.first_field(self.message_version),
                             groups: Vec::new(),
                             group_template: repeating_group_template,
                         }))));
@@ -505,6 +587,7 @@ impl Parser {
                 skip_set_value = true;
             },
             Rule::ConfirmPreviousTag{ .. } => {}, //Must be checked after parsing tag and before parsing value.
+            Rule::RequiresFIXVersion{ .. } => {}, //Unused by parser.
         }
 
        Ok(skip_set_value)
@@ -597,7 +680,25 @@ impl Parser {
             if self.current_tag != BEGINSTR_TAG {
                 return Err(ParseError::BeginStrNotFirstTag);
             }
-            self.protocol = mem::replace(&mut self.current_bytes,Vec::new());
+
+            //Figure out what message version should be supported while parsing.
+            //TODO: Need to support default versions for different messages too.
+            let (fix_version,message_version) = match &self.current_bytes[..] {
+                FIX_4_0_BEGIN_STRING => (FIXVersion::FIX_4_0,MessageVersion::FIX40),
+                FIX_4_1_BEGIN_STRING => (FIXVersion::FIX_4_1,MessageVersion::FIX41),
+                FIX_4_2_BEGIN_STRING => (FIXVersion::FIX_4_2,MessageVersion::FIX42),
+                FIX_4_3_BEGIN_STRING => (FIXVersion::FIX_4_3,MessageVersion::FIX43),
+                FIX_4_4_BEGIN_STRING => (FIXVersion::FIX_4_4,MessageVersion::FIX44),
+                //If no per-message version is specified, FIXT.1.1 and higher should fall back to
+                //some specified default. For connection initiators, this must be specified during
+                //Logon. For connection acceptors, this should start with the highest supported
+                //version and then be lowered to the initiator's version.
+                FIXT_1_1_BEGIN_STRING => (FIXVersion::FIXT_1_1,self.default_message_version),
+                _ => return Err(ParseError::WrongFormatTag(BEGINSTR_TAG.to_vec())),
+            };
+            self.fix_version = fix_version;
+            self.message_version = message_version;
+            self.current_bytes.clear();
         }
         else if self.found_tag_count == 1 {
             if self.current_tag != BODYLENGTH_TAG {
@@ -618,20 +719,73 @@ impl Parser {
             if self.current_tag != MSGTYPE_TAG {
                 return Err(ParseError::MsgTypeNotThirdTag);
             }
-            else if let Some(message) = self.message_dictionary.get(self.current_bytes.as_slice()) {
-                self.current_message = FIXTMessage::new_into_box(&**message);
-                self.remaining_fields = message.fields(MessageVersion::FIX50SP2);
-                self.remaining_required_fields = message.required_fields(MessageVersion::FIX50SP2);
+
+            //Record message type. For older FIX versions, prepare a collection of which fields are
+            //supported and which are required. Newer FIX versions require more complicated
+            //handling that must be put off until after receiving the sixth field.
+            self.message_type = self.current_bytes.clone();
+            if self.fix_version != FIXVersion::FIXT_1_1 {
+                try!(self.prepare_for_message());
             }
-            else {
-                return Err(ParseError::MsgTypeUnknown(self.current_bytes.clone()));
+        }
+        else if self.found_tag_count == 3 && self.fix_version == FIXVersion::FIXT_1_1 {
+            //FIXT.1.1 requires the fourth field to be SenderCompID. Older FIX versions use generic
+            //field handling because the order doesn't matter but the field is stil required.
+            if self.current_tag != SenderCompID::tag() {
+                return Err(ParseError::SenderCompIDNotFourthTag);
             }
+
+            self.sender_comp_id = self.current_bytes.clone();
+        }
+        else if self.found_tag_count == 4 && self.fix_version == FIXVersion::FIXT_1_1 {
+            //FIXT.1.1 requires the fifth field to be TargetCompID. Older FIX versions use generic
+            //field handling because the order doesn't matter but the field is stil required.
+            if self.current_tag != TargetCompID::tag() {
+                return Err(ParseError::TargetCompIDNotFifthTag);
+            }
+
+            self.target_comp_id = self.current_bytes.clone();
         }
         else if self.current_bytes.is_empty() {
             //Tag was provided without a value.
             return Err(ParseError::NoValueAfterTag(self.current_tag.clone()));
         }
         else {
+            //FIXT.1.1 requires that if the ApplVerID tag is specified, it must be the sixth field.
+            let mut skip_set_value = false;
+            if self.found_tag_count == 5 && self.fix_version == FIXVersion::FIXT_1_1 {
+                //Handle if this is the optional ApplVerID field. This can override all other
+                //methods for determining what FIX version this message is expected to adhere to.
+                if self.current_tag == ApplVerID::tag() {
+                    if let Some(appl_ver_id) = MessageVersion::from_bytes(&self.current_bytes[..]) {
+                        println!("Overriding ApplVerID");
+                        self.message_version = appl_ver_id;
+                        skip_set_value = true;
+                    }
+                    else {
+                        return Err(ParseError::OutOfRangeTag(self.current_tag.clone()));
+                    }
+                }
+
+                //Now that the message version has been determined, prepare a collection of which
+                //fields are supported and which are required.
+                try!(self.prepare_for_message());
+
+                //Start the message by filling out the SenderCompID and TargetCompID portions of
+                //message. These fields are always required for FIXT.1.1 messages.
+                try!(set_message_value(&mut *self.current_message,SenderCompID::tag(),&self.sender_comp_id[..]));
+                self.remaining_fields.remove(SenderCompID::tag());
+                self.remaining_required_fields.remove(SenderCompID::tag());
+                try!(set_message_value(&mut *self.current_message,TargetCompID::tag(),&self.target_comp_id[..]));
+                self.remaining_fields.remove(TargetCompID::tag());
+                self.remaining_required_fields.remove(TargetCompID::tag());
+
+                //Mark ApplVerID as found so we produce an error if it's encountered anywhere else
+                //in the message.
+                self.current_message.set_appl_ver_id(self.message_version);
+                self.remaining_fields.remove(ApplVerID::tag());
+            }
+
             //Make sure checksum checks out when done reading a message.
             let is_message_end = if self.current_tag == CHECKSUM_TAG {
                 try!(self.validate_checksum());
@@ -651,12 +805,12 @@ impl Parser {
                         if self.current_tag == prgs.first_tag {
                             //Make sure previous group has all required tags specified
                             //before we start a new one.
-                            prgs.check_last_group_complete(&mut self.missing_tag,&mut self.missing_conditional_tag);
+                            prgs.check_last_group_complete(self.message_version,&mut self.missing_tag,&mut self.missing_conditional_tag);
 
                             //Begin a new group.
                             let group = prgs.group_template.new_into_box();
-                            let remaining_fields = prgs.group_template.fields(MessageVersion::FIX50SP2);
-                            let remaining_required_fields = prgs.group_template.required_fields(MessageVersion::FIX50SP2);
+                            let remaining_fields = prgs.group_template.fields(self.message_version);
+                            let remaining_required_fields = prgs.group_template.required_fields(self.message_version);
                             prgs.groups.push(ParseGroupState {
                                 message: group,
                                 remaining_fields: remaining_fields,
@@ -678,12 +832,7 @@ impl Parser {
                                 //Apply parsed value to group.
                                 if let Rule::BeginGroup{ .. } = rule {} //Ignore begin group tags, they will be handled below.
                                 else {
-                                    if let Err(e) = group.message.set_value(self.current_tag.as_slice(),self.current_bytes.as_slice()) {
-                                        match e {
-                                            SetValueError::WrongFormat => return Err(ParseError::WrongFormatTag(self.current_tag.clone())),
-                                            SetValueError::OutOfRange => return Err(ParseError::OutOfRangeTag(self.current_tag.clone())),
-                                        };
-                                    }
+                                    try!(set_message_value(&mut *group.message,&self.current_tag[..],&self.current_bytes[..]));
                                 }
 
                                 //Save rule to handle later.
@@ -695,7 +844,7 @@ impl Parser {
 
                         if !tag_in_group {
                             //Figure out if this is an error or the end of the group.
-                            if prgs.group_template.fields(MessageVersion::FIX50SP2).contains_key(self.current_tag.as_slice()) {
+                            if prgs.group_template.fields(self.message_version).contains_key(self.current_tag.as_slice()) {
                                 return Err(ParseError::DuplicateTag(self.current_tag.clone()));
                             }
                             else if prgs.groups.len() < prgs.group_count {
@@ -703,7 +852,7 @@ impl Parser {
                             }
 
                             //Make sure all required tags have been specified.
-                            prgs.check_last_group_complete(&mut self.missing_tag,&mut self.missing_conditional_tag);
+                            prgs.check_last_group_complete(self.message_version,&mut self.missing_tag,&mut self.missing_conditional_tag);
 
                             //Tag does not belong in this group and all stated groups are
                             //accounted for.
@@ -727,8 +876,7 @@ impl Parser {
                 }
             }
 
-            let mut skip_set_value = false;
-            if !is_message_end && !tag_in_group {
+            if !skip_set_value && !is_message_end && !tag_in_group {
                 //Mark field as found if required so we can quickly check if all required
                 //fields were found once we are done parsing the message.
                 self.remaining_required_fields.remove(self.current_tag.as_slice());
@@ -741,7 +889,14 @@ impl Parser {
                 }
                 else {
                     if self.is_tag_known(&self.current_tag) {
-                        if self.current_message.fields(MessageVersion::FIX50SP2).contains_key(&self.current_tag[..]) {
+                        if self.current_message.fields(self.message_version).contains_key(&self.current_tag[..]) {
+                            //Special case where if ApplVerID tag is encountered after the sixth
+                            //tag. This needs its own error so the correct SessionRejectReason can
+                            //be specified in a Reject message.
+                            if self.current_tag == ApplVerID::tag() {
+                                return Err(ParseError::ApplVerIDNotSixthTag);
+                            }
+
                             return Err(ParseError::DuplicateTag(self.current_tag.clone()));
                         }
                         else {
@@ -755,18 +910,7 @@ impl Parser {
             }
 
             if !is_message_end && !tag_in_group && !skip_set_value {
-                if let Err(e) = self.current_message.set_value(self.current_tag.as_slice(),self.current_bytes.as_slice()) {
-                    match e {
-                        //This means either the key could not be found in the message (an
-                        //internal error) or the bytes are not formatted correctly. For
-                        //example, maybe it was suppose to be a number but non-digit characters
-                        //were used.
-                        SetValueError::WrongFormat => return Err(ParseError::WrongFormatTag(self.current_tag.clone())),
-                        //Value was formatted correctly but outside of the defined range or not
-                        //part of the list of allowed choices.
-                        SetValueError::OutOfRange => return Err(ParseError::OutOfRangeTag(self.current_tag.clone())),
-                    };
-                }
+                try!(set_message_value(&mut *self.current_message,&self.current_tag[..],&self.current_bytes[..]));
             }
 
             if is_message_end {
@@ -791,7 +935,7 @@ impl Parser {
                             mem::replace(&mut self.current_message,Box::new(NullMessage {}))));
                 }
 
-                for tag in self.current_message.conditional_required_fields(MessageVersion::FIX50SP2) {
+                for tag in self.current_message.conditional_required_fields(self.message_version) {
                     if self.remaining_fields.contains_key(&tag) {
                         return Err(
                             ParseError::MissingConditionallyRequiredTag(
@@ -799,10 +943,10 @@ impl Parser {
                                 mem::replace(&mut self.current_message,Box::new(NullMessage {}))));
                     }
                 }
-                
+
                 //Store meta info about the message. Mainly for debugging.
                 self.current_message.set_meta(Meta {
-                    protocol: mem::replace(&mut self.protocol,Vec::new()),
+                    begin_string: self.fix_version,
                     body_length: self.body_length,
                     checksum: self.checksum,
                 });
@@ -832,7 +976,7 @@ impl Parser {
 
     fn is_tag_known(&self,tag: &[u8]) -> bool {
         for message in self.message_dictionary.values() {
-            if message.fields(MessageVersion::FIX50SP2).contains_key(tag) {
+            if message.fields(self.message_version).contains_key(tag) {
                 return true;
             }
         }
@@ -847,7 +991,9 @@ impl Parser {
         match self.parse_private(&mut index,message_bytes) {
             Ok(_) => (index,Ok(())),
             Err(err) => {
-                self.reset_parser(); //Reset automatically so the next parse won't fail immediatelly.
+                //Reset automatically so the next parse won't fail immediatelly.
+                self.reset_parser();
+
                 (index,Err(err))
             }
         }

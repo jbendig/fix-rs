@@ -24,12 +24,12 @@ use std::thread;
 use std::time::{Duration,Instant};
 
 use fix_rs::dictionary::CloneDictionary;
-use fix_rs::dictionary::field_types::other::ApplVerID;
 use fix_rs::dictionary::messages::Logon;
 use fix_rs::fix::Parser;
 use fix_rs::fix_version::FIXVersion;
 use fix_rs::fixt::client::{Client,ClientEvent};
 use fix_rs::fixt::message::FIXTMessage;
+use fix_rs::message_version::MessageVersion;
 
 const SOCKET_BASE_PORT: usize = 7000;
 static SOCKET_PORT: AtomicUsize = AtomicUsize::new(SOCKET_BASE_PORT);
@@ -79,13 +79,11 @@ macro_rules! new_fixt_message {
     }};
 }
 
-
 pub fn new_logon_message() -> Logon {
     let mut message = new_fixt_message!(Logon);
     message.encrypt_method = String::from("0"); //Not encrypted.
     message.heart_bt_int = 5;
-    message.default_appl_ver_id = Some(ApplVerID::FIX50SP2);
-    //TODO: Populate message here.
+    message.default_appl_ver_id = MessageVersion::FIX50SP2;
 
     message
 }
@@ -124,9 +122,9 @@ pub fn recv_bytes_with_timeout(stream: &mut TcpStream,timeout: Duration) -> Opti
     None
 }
 
-pub fn send_message(stream: &mut TcpStream,fix_version: &FIXVersion,message: Box<FIXTMessage + Send>) {
+pub fn send_message(stream: &mut TcpStream,fix_version: FIXVersion,message_version: MessageVersion,message: Box<FIXTMessage + Send>) {
     let mut bytes = Vec::new();
-    message.read(fix_version,&mut bytes);
+    message.read(fix_version,message_version,&mut bytes);
 
     let mut bytes_written_total = 0;
     while bytes_written_total < bytes.len() {
@@ -145,20 +143,21 @@ pub fn send_message(stream: &mut TcpStream,fix_version: &FIXVersion,message: Box
 pub struct TestServer {
     _listener: TcpListener,
     fix_version: FIXVersion,
+    message_version: MessageVersion,
     pub stream: TcpStream,
     poll: Poll,
     parser: Parser,
 }
 
 impl TestServer {
-    pub fn setup_with_ver(fix_version: FIXVersion,message_dictionary: HashMap<&'static [u8],Box<FIXTMessage + Send>>) -> (TestServer,Client,usize) {
+    pub fn setup_with_ver(fix_version: FIXVersion,message_version: MessageVersion,message_dictionary: HashMap<&'static [u8],Box<FIXTMessage + Send>>) -> (TestServer,Client,usize) {
         //Setup server listener socket.
         let addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127,0,0,1),SOCKET_PORT.fetch_add(1,Ordering::SeqCst) as u16));
         let listener = TcpListener::bind(&addr).unwrap();
 
         //Setup client and connect to socket.
         let mut client = Client::new(message_dictionary.clone(),String::from(CLIENT_SENDER_COMP_ID),String::from(CLIENT_TARGET_COMP_ID)).unwrap();
-        let connection_id = client.add_connection(fix_version.clone(),addr).unwrap();
+        let connection_id = client.add_connection(fix_version,message_version,addr).unwrap();
 
         //Try to accept connection from client. Fails on timeout or socket error.
         let stream = accept_with_timeout(&listener,Duration::from_secs(5)).expect("Could not accept connection");
@@ -173,6 +172,7 @@ impl TestServer {
         (TestServer {
             _listener: listener,
             fix_version: fix_version,
+            message_version: message_version,
             stream: stream,
             poll: poll,
             parser: Parser::new(message_dictionary),
@@ -180,15 +180,28 @@ impl TestServer {
     }
 
     pub fn setup(message_dictionary: HashMap<&'static [u8],Box<FIXTMessage + Send>>) -> (TestServer,Client,usize) {
-        Self::setup_with_ver(FIXVersion::FIXT_1_1,message_dictionary)
+        Self::setup_with_ver(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,message_dictionary)
     }
 
-    pub fn setup_and_logon_with_ver(fix_version: FIXVersion,message_dictionary: HashMap<&'static [u8],Box<FIXTMessage + Send>>) -> (TestServer,Client,usize) {
+    pub fn setup_and_logon_with_ver(fix_version: FIXVersion,message_version: MessageVersion,message_dictionary: HashMap<&'static [u8],Box<FIXTMessage + Send>>) -> (TestServer,Client,usize) {
+        fn max_message_version(fix_version: FIXVersion) -> MessageVersion {
+            match fix_version {
+                FIXVersion::FIX_4_0 => MessageVersion::FIX40,
+                FIXVersion::FIX_4_1 => MessageVersion::FIX41,
+                FIXVersion::FIX_4_2 => MessageVersion::FIX42,
+                FIXVersion::FIX_4_3 => MessageVersion::FIX43,
+                FIXVersion::FIX_4_4 => MessageVersion::FIX44,
+                FIXVersion::FIXT_1_1 => MessageVersion::FIX50SP2,
+            }
+        }
+
         //Connect.
-        let (mut test_server,mut client,connection_id) = TestServer::setup_with_ver(fix_version,message_dictionary);
+        let (mut test_server,mut client,connection_id) = TestServer::setup_with_ver(fix_version,message_version,message_dictionary);
 
         //Logon.
-        client.send_message(connection_id,new_logon_message());
+        let mut logon_message = new_logon_message();
+        logon_message.default_appl_ver_id = message_version;
+        client.send_message_box_with_message_version(connection_id,max_message_version(fix_version),Box::new(logon_message));
         let message = test_server.recv_message::<Logon>();
         assert_eq!(message.msg_seq_num,1);
 
@@ -196,16 +209,20 @@ impl TestServer {
         response_message.encrypt_method = message.encrypt_method;
         response_message.heart_bt_int = message.heart_bt_int;
         response_message.default_appl_ver_id = message.default_appl_ver_id;
-        test_server.send_message(response_message);
+        test_server.send_message_with_ver(fix_version,max_message_version(fix_version),response_message);
         client_poll_event!(client,ClientEvent::SessionEstablished(_) => {});
         let message = client_poll_message!(client,connection_id,Logon);
         assert_eq!(message.msg_seq_num,1);
+
+        //After logon, just like the Client, setup the default message version that future messages
+        //should adhere to.
+        test_server.parser.set_default_message_version(message_version);
 
         (test_server,client,connection_id)
     }
 
     pub fn setup_and_logon(message_dictionary: HashMap<&'static [u8],Box<FIXTMessage + Send>>) -> (TestServer,Client,usize) {
-        Self::setup_and_logon_with_ver(FIXVersion::FIXT_1_1,message_dictionary)
+        Self::setup_and_logon_with_ver(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,message_dictionary)
     }
 
     pub fn is_stream_closed(&self,timeout: Duration) -> bool {
@@ -275,8 +292,14 @@ impl TestServer {
         fixt_message.as_any().downcast_ref::<T>().expect("^^^ Not expected message type").clone()
     }
 
+    pub fn send_message_with_ver<T: FIXTMessage + Any + Send>(&mut self,fix_version: FIXVersion,message_version: MessageVersion,message: T) {
+        send_message(&mut self.stream,fix_version,message_version,Box::new(message));
+    }
+
     pub fn send_message<T: FIXTMessage + Any + Send>(&mut self,message: T) {
-        send_message(&mut self.stream,&self.fix_version,Box::new(message));
+        let fix_version = self.fix_version;
+        let message_version = self.message_version;
+        self.send_message_with_ver::<T>(fix_version,message_version,message);
     }
 }
 

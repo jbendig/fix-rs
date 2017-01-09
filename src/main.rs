@@ -16,12 +16,12 @@ extern crate fix_rs;
 use chrono::offset::utc::UTC;
 use chrono::TimeZone;
 
-use fix_rs::dictionary::field_types::other::ApplVerID;
 use fix_rs::dictionary::messages::Logon;
 use fix_rs::fix::Parser;
 use fix_rs::fix_version::FIXVersion;
 use fix_rs::fixt::client::Client;
 use fix_rs::message::Message;
+use fix_rs::message_version::MessageVersion;
 
 //Helper function to make it easier to figure out what the body_length tag should be set to.
 fn estimate_body_length(message_bytes: &[u8]) -> usize {
@@ -67,7 +67,7 @@ fn main() {
             assert_eq!(message.target_comp_id,"CLIENT");
             assert_eq!(message.sending_time,UTC.ymd(2009,1,7).and_hms(18,15,16));
             assert_eq!(message.raw_data,b"This\x01is=atest");
-            assert_eq!(message.default_appl_ver_id,Some(ApplVerID::FIX42));
+            assert_eq!(message.default_appl_ver_id,MessageVersion::FIX42);
             assert_eq!(message.msg_type_grp.len(),2);
 
             let message_type_0 = &message.msg_type_grp[0];
@@ -83,7 +83,7 @@ fn main() {
     }
 
     let message1 = message1.unwrap();
-    message1.read(&FIXVersion::FIX_4_2,&mut serialized_bytes);
+    message1.read(FIXVersion::FIX_4_2,MessageVersion::FIX42,&mut serialized_bytes);
 
     println!("{}",String::from_utf8_lossy(serialized_bytes.as_slice()).into_owned());
     println!("Compared to...");
