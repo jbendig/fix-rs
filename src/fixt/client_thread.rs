@@ -409,6 +409,13 @@ impl Connection {
                 if messages.len() >= INBOUND_MESSAGES_BUFFER_LEN_MAX {
                     return false;
                 }
+                //Stop reading temporarily after receiving the first message (that should be a
+                //Logon or else we'll disconnect). This gives us a chance to use the Logon response
+                //to setup message versioning defaults for the parser.
+                else if connection.status.is_logging_on() {
+                    assert!(messages.len() == 1);
+                    return false;
+                }
             }
 
             true

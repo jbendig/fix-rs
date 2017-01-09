@@ -167,6 +167,7 @@ enum FoundMessage {
 #[derive(PartialEq)]
 enum MessageEnd {
     Yes,
+    YesButStop,
     No
 }
 
@@ -952,11 +953,18 @@ impl Parser {
                 });
 
                 //Save message.
+                let is_logon_message = self.current_message.msg_type() == Logon::msg_type();
                 self.messages.push(mem::replace(&mut self.current_message,Box::new(NullMessage {})));
 
                 //Prepare for the next message.
                 self.reset_parser();
                 *index += 1;
+
+                //Stop processing after Logon message so owner of parser can use the message to
+                //determine versioning defaults.
+                if is_logon_message {
+                    return Ok(MessageEnd::YesButStop);
+                }
 
                 //Scan to the next message in case there is garbage between the end of this
                 //one and the beginning of the next.
@@ -1027,13 +1035,18 @@ impl Parser {
                             //Message finished and index was already forwaded to the end of
                             //message_bytes or the beginning of the next message.
                             continue;
-                        }
+                        },
+                        Ok(ref result) if *result == MessageEnd::YesButStop => {
+                            //Message finished but parsing has been suspended to handle a special
+                            //case.
+                            return Ok(());
+                        },
                         Err(e) => {
                             //An error occurred. Manually move index forward so this byte isn't
                             //reprocessed in the next call to parse().
                             *index += 1;
                             return Err(e);
-                        }
+                        },
                         _ => {}, //Still reading a message and it's going okay!
                     };
                 },

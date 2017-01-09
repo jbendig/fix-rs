@@ -811,3 +811,172 @@ fn test_appl_ver_id() {
         });
     }
 }
+
+#[test]
+fn test_respond_to_test_request_immediately_after_logon() {
+    //Special processing is required to adjust which messages are acceptable after Logon is
+    //received. But the IO processing is level based so the event loop might not be notified of
+    //remaining data. This test makes sure the remaining data is processed immediately. In
+    //practice, the worst case scenario is some type of timeout would trigger a Heartbeat or a
+    //TestRequest that would cause the remaining data to be read.
+
+    define_dictionary!(
+        Logon : Logon,
+        Heartbeat : Heartbeat,
+        TestRequest : TestRequest,
+    );
+
+    //Connect to server.
+    let (mut test_server,mut client,connection_id) = TestServer::setup(build_dictionary());
+
+    //Have client send Logon.
+    client.send_message_box(connection_id,Box::new(new_logon_message()));
+    let message = test_server.recv_message::<Logon>();
+    assert_eq!(message.msg_seq_num,1);
+
+    //Respond with Logon and TestRequest (hopefully) merged into a single TCP packet.
+    let mut logon_message = new_fixt_message!(Logon);
+    logon_message.msg_seq_num = 1;
+    logon_message.encrypt_method = message.encrypt_method;
+    logon_message.heart_bt_int = message.heart_bt_int;
+    logon_message.default_appl_ver_id = message.default_appl_ver_id;
+
+    let mut test_request_message = new_fixt_message!(TestRequest);
+    test_request_message.msg_seq_num = 2;
+    test_request_message.test_req_id = String::from("test");
+
+    let mut bytes = Vec::new();
+    logon_message.read(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,&mut bytes);
+    test_request_message.read(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,&mut bytes);
+    assert!(bytes.len() < 1400); //Make sure the serialized body is reasonably likely to fit within the MTU.
+    let bytes_written = test_server.stream.write(&bytes).unwrap();
+    assert_eq!(bytes_written,bytes.len());
+
+    //Make sure client acknowledges both as normal.
+    client_poll_event!(client,ClientEvent::SessionEstablished(_) => {});
+    let message = client_poll_message!(client,connection_id,Logon);
+    assert_eq!(message.msg_seq_num,1);
+    let message = client_poll_message!(client,connection_id,TestRequest);
+    assert_eq!(message.msg_seq_num,2);
+
+    let message = test_server.recv_message::<Heartbeat>();
+    assert_eq!(message.msg_seq_num,2);
+}
+
+#[test]
+fn test_respect_default_appl_ver_id_in_test_request_immediately_after_logon() {
+    //This is very similar to test_respond_to_test_request_immediately_after_logon() above except
+    //it makes sure the DefaultApplVerID is used correctly for the message right after Logon.
+
+    define_fixt_message!(TestMessage: b"9999" => {
+        REQUIRED, text: Text [FIX50SP2..],
+    });
+
+    define_dictionary!(
+        Logon : Logon,
+        Logout : Logout,
+        Reject : Reject,
+        TestMessage : TestMessage,
+    );
+
+    //Connect to server.
+    let (mut test_server,mut client,connection_id) = TestServer::setup(build_dictionary());
+
+    //Have client send Logon.
+    let mut logon_message = new_logon_message();
+    logon_message.default_appl_ver_id = MessageVersion::FIX50SP2;
+    client.send_message_box(connection_id,Box::new(logon_message));
+    let message = test_server.recv_message::<Logon>();
+    assert_eq!(message.msg_seq_num,1);
+
+    //Respond with Logon and TestMessage (hopefully) merged into a single TCP packet.
+    let mut logon_message = new_fixt_message!(Logon);
+    logon_message.msg_seq_num = 1;
+    logon_message.encrypt_method = message.encrypt_method;
+    logon_message.heart_bt_int = message.heart_bt_int;
+    logon_message.default_appl_ver_id = message.default_appl_ver_id;
+
+    let mut test_message = new_fixt_message!(TestMessage);
+    test_message.msg_seq_num = 2;
+    test_message.text = String::from("test");
+
+    let mut bytes = Vec::new();
+    logon_message.read(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,&mut bytes);
+    test_message.read(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,&mut bytes);
+    assert!(bytes.len() < 1400); //Make sure the serialized body is reasonably likely to fit within the MTU.
+    let bytes_written = test_server.stream.write(&bytes).unwrap();
+    assert_eq!(bytes_written,bytes.len());
+
+    //Make sure client acknowledges Logon as normal.
+    client_poll_event!(client,ClientEvent::SessionEstablished(_) => {});
+    let message = client_poll_message!(client,connection_id,Logon);
+    assert_eq!(message.msg_seq_num,1);
+
+    //Make sure client applies DefaultApplVerID version to TestMessage so that the Text field is
+    //parsed.
+    let message = client_poll_message!(client,connection_id,TestMessage);
+    assert_eq!(message.msg_seq_num,2);
+    assert_eq!(message.text,String::from("test"));
+}
+
+#[test]
+fn test_logout_and_terminate_wrong_versioned_test_request_immediately_after_logon() {
+    //This is very similar to test_respond_to_test_request_immediately_after_logon() above except
+    //it makes sure using the wrong FIX version follows the typical Logout and disconnect as
+    //expected.
+
+    define_dictionary!(
+        Logon : Logon,
+        Logout : Logout,
+        TestRequest : TestRequest,
+    );
+
+    //Connect to server.
+    let (mut test_server,mut client,connection_id) = TestServer::setup(build_dictionary());
+
+    //Have client send Logon.
+    client.send_message_box(connection_id,Box::new(new_logon_message()));
+    let message = test_server.recv_message::<Logon>();
+    assert_eq!(message.msg_seq_num,1);
+
+    //Respond with Logon and TestRequest (hopefully) merged into a single TCP packet.
+    let mut logon_message = new_fixt_message!(Logon);
+    logon_message.msg_seq_num = 1;
+    logon_message.encrypt_method = message.encrypt_method;
+    logon_message.heart_bt_int = message.heart_bt_int;
+    logon_message.default_appl_ver_id = message.default_appl_ver_id;
+
+    let mut test_request_message = new_fixt_message!(TestRequest);
+    test_request_message.msg_seq_num = 2;
+    test_request_message.test_req_id = String::from("test");
+
+    let mut bytes = Vec::new();
+    logon_message.read(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,&mut bytes);
+    test_request_message.read(FIXVersion::FIX_4_2,MessageVersion::FIX42,&mut bytes);
+    assert!(bytes.len() < 1400); //Make sure the serialized body is reasonably likely to fit within the MTU.
+    let bytes_written = test_server.stream.write(&bytes).unwrap();
+    assert_eq!(bytes_written,bytes.len());
+
+    //Make sure client acknowledges Logon as normal.
+    client_poll_event!(client,ClientEvent::SessionEstablished(_) => {});
+    let message = client_poll_message!(client,connection_id,Logon);
+    assert_eq!(message.msg_seq_num,1);
+
+    //Make sure Client sends Logout and then disconnects.
+    let message = test_server.recv_message::<Logout>();
+    assert_eq!(message.text,"BeginStr is wrong, expected 'FIXT.1.1' but received 'FIX.4.2'");
+
+    client_poll_event!(client,ClientEvent::ConnectionTerminated(terminated_connection_id,reason) => {
+        assert_eq!(terminated_connection_id,connection_id);
+        assert!(
+            if let ConnectionTerminatedReason::BeginStrWrongError{received,expected} = reason {
+                assert_eq!(received,FIXVersion::FIX_4_2);
+                assert_eq!(expected,FIXVersion::FIXT_1_1);
+                true
+            }
+            else {
+                false
+            }
+        );
+    });
+}
