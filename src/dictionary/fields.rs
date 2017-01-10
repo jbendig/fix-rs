@@ -11,7 +11,7 @@
 
 use dictionary::field_types::generic::{BoolTrueOrBlankFieldType,CharFieldType,CountryFieldType,CurrencyFieldType,DataFieldType,DayOfMonthFieldType,IntFieldType,LocalMktDateFieldType,MonthYearFieldType,NoneFieldType,RepeatingGroupFieldType,SeqNumFieldType,StringFieldType,UTCTimeOnlyFieldType,UTCTimestampFieldType};
 use dictionary::field_types::other as other_field_types;
-use dictionary::field_types::other::{ApplVerIDFieldType,BusinessRejectReasonFieldType,ComplexEventConditionFieldType,ComplexEventPriceBoundaryMethodFieldType,ComplexEventPriceTimeTypeFieldType,ComplexEventTypeFieldType,ContractMultiplierUnitFieldType,CPProgramFieldType,DefaultApplVerIDFieldType,EmailTypeFieldType,EventTypeFieldType,ExerciseStyleFieldType,FlowScheduleTypeFieldType,HandlInstFieldType,InstrmtAssignmentMethodFieldType,IssuerFieldType,ListMethodFieldType,NotRequiredSecurityIDSourceFieldType,NotRequiredSecurityTypeFieldType as SecurityTypeFieldType,NotRequiredSideFieldType,NotRequiredSymbolSfxFieldType as SymbolSfxFieldType,NotRequiredTimeUnitFieldType as TimeUnitFieldType,OptPayoutTypeFieldType,OrdTypeFieldType,PartyIDSourceFieldType,PartyRoleFieldType,PartySubIDTypeFieldType,PriceQuoteMethodFieldType,ProductFieldType,PutOrCallFieldType,RateSourceFieldType,RateSourceTypeFieldType,RequiredSecurityIDSourceFieldType,RequiredSideFieldType,RequiredStipulationTypeFieldType as StipulationTypeFieldType,RestructuringTypeFieldType,RoutingTypeFieldType,SecurityStatusFieldType,SeniorityFieldType,SessionRejectReasonFieldType,SettlMethodFieldType,SettlTypeFieldType,StrikePriceBoundaryMethodFieldType,StrikePriceDeterminationMethodFieldType,TimeInForceFieldType,UnderlyingCashTypeFieldType,UnderlyingFXRateCalcFieldType,UnderlyingPriceDeterminationMethodFieldType,UnderlyingSettlementTypeFieldType,UnitOfMeasureFieldType,ValuationMethodFieldType};
+use dictionary::field_types::other::{ApplVerIDFieldType,BusinessRejectReasonFieldType,ComplexEventConditionFieldType,ComplexEventPriceBoundaryMethodFieldType,ComplexEventPriceTimeTypeFieldType,ComplexEventTypeFieldType,ContractMultiplierUnitFieldType,CPProgramFieldType,DefaultApplVerIDFieldType,EmailTypeFieldType,EventTypeFieldType,ExerciseStyleFieldType,FlowScheduleTypeFieldType,HandlInstFieldType,InstrmtAssignmentMethodFieldType,IssuerFieldType,ListMethodFieldType,MsgDirectionFieldType,NotRequiredSecurityIDSourceFieldType,NotRequiredSecurityTypeFieldType as SecurityTypeFieldType,NotRequiredSideFieldType,NotRequiredSymbolSfxFieldType as SymbolSfxFieldType,NotRequiredTimeUnitFieldType as TimeUnitFieldType,OptPayoutTypeFieldType,OrdTypeFieldType,PartyIDSourceFieldType,PartyRoleFieldType,PartySubIDTypeFieldType,PriceQuoteMethodFieldType,ProductFieldType,PutOrCallFieldType,RateSourceFieldType,RateSourceTypeFieldType,RequiredSecurityIDSourceFieldType,RequiredSideFieldType,RequiredStipulationTypeFieldType as StipulationTypeFieldType,RestructuringTypeFieldType,RoutingTypeFieldType,SecurityStatusFieldType,SeniorityFieldType,SessionRejectReasonFieldType,SettlMethodFieldType,SettlTypeFieldType,StrikePriceBoundaryMethodFieldType,StrikePriceDeterminationMethodFieldType,TimeInForceFieldType,UnderlyingCashTypeFieldType,UnderlyingFXRateCalcFieldType,UnderlyingPriceDeterminationMethodFieldType,UnderlyingSettlementTypeFieldType,UnitOfMeasureFieldType,ValuationMethodFieldType};
 use fix_version::FIXVersion;
 use message::{REQUIRED,NOT_REQUIRED};
 use rule::Rule;
@@ -164,7 +164,7 @@ define_fields!(
     BusinessRejectReason: BusinessRejectReasonFieldType = b"380",
     MaxMessageSize: StringFieldType = b"383", //Length
     NoMsgTypeGrp: RepeatingGroupFieldType<MsgTypeGrp> = b"384",
-    MsgDirection: StringFieldType = b"385", //Char
+    MsgDirection: MsgDirectionFieldType = b"385",
     UnderlyingCouponRate: PercentageFieldType = b"435",
     UnderlyingContractMultiplier: StringFieldType = b"436", //Float
     NoSecurityAltID: RepeatingGroupFieldType<SecAltIDGrp> = b"454",
@@ -338,7 +338,7 @@ define_fields!(
     DefaultApplExtID: StringFieldType = b"1407", //int
     DefaultCstmApplVerID: StringFieldType = b"1408",
     SessionStatus: StringFieldType = b"1409", //int
-    DefaultVerIndicator: StringFieldType = b"1410", //bool
+    DefaultVerIndicator: BoolTrueOrBlankFieldType = b"1410",
     UnderlyingExerciseStyle: ExerciseStyleFieldType = b"1419",
     LegExerciseStyle: ExerciseStyleFieldType = b"1420",
     LegPriceUnitOfMeasure: UnitOfMeasureFieldType = b"1421",

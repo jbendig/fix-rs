@@ -184,24 +184,13 @@ impl TestServer {
     }
 
     pub fn setup_and_logon_with_ver(fix_version: FIXVersion,message_version: MessageVersion,message_dictionary: HashMap<&'static [u8],Box<FIXTMessage + Send>>) -> (TestServer,Client,usize) {
-        fn max_message_version(fix_version: FIXVersion) -> MessageVersion {
-            match fix_version {
-                FIXVersion::FIX_4_0 => MessageVersion::FIX40,
-                FIXVersion::FIX_4_1 => MessageVersion::FIX41,
-                FIXVersion::FIX_4_2 => MessageVersion::FIX42,
-                FIXVersion::FIX_4_3 => MessageVersion::FIX43,
-                FIXVersion::FIX_4_4 => MessageVersion::FIX44,
-                FIXVersion::FIXT_1_1 => MessageVersion::FIX50SP2,
-            }
-        }
-
         //Connect.
         let (mut test_server,mut client,connection_id) = TestServer::setup_with_ver(fix_version,message_version,message_dictionary);
 
         //Logon.
         let mut logon_message = new_logon_message();
         logon_message.default_appl_ver_id = message_version;
-        client.send_message_box_with_message_version(connection_id,max_message_version(fix_version),Box::new(logon_message));
+        client.send_message_box_with_message_version(connection_id,fix_version.max_message_version(),Box::new(logon_message));
         let message = test_server.recv_message::<Logon>();
         assert_eq!(message.msg_seq_num,1);
 
@@ -209,7 +198,7 @@ impl TestServer {
         response_message.encrypt_method = message.encrypt_method;
         response_message.heart_bt_int = message.heart_bt_int;
         response_message.default_appl_ver_id = message.default_appl_ver_id;
-        test_server.send_message_with_ver(fix_version,max_message_version(fix_version),response_message);
+        test_server.send_message_with_ver(fix_version,fix_version.max_message_version(),response_message);
         client_poll_event!(client,ClientEvent::SessionEstablished(_) => {});
         let message = client_poll_message!(client,connection_id,Logon);
         assert_eq!(message.msg_seq_num,1);

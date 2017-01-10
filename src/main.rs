@@ -16,6 +16,7 @@ extern crate fix_rs;
 use chrono::offset::utc::UTC;
 use chrono::TimeZone;
 
+use fix_rs::dictionary::field_types::other::MsgDirection;
 use fix_rs::dictionary::messages::Logon;
 use fix_rs::fix::Parser;
 use fix_rs::fix_version::FIXVersion;
@@ -49,7 +50,7 @@ fn main() {
         Logon : Logon,
     );
 
-    let message_bytes = b"8=FIX.4.2\x019=132\x0135=A\x0149=SERVER\x0156=CLIENT\x0134=177\x0152=20090107-18:15:16\x0198=0\x01108=30\x0195=13\x0196=This\x01is=atest\x011137=4\x01384=2\x01372=Test\x01385=A\x01372=Test2\x01385=B\x0110=171\x01";
+    let message_bytes = b"8=FIX.4.2\x019=132\x0135=A\x0149=SERVER\x0156=CLIENT\x0134=177\x0152=20090107-18:15:16\x0198=0\x01108=30\x0195=13\x0196=This\x01is=atest\x011137=4\x01384=2\x01372=Test\x01385=S\x01372=Test2\x01385=R\x0110=171\x01";
 
     let mut parser = Parser::new(build_dictionary());
     let (bytes_read,result) = parser.parse(message_bytes);
@@ -68,15 +69,15 @@ fn main() {
             assert_eq!(message.sending_time,UTC.ymd(2009,1,7).and_hms(18,15,16));
             assert_eq!(message.raw_data,b"This\x01is=atest");
             assert_eq!(message.default_appl_ver_id,MessageVersion::FIX42);
-            assert_eq!(message.msg_type_grp.len(),2);
+            assert_eq!(message.no_msg_types.len(),2);
 
-            let message_type_0 = &message.msg_type_grp[0];
+            let message_type_0 = &message.no_msg_types[0];
             assert_eq!(message_type_0.ref_msg_type,"Test");
-            assert_eq!(message_type_0.msg_direction,"A");
+            assert_eq!(message_type_0.msg_direction,MsgDirection::Send);
 
-            let message_type_1 = &message.msg_type_grp[1];
+            let message_type_1 = &message.no_msg_types[1];
             assert_eq!(message_type_1.ref_msg_type,"Test2");
-            assert_eq!(message_type_1.msg_direction,"B");
+            assert_eq!(message_type_1.msg_direction,MsgDirection::Receive);
 
             message1 = Some(message.clone());
         }

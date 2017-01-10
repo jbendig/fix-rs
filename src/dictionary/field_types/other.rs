@@ -545,6 +545,17 @@ define_enum_field_type!(NOT_REQUIRED, ListMethod, ListMethodFieldType {
     ListMethod::UserRequested => b"1",
 } MUST_BE_INT);
 
+#[derive(Clone,Debug,PartialEq)]
+pub enum MsgDirection {
+    Receive,
+    Send,
+}
+
+define_enum_field_type!(REQUIRED, MsgDirection, MsgDirectionFieldType {
+    MsgDirection::Receive => b"R",
+    MsgDirection::Send => b"S",
+} MUST_BE_CHAR);
+
 #[derive(Clone,PartialEq)]
 pub enum OptPayoutType {
     Vanilla,

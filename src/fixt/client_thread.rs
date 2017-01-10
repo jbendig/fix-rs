@@ -26,7 +26,7 @@ use std::time::Duration;
 use byte_buffer::ByteBuffer;
 use dictionary::{CloneDictionary,standard_msg_types};
 use dictionary::field_types::generic::UTCTimestampFieldType;
-use dictionary::field_types::other::{BusinessRejectReason,SessionRejectReason};
+use dictionary::field_types::other::{BusinessRejectReason,MsgDirection,SessionRejectReason};
 use dictionary::fields::{ApplVerID,MsgSeqNum,SenderCompID,TargetCompID,OrigSendingTime};
 use dictionary::messages::{Logon,Logout,ResendRequest,TestRequest,Heartbeat,SequenceReset,Reject,BusinessMessageReject};
 use field::Field;
@@ -582,6 +582,15 @@ impl InternalThread {
                     },
                 };
 
+                //Force all administrative messages to use the newest message version for the
+                //specified FIX version. This way they can't be overridden during Logon and it
+                //makes sure the Logon message supports all of the fields we support.
+                let mut parser = Parser::new(self.message_dictionary.clone());
+                let administrative_msg_types = vec![Logon::msg_type(),Logout::msg_type(),Reject::msg_type(),ResendRequest::msg_type(),SequenceReset::msg_type(),TestRequest::msg_type(),Heartbeat::msg_type()];
+                for msg_type in administrative_msg_types {
+                    parser.set_default_message_type_version(msg_type,fix_version.max_message_version());
+                }
+
                 let connection = Connection {
                     fix_version: fix_version,
                     default_message_version: default_message_version,
@@ -598,7 +607,7 @@ impl InternalThread {
                     inbound_testrequest_timeout_duration: None,
                     inbound_resend_request_msg_seq_num: None,
                     logout_timeout: None,
-                    parser: Parser::new(self.message_dictionary.clone()),
+                    parser: parser,
                     status: ConnectionStatus::LoggingOn,
                     sender_comp_id: self.sender_comp_id.clone(),
                     target_comp_id: self.target_comp_id.clone(),
@@ -1111,7 +1120,7 @@ impl InternalThread {
         }
 
         //When the connection first starts, it sends a Logon message to the server. The server then
-        //must respond with a Logon acknowleding the Logon, a Logout rejecting the Logout, or just
+        //must respond with a Logon acknowleding the Logon, a Logout rejecting the Logon, or just
         //disconnecting. In this case, if a  Logon is received, we setup timers to send periodic
         //messages in case there is no activity. We then notify the client that the session is
         //established and other messages can now be sent or received.
@@ -1138,6 +1147,13 @@ impl InternalThread {
                 //the FIXVersion >= FIXT_1_1. Earlier versions always use the same message version
                 //as the FIX version specified in the BeginStr tag.
                 connection.parser.set_default_message_version(message.default_appl_ver_id);
+
+                //Make parser use the Message Type Default Application Version if specified.
+                for msg_type in &message.no_msg_types {
+                    if msg_type.default_ver_indicator && msg_type.msg_direction == MsgDirection::Send && msg_type.ref_appl_ver_id.is_some() {
+                        connection.parser.set_default_message_type_version(&msg_type.ref_msg_type.clone().into_bytes()[..],msg_type.ref_appl_ver_id.unwrap());
+                    }
+                }
 
                 //TODO: Need to take MaxMessageSize into account.
                 //TODO: Optionally support filtering message types (NoMsgTypes).

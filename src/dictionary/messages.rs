@@ -140,7 +140,7 @@ define_fixt_message!(Logon: b"A" => {
     NOT_REQUIRED, reset_seq_num_flag: ResetSeqNumFlag [FIX41..],
     NOT_REQUIRED, next_expected_msg_seq_num: NextExpectedMsgSeqNum [FIX44..],
     NOT_REQUIRED, max_message_size: MaxMessageSize [FIX42..],
-    NOT_REQUIRED, msg_type_grp: NoMsgTypeGrp [FIX42..],
+    NOT_REQUIRED, no_msg_types: NoMsgTypeGrp [FIX42..],
     NOT_REQUIRED, test_message_indicator: TestMessageIndicator [FIX43..],
     NOT_REQUIRED, username: Username [FIX43..],
     NOT_REQUIRED, password: Password [FIX43..],

@@ -23,8 +23,8 @@ use std::time::Duration;
 #[macro_use]
 mod common;
 use common::{SERVER_SENDER_COMP_ID,SERVER_TARGET_COMP_ID,TestServer,new_logon_message};
-use fix_rs::dictionary::field_types::other::SessionRejectReason;
-use fix_rs::dictionary::fields::{SenderCompID,TargetCompID,Text};
+use fix_rs::dictionary::field_types::other::{MsgDirection,SessionRejectReason};
+use fix_rs::dictionary::fields::{MsgTypeGrp,SenderCompID,TargetCompID,Text};
 use fix_rs::dictionary::messages::{Heartbeat,Logon,Logout,Reject,ResendRequest,SequenceReset,TestRequest};
 use fix_rs::field::Field;
 use fix_rs::fix::ParseError;
@@ -809,6 +809,73 @@ fn test_appl_ver_id() {
             assert_eq!(msg_connection_id,connection_id);
             assert!(if let ParseError::UnexpectedTag(ref tag) = parse_error { *tag == Text::tag()  } else { false });
         });
+    }
+}
+
+#[test]
+fn test_message_type_default_application_version() {
+    define_fixt_message!(TestMessage: b"9999" => {
+        REQUIRED, text: Text [FIX50SP1..],
+    });
+
+    define_dictionary!(
+        Logon : Logon,
+        Reject : Reject,
+        TestMessage : TestMessage,
+    );
+
+    //Connect.
+    let (mut test_server,mut client,connection_id) = TestServer::setup(build_dictionary());
+
+    //Logon.
+    let mut logon_message = new_logon_message();
+    logon_message.default_appl_ver_id = MessageVersion::FIX50;
+    client.send_message_box_with_message_version(connection_id,MessageVersion::FIX50SP2,Box::new(logon_message));
+    let message = test_server.recv_message::<Logon>();
+    assert_eq!(message.msg_seq_num,1);
+
+    let mut response_message = new_fixt_message!(Logon);
+    response_message.encrypt_method = message.encrypt_method;
+    response_message.heart_bt_int = message.heart_bt_int;
+    response_message.default_appl_ver_id = message.default_appl_ver_id;
+    let mut msg_type_grp = MsgTypeGrp::new();
+    msg_type_grp.ref_msg_type = String::from_utf8_lossy(TestMessage::msg_type()).into_owned();
+    msg_type_grp.ref_appl_ver_id = Some(MessageVersion::FIX50SP1);
+    msg_type_grp.msg_direction = MsgDirection::Send;
+    msg_type_grp.default_ver_indicator = true;
+    response_message.no_msg_types.push(Box::new(msg_type_grp));
+    test_server.send_message_with_ver(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,response_message);
+    client_poll_event!(client,ClientEvent::SessionEstablished(_) => {});
+    let message = client_poll_message!(client,connection_id,Logon);
+    assert_eq!(message.msg_seq_num,1);
+
+    //Make sure specifying a message type specific default application version overrides the
+    //default message version.
+    {
+        //Send TestMessage text field.
+        let mut message = new_fixt_message!(TestMessage);
+        message.msg_seq_num = 2;
+        message.text = String::from("test");
+        test_server.send_message_with_ver(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP1,message);
+
+        //Confirm Client accepted message correctly.
+        let message = client_poll_message!(client,connection_id,TestMessage);
+        assert_eq!(message.appl_ver_id,Some(MessageVersion::FIX50SP1)); //Set by parser what it parsed message as.
+        assert_eq!(message.text,String::from("test"));
+    }
+
+    //Make sure ApplVerID overrides the message type specific default application version.
+    {
+        //Send TestMessage with explicit ApplVerID < FIX50 and without text field.
+        let mut message = new_fixt_message!(TestMessage);
+        message.msg_seq_num = 3;
+        message.appl_ver_id = Some(MessageVersion::FIX40);
+        test_server.send_message_with_ver(FIXVersion::FIXT_1_1,message.appl_ver_id.unwrap(),message);
+
+        //Confirm Client accepted message correctly.
+        let message = client_poll_message!(client,connection_id,TestMessage);
+        assert_eq!(message.appl_ver_id,Some(MessageVersion::FIX40));
+        assert_eq!(message.text.len(),0);
     }
 }
 

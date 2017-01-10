@@ -11,6 +11,7 @@
 
 use std::borrow::Borrow;
 use std::collections::{HashMap,HashSet};
+use std::collections::hash_map::Entry;
 use std::fmt;
 use std::iter::FromIterator;
 use std::mem;
@@ -197,6 +198,7 @@ fn set_message_value<T: Message + ?Sized>(message: &mut T,tag: &[u8],bytes: &[u8
 pub struct Parser {
     message_dictionary: HashMap<&'static [u8],Box<FIXTMessage + Send>>,
     default_message_version: MessageVersion,
+    default_message_type_version: HashMap<&'static [u8],MessageVersion>,
     value_to_length_tags: HashMap<&'static [u8],&'static [u8]>,
     found_message: FoundMessage,
     current_tag: Vec<u8>, //Tag if completely parsed, otherwise empty.
@@ -254,6 +256,7 @@ impl Parser {
         Parser {
             message_dictionary: message_dictionary,
             default_message_version: DefaultApplVerIDFieldType::default_value(),
+            default_message_type_version: HashMap::new(),
             value_to_length_tags: value_to_length_tags,
             found_message: FoundMessage::NotFound,
             current_tag: Vec::new(),
@@ -304,6 +307,22 @@ impl Parser {
 
     pub fn set_default_message_version(&mut self,message_version: MessageVersion) {
         self.default_message_version = message_version;
+    }
+
+    pub fn set_default_message_type_version(&mut self,tag: &[u8],message_version: MessageVersion) {
+        //Set the default version for a specific message type. If the version was already set,
+        //there will be no change.
+
+        //TODO: This could be a potential bottleneck. It's done this way because we want the exact
+        //&'static [u8] key but only have the &[u8] that looks like the key.
+        for message_dictionary_key in self.message_dictionary.keys() {
+            if **message_dictionary_key == *tag {
+                if let Entry::Vacant(entry) = self.default_message_type_version.entry(message_dictionary_key) {
+                    entry.insert(message_version);
+                }
+                break;
+            }
+        }
     }
 
     pub fn validate_message_dictionary(message_dictionary: &HashMap<&'static [u8],Box<FIXTMessage + Send>>) {
@@ -683,7 +702,6 @@ impl Parser {
             }
 
             //Figure out what message version should be supported while parsing.
-            //TODO: Need to support default versions for different messages too.
             let (fix_version,message_version) = match &self.current_bytes[..] {
                 FIX_4_0_BEGIN_STRING => (FIXVersion::FIX_4_0,MessageVersion::FIX40),
                 FIX_4_1_BEGIN_STRING => (FIXVersion::FIX_4_1,MessageVersion::FIX41),
@@ -759,13 +777,17 @@ impl Parser {
                 //methods for determining what FIX version this message is expected to adhere to.
                 if self.current_tag == ApplVerID::tag() {
                     if let Some(appl_ver_id) = MessageVersion::from_bytes(&self.current_bytes[..]) {
-                        println!("Overriding ApplVerID");
                         self.message_version = appl_ver_id;
                         skip_set_value = true;
                     }
                     else {
                         return Err(ParseError::OutOfRangeTag(self.current_tag.clone()));
                     }
+                }
+                //Fall back to the message specific default (if specified) or the session default
+                //(in that order).
+                else {
+                    self.message_version = *self.default_message_type_version.get(&self.message_type[..]).unwrap_or(&self.default_message_version);
                 }
 
                 //Now that the message version has been determined, prepare a collection of which

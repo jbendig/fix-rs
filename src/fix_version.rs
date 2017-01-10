@@ -10,6 +10,7 @@
 // except according to those terms.
 
 use constant::{FIX_4_0_BEGIN_STRING,FIX_4_1_BEGIN_STRING,FIX_4_2_BEGIN_STRING,FIX_4_3_BEGIN_STRING,FIX_4_4_BEGIN_STRING,FIXT_1_1_BEGIN_STRING};
+use message_version::MessageVersion;
 
 #[derive(Clone,Copy,Debug,PartialEq)]
 #[allow(non_camel_case_types)]
@@ -31,6 +32,17 @@ impl FIXVersion {
             FIXVersion::FIX_4_2 => FIX_4_2_BEGIN_STRING,
             FIXVersion::FIX_4_3 => FIX_4_3_BEGIN_STRING,
             FIXVersion::FIX_4_4 => FIX_4_4_BEGIN_STRING,
+        }
+    }
+
+    pub fn max_message_version(&self) -> MessageVersion {
+        match *self {
+            FIXVersion::FIX_4_0 => MessageVersion::FIX40,
+            FIXVersion::FIX_4_1 => MessageVersion::FIX41,
+            FIXVersion::FIX_4_2 => MessageVersion::FIX42,
+            FIXVersion::FIX_4_3 => MessageVersion::FIX43,
+            FIXVersion::FIX_4_4 => MessageVersion::FIX44,
+            FIXVersion::FIXT_1_1 => MessageVersion::FIX50SP2,
         }
     }
 }

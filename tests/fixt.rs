@@ -95,7 +95,7 @@ fn test_1B() {
         message.sender_comp_id = logon_message.sender_comp_id.clone();
         assert_eq!(message.target_comp_id,SERVER_TARGET_COMP_ID);
         message.target_comp_id = logon_message.target_comp_id.clone();
-        assert_eq!(message.appl_ver_id.unwrap(),MessageVersion::FIX50);
+        assert_eq!(message.appl_ver_id.unwrap(),MessageVersion::FIX50SP2);
         message.appl_ver_id = logon_message.appl_ver_id.clone();
         assert!(message == logon_message);
     }
