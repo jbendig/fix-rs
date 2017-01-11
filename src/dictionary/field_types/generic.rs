@@ -1327,14 +1327,15 @@ impl FieldType for SeqNumFieldType {
 pub struct StringFieldType;
 
 impl FieldType for StringFieldType {
-    type Type = String;
+    type Type = Vec<u8>;
 
     fn default_value() -> Self::Type {
         Default::default()
     }
 
     fn set_value(field: &mut Self::Type,bytes: &[u8]) -> Result<(),SetValueError> {
-        *field = String::from_utf8_lossy(bytes).into_owned();
+        field.clear();
+        field.extend_from_slice(bytes);
         Ok(())
     }
 
@@ -1347,7 +1348,7 @@ impl FieldType for StringFieldType {
     }
 
     fn read(field: &Self::Type,_fix_version: FIXVersion,_message_version: MessageVersion,buf: &mut Vec<u8>) -> usize {
-        buf.write(field.as_bytes()).unwrap()
+        buf.write(&field[..]).unwrap()
     }
 }
 

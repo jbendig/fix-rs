@@ -145,7 +145,7 @@ fn test_1B() {
 
         //Confirm the client sent a Logout message.
         let message = test_server.recv_message::<Logout>();
-        assert_eq!(message.text,"HeartBtInt cannot be negative");
+        assert_eq!(message.text,b"HeartBtInt cannot be negative".to_vec());
 
         //Give client thread a chance to disconnect.
         thread::sleep(Duration::from_millis(500));
@@ -164,20 +164,20 @@ fn test_1B() {
     {
         let (mut test_server,mut client,connection_id,_) = do_logon(|mut test_server,_| {
             let mut new_order_single = new_fixt_message!(NewOrderSingle);
-            new_order_single.cl_ord_id = String::from("0");
-            new_order_single.symbol = String::from("TEST");
-            new_order_single.security_id = String::from("0");
+            new_order_single.cl_ord_id = b"0".to_vec();
+            new_order_single.symbol = b"TEST".to_vec();
+            new_order_single.security_id = b"0".to_vec();
             new_order_single.security_id_source = Some(SecurityIDSource::CUSIP);
             new_order_single.side = Side::Buy;
             new_order_single.transact_time = new_order_single.sending_time;
-            new_order_single.order_qty = String::from("1");
+            new_order_single.order_qty = b"1".to_vec();
             new_order_single.ord_type = OrdType::Market;
             test_server.send_message(new_order_single);
         });
 
         //Confirm the client sent a Logout message.
         let message = test_server.recv_message::<Logout>();
-        assert_eq!(message.text,"First message not a logon");
+        assert_eq!(message.text,b"First message not a logon".to_vec());
 
         //Give client thread a chance to disconnect.
         thread::sleep(Duration::from_millis(500));
@@ -250,7 +250,7 @@ fn test_2B() {
         let (mut test_server,mut client,connection_id) = TestServer::setup_and_logon(build_dictionary());
 
         let mut message = new_fixt_message!(TestRequest);
-        message.test_req_id = String::from("1");
+        message.test_req_id = b"1".to_vec();
         client.send_message(connection_id,message);
         let message = test_server.recv_message::<TestRequest>();
         assert_eq!(message.msg_seq_num,2);
@@ -283,7 +283,7 @@ fn test_2B() {
         //Server sends TestRequest with high MsgSeqNum.
         let mut message = new_fixt_message!(TestRequest);
         message.msg_seq_num = 25;
-        message.test_req_id = String::from("1");
+        message.test_req_id = b"1".to_vec();
         test_server.send_message(message);
 
         //Client should automatically send a ResendRequest.
@@ -303,12 +303,12 @@ fn test_2B() {
         //Server sends TestRequest with low MsgSeqNum.
         let mut message = new_fixt_message!(TestRequest);
         message.msg_seq_num = 1;
-        message.test_req_id = String::from("1");
+        message.test_req_id = b"1".to_vec();
         test_server.send_message(message);
 
         //Client should automatically send a Logout with an appropriate text message.
         let message = test_server.recv_message::<Logout>();
-        assert_eq!(message.text,"MsgSeqNum too low, expected 2 but received 1");
+        assert_eq!(message.text,b"MsgSeqNum too low, expected 2 but received 1".to_vec());
 
         //Give client thread a chance to disconnect.
         thread::sleep(Duration::from_millis(500));
@@ -342,7 +342,7 @@ fn test_2B() {
         //Send valid message.
         let mut message = new_fixt_message!(TestRequest);
         message.msg_seq_num = 2;
-        message.test_req_id = String::from("1");
+        message.test_req_id = b"1".to_vec();
         test_server.send_message(message);
 
         let message = client_poll_message!(client,connection_id,TestRequest);
@@ -365,7 +365,7 @@ fn test_2B() {
         //Send message with high MsgSeqNum to client.
         let mut message = new_fixt_message!(TestRequest);
         message.msg_seq_num = 9;
-        message.test_req_id = String::from("1");
+        message.test_req_id = b"1".to_vec();
         test_server.send_message(message);
 
         let message = test_server.recv_message::<ResendRequest>();
@@ -392,14 +392,14 @@ fn test_2B() {
         //Send TestRequest with OrigSendingTime <= SendingTime for MsgSeqNum not already received.
         let mut message = new_fixt_message!(TestRequest);
         message.msg_seq_num = 2;
-        message.test_req_id = String::from("2");
+        message.test_req_id = b"2".to_vec();
         message.poss_dup_flag = true;
         orig_sending_time_setup_fn(&mut message);
         test_server.send_message(message);
 
         let message = client_poll_message!(client,connection_id,TestRequest);
         assert_eq!(message.msg_seq_num,2);
-        assert_eq!(message.test_req_id,"2");
+        assert_eq!(message.test_req_id,b"2".to_vec());
         assert_eq!(message.poss_dup_flag,true);
 
         //Send the same TestRequest but now MsgSeqNum has already been received. The message should
@@ -410,7 +410,7 @@ fn test_2B() {
 
             let message = duplicate_message.as_any().downcast_ref::<TestRequest>().expect("Not expected message type").clone();
             assert_eq!(message.msg_seq_num,2);
-            assert_eq!(message.test_req_id,"2");
+            assert_eq!(message.test_req_id,b"2".to_vec());
             assert_eq!(message.poss_dup_flag,true);
         });
         */
@@ -426,7 +426,7 @@ fn test_2B() {
         //Send TestRequest with OrigSendingTime > SendingTime.
         let mut message = new_fixt_message!(TestRequest);
         message.msg_seq_num = 2;
-        message.test_req_id = String::from("2");
+        message.test_req_id = b"2".to_vec();
         message.poss_dup_flag = true;
         message.orig_sending_time = message.sending_time + chrono::Duration::seconds(1);
         test_server.send_message(message);
@@ -435,14 +435,14 @@ fn test_2B() {
         let message = test_server.recv_message::<Reject>();
         assert_eq!(message.ref_seq_num,2);
         assert_eq!(message.session_reject_reason.unwrap(),SessionRejectReason::SendingTimeAccuracyProblem);
-        assert_eq!(message.text,"SendingTime accuracy problem");
+        assert_eq!(message.text,b"SendingTime accuracy problem".to_vec());
 
         client_poll_event!(client,ClientEvent::MessageRejected(msg_connection_id,rejected_message) => {
             assert_eq!(msg_connection_id,connection_id);
 
             let message = rejected_message.as_any().downcast_ref::<TestRequest>().expect("Not expected message type").clone();
             assert_eq!(message.msg_seq_num,2);
-            assert_eq!(message.test_req_id,"2");
+            assert_eq!(message.test_req_id,b"2".to_vec());
             assert_eq!(message.poss_dup_flag,true);
         });
     }
@@ -456,7 +456,7 @@ fn test_2B() {
         //Send TestRequest without OrigSendingTime.
         let mut message = new_fixt_message!(TestRequest);
         message.msg_seq_num = 2;
-        message.test_req_id = String::from("2");
+        message.test_req_id = b"2".to_vec();
         message.poss_dup_flag = true;
         test_server.send_message(message);
 
@@ -464,7 +464,7 @@ fn test_2B() {
         let message = test_server.recv_message::<Reject>();
         assert_eq!(message.ref_seq_num,2);
         assert_eq!(message.session_reject_reason.unwrap(),SessionRejectReason::RequiredTagMissing);
-        assert_eq!(message.text,"Conditionally required tag missing");
+        assert_eq!(message.text,b"Conditionally required tag missing".to_vec());
 
         client_poll_event!(client,ClientEvent::MessageReceivedGarbled(msg_connection_id,parse_error) => {
             assert_eq!(msg_connection_id,connection_id);
@@ -475,7 +475,7 @@ fn test_2B() {
 
                     let message = message.as_any().downcast_ref::<TestRequest>().expect("Not expected message type").clone();
                     assert_eq!(message.msg_seq_num,2);
-                    assert_eq!(message.test_req_id,"2");
+                    assert_eq!(message.test_req_id,b"2".to_vec());
                     assert_eq!(message.poss_dup_flag,true);
                 },
                 _ => panic!("Wrong parse error"),
@@ -495,12 +495,12 @@ fn test_2B() {
         //Send TestRequest with wrong BeginStr.
         let mut message = new_fixt_message!(TestRequest);
         message.msg_seq_num = 2;
-        message.test_req_id = String::from("2");
+        message.test_req_id = b"2".to_vec();
         send_message(&mut test_server.stream,FIXVersion::FIX_4_2,MessageVersion::FIX42,Box::new(message));
 
         //Client should send Logout and then disconnect.
         let message = test_server.recv_message::<Logout>();
-        assert_eq!(message.text,"BeginStr is wrong, expected 'FIXT.1.1' but received 'FIX.4.2'");
+        assert_eq!(message.text,b"BeginStr is wrong, expected 'FIXT.1.1' but received 'FIX.4.2'".to_vec());
 
         client_poll_event!(client,ClientEvent::ConnectionTerminated(terminated_connection_id,reason) => {
             assert_eq!(terminated_connection_id,connection_id);
@@ -528,9 +528,9 @@ fn test_2B() {
             //Send TestRequest without correct SenderCompID and TargetCompID.
             let mut message = new_fixt_message!(TestRequest);
             message.msg_seq_num = 2;
-            message.test_req_id = String::from("1");
-            message.sender_comp_id = String::from(SERVER_SENDER_COMP_ID);
-            message.target_comp_id = String::from(SERVER_TARGET_COMP_ID);
+            message.test_req_id = b"1".to_vec();
+            message.sender_comp_id = SERVER_SENDER_COMP_ID.to_vec();
+            message.target_comp_id = SERVER_TARGET_COMP_ID.to_vec();
             test_server.send_message(message);
 
             let message = client_poll_message!(client,connection_id,TestRequest);
@@ -541,9 +541,9 @@ fn test_2B() {
             //Send TestRequest with wrong SenderCompID.
             let mut message = new_fixt_message!(TestRequest);
             message.msg_seq_num = 3;
-            message.test_req_id = String::from("2");
-            message.sender_comp_id = String::from("unknown");
-            message.target_comp_id = String::from(SERVER_SENDER_COMP_ID);
+            message.test_req_id = b"2".to_vec();
+            message.sender_comp_id = b"unknown".to_vec();
+            message.target_comp_id = SERVER_SENDER_COMP_ID.to_vec();
             test_server.send_message(message);
 
             //Client should send Reject, Logout, and then disconnect.
@@ -551,10 +551,10 @@ fn test_2B() {
             assert_eq!(message.msg_seq_num,3);
             assert_eq!(message.ref_seq_num,3);
             assert_eq!(message.session_reject_reason.unwrap(),SessionRejectReason::CompIDProblem);
-            assert_eq!(message.text,"CompID problem");
+            assert_eq!(message.text,b"CompID problem".to_vec());
 
             let message = test_server.recv_message::<Logout>();
-            assert_eq!(message.text,"SenderCompID is wrong");
+            assert_eq!(message.text,b"SenderCompID is wrong".to_vec());
 
             client_poll_event!(client,ClientEvent::MessageRejected(msg_connection_id,rejected_message) => {
                 assert_eq!(msg_connection_id,connection_id);
@@ -576,9 +576,9 @@ fn test_2B() {
             //Send TestRequest with wrong TargetCompID.
             let mut message = new_fixt_message!(TestRequest);
             message.msg_seq_num = 2;
-            message.test_req_id = String::from("2");
-            message.sender_comp_id = String::from(SERVER_SENDER_COMP_ID);
-            message.target_comp_id = String::from("unknown");
+            message.test_req_id = b"2".to_vec();
+            message.sender_comp_id = SERVER_SENDER_COMP_ID.to_vec();
+            message.target_comp_id = b"unknown".to_vec();
             test_server.send_message(message);
 
             //Client should send Reject, Logout, and then disconnect.
@@ -586,10 +586,10 @@ fn test_2B() {
             assert_eq!(message.msg_seq_num,2);
             assert_eq!(message.ref_seq_num,2);
             assert_eq!(message.session_reject_reason.unwrap(),SessionRejectReason::CompIDProblem);
-            assert_eq!(message.text,"CompID problem");
+            assert_eq!(message.text,b"CompID problem".to_vec());
 
             let message = test_server.recv_message::<Logout>();
-            assert_eq!(message.text,"TargetCompID is wrong");
+            assert_eq!(message.text,b"TargetCompID is wrong".to_vec());
 
             client_poll_event!(client,ClientEvent::MessageRejected(msg_connection_id,rejected_message) => {
                 assert_eq!(msg_connection_id,connection_id);
@@ -634,9 +634,9 @@ fn test_2B() {
         //Confirm Client responds with an appropriate Reject.
         let message = test_server.recv_message::<Reject>();
         assert_eq!(message.msg_seq_num,2);
-        assert_eq!(message.ref_msg_type,String::from_utf8_lossy(invalid_msg_type).to_owned());
+        assert_eq!(message.ref_msg_type,invalid_msg_type);
         assert_eq!(message.session_reject_reason.unwrap(),SessionRejectReason::InvalidMsgType);
-        assert_eq!(message.text,"Invalid MsgType");
+        assert_eq!(message.text,b"Invalid MsgType".to_vec());
 
         //Confirm Client issued warning.
         client_poll_event!(client,ClientEvent::MessageReceivedGarbled(msg_connection_id,parse_error) => {
@@ -647,7 +647,7 @@ fn test_2B() {
         //Confirm Client incremented expected inbound MsgSeqNum.
         let mut message = new_fixt_message!(TestRequest);
         message.msg_seq_num = 3;
-        message.test_req_id = String::from("test_id");
+        message.test_req_id = b"test_id".to_vec();
         test_server.send_message(message);
 
         let message = client_poll_message!(client,connection_id,TestRequest);
@@ -685,9 +685,9 @@ fn test_2B() {
         //Confirm Client responds with an appropriate BusinessMessageReject.
         let message = test_server.recv_message::<BusinessMessageReject>();
         assert_eq!(message.msg_seq_num,2);
-        assert_eq!(message.ref_msg_type,String::from_utf8_lossy(unsupported_msg_type).to_owned());
+        assert_eq!(message.ref_msg_type,unsupported_msg_type);
         assert_eq!(message.business_reject_reason,BusinessRejectReason::UnsupportedMessageType);
-        assert_eq!(message.text,"Unsupported Message Type");
+        assert_eq!(message.text,b"Unsupported Message Type".to_vec());
 
         //Confirm Client issued warning.
         client_poll_event!(client,ClientEvent::MessageReceivedGarbled(msg_connection_id,parse_error) => {
@@ -698,7 +698,7 @@ fn test_2B() {
         //Confirm Client incremented expected inbound MsgSeqNum.
         let mut message = new_fixt_message!(TestRequest);
         message.msg_seq_num = 3;
-        message.test_req_id = String::from("test_id");
+        message.test_req_id = b"test_id".to_vec();
         test_server.send_message(message);
 
         let message = client_poll_message!(client,connection_id,TestRequest);
@@ -749,7 +749,7 @@ fn test_4B() {
 
         //Send message to reset Client's output heartbeat.
         let mut message = new_fixt_message!(TestRequest);
-        message.test_req_id = String::from("1");
+        message.test_req_id = b"1".to_vec();
         client.send_message(connection_id,message);
         let _ = test_server.recv_message::<TestRequest>();
 
@@ -773,12 +773,12 @@ fn test_4B() {
         //Send TestRequest.
         let mut message = new_fixt_message!(TestRequest);
         message.msg_seq_num = 2;
-        message.test_req_id = String::from("test_id");
+        message.test_req_id = b"test_id".to_vec();
         test_server.send_message(message);
 
         //Make sure client responds with Heartbeat.
         let message = test_server.recv_message::<Heartbeat>();
-        assert_eq!(message.test_req_id,"test_id");
+        assert_eq!(message.test_req_id,b"test_id".to_vec());
     }
 }
 
@@ -802,7 +802,7 @@ fn test_5B() {
     //Client should accept heartbeat message as normal.
     let message = client_poll_message!(client,connection_id,Heartbeat);
     assert_eq!(message.msg_seq_num,2);
-    assert_eq!(message.test_req_id,"");
+    assert_eq!(message.test_req_id,b"".to_vec());
 }
 
 #[test]
@@ -898,7 +898,7 @@ fn test_7B() {
     //Confirm MsgSeqNum was incremented by sending another message and making sure it's expected.
     let mut message = new_fixt_message!(TestRequest);
     message.msg_seq_num = 3;
-    message.test_req_id = String::from("test_id");
+    message.test_req_id = b"test_id".to_vec();
     test_server.send_message(message);
 
     let message = client_poll_message!(client,connection_id,TestRequest);
@@ -1001,12 +1001,12 @@ fn test_10B() {
         //Send a new message to make sure the expected inbound sequence number was changed.
         let mut message = new_fixt_message!(TestRequest);
         message.msg_seq_num = 15;
-        message.test_req_id = String::from("test_id");
+        message.test_req_id = b"test_id".to_vec();
         test_server.send_message(message);
 
         let message = client_poll_message!(client,connection_id,TestRequest);
         assert_eq!(message.msg_seq_num,15);
-        assert_eq!(message.test_req_id,"test_id");
+        assert_eq!(message.test_req_id,b"test_id".to_vec());
     }
 
     //c. Same as above except MsgSeqNum < expected inbound sequence number and PossDupFlag set to
@@ -1038,12 +1038,12 @@ fn test_10B() {
         //Send a new message to make sure the expected inbound sequence number was NOT changed.
         let mut message = new_fixt_message!(TestRequest);
         message.msg_seq_num = 2;
-        message.test_req_id = String::from("test_id");
+        message.test_req_id = b"test_id".to_vec();
         test_server.send_message(message);
 
         let message = client_poll_message!(client,connection_id,TestRequest);
         assert_eq!(message.msg_seq_num,2);
-        assert_eq!(message.test_req_id,"test_id");
+        assert_eq!(message.test_req_id,b"test_id".to_vec());
     }
 
     //d. Same as above except PossDupFlag is not set. The client should send a Logout with an
@@ -1061,7 +1061,7 @@ fn test_10B() {
 
         //Confirm client sent Logout with an appropriate reason.
         let message = test_server.recv_message::<Logout>();
-        assert_eq!(message.text,"MsgSeqNum too low, expected 2 but received 1");
+        assert_eq!(message.text,b"MsgSeqNum too low, expected 2 but received 1".to_vec());
 
         //Give client thread a chance to disconnect.
         thread::sleep(Duration::from_millis(500));
@@ -1079,8 +1079,6 @@ fn test_10B() {
     //e. Send SequenceReset-GapFill to client with NewSeqNo <= MsgSeqNum == expected inbound
     //sequence number. Client should respond with Reject containing an appropriate message.
     for new_seq_no in 1..3 {
-        use std::fmt::Write;
-
         //Connect and Logon.
         let (mut test_server,mut client,connection_id) = TestServer::setup_and_logon(build_dictionary());
 
@@ -1096,8 +1094,8 @@ fn test_10B() {
         let message = test_server.recv_message::<Reject>();
         assert_eq!(message.msg_seq_num,2);
         assert_eq!(message.ref_seq_num,2);
-        let mut expected_error_text = String::new();
-        let _ = write!(&mut expected_error_text,"Attempt to lower sequence number, invalid value NewSeqNo={}",new_seq_no);
+        let mut expected_error_text = b"Attempt to lower sequence number, invalid value NewSeqNo=".to_vec();
+        expected_error_text.extend_from_slice(new_seq_no.to_string().as_bytes());
         assert_eq!(message.text,expected_error_text);
         assert_eq!(message.session_reject_reason.unwrap(),SessionRejectReason::ValueIsIncorrectForThisTag);
 
@@ -1147,12 +1145,12 @@ fn test_11B() {
         //Make sure client accepts a new message with the new sequence number.
         let mut message = new_fixt_message!(TestRequest);
         message.msg_seq_num = 99999;
-        message.test_req_id = String::from("test_id");
+        message.test_req_id = b"test_id".to_vec();
         test_server.send_message(message);
 
         let message = client_poll_message!(client,connection_id,TestRequest);
         assert_eq!(message.msg_seq_num,99999);
-        assert_eq!(message.test_req_id,"test_id");
+        assert_eq!(message.test_req_id,b"test_id".to_vec());
     }
 
     //a. Same as (a) except confirming that buffered messages are discarded.
@@ -1163,7 +1161,7 @@ fn test_11B() {
         //Create a message that client will be forced to buffer.
         let mut message = new_fixt_message!(TestRequest);
         message.msg_seq_num = 10;
-        message.test_req_id = String::from("buffer_me");
+        message.test_req_id = b"buffer_me".to_vec();
         test_server.send_message(message);
         let _ = test_server.recv_message::<ResendRequest>();
 
@@ -1182,12 +1180,12 @@ fn test_11B() {
         //sequence number.
         let mut message = new_fixt_message!(TestRequest);
         message.msg_seq_num = 99999;
-        message.test_req_id = String::from("test_id");
+        message.test_req_id = b"test_id".to_vec();
         test_server.send_message(message);
 
         let message = client_poll_message!(client,connection_id,TestRequest);
         assert_eq!(message.msg_seq_num,99999);
-        assert_eq!(message.test_req_id,"test_id");
+        assert_eq!(message.test_req_id,b"test_id".to_vec());
     }
 
     //b. Same as (a) except NewSeqNo == inbound expected sequence number. Client should ignore
@@ -1216,12 +1214,12 @@ fn test_11B() {
         //Make sure client did not change inbound sequence number.
         let mut message = new_fixt_message!(TestRequest);
         message.msg_seq_num = 2;
-        message.test_req_id = String::from("test_id");
+        message.test_req_id = b"test_id".to_vec();
         test_server.send_message(message);
 
         let message = client_poll_message!(client,connection_id,TestRequest);
         assert_eq!(message.msg_seq_num,2);
-        assert_eq!(message.test_req_id,"test_id");
+        assert_eq!(message.test_req_id,b"test_id".to_vec());
     }
 
     //c. Same as (a) except NewSeqNo < inbound expected sequence number. Client should ignore
@@ -1253,17 +1251,17 @@ fn test_11B() {
         assert_eq!(message.msg_seq_num,2);
         assert_eq!(message.ref_seq_num,msg_seq_num);
         assert_eq!(message.session_reject_reason.unwrap(),SessionRejectReason::ValueIsIncorrectForThisTag);
-        assert_eq!(message.text,"Attempt to lower sequence number, invalid value NewSeqNo=1");
+        assert_eq!(message.text,b"Attempt to lower sequence number, invalid value NewSeqNo=1".to_vec());
 
         //Make sure client did not change inbound sequence number.
         let mut message = new_fixt_message!(TestRequest);
         message.msg_seq_num = 2;
-        message.test_req_id = String::from("test_id");
+        message.test_req_id = b"test_id".to_vec();
         test_server.send_message(message);
 
         let message = client_poll_message!(client,connection_id,TestRequest);
         assert_eq!(message.msg_seq_num,2);
-        assert_eq!(message.test_req_id,"test_id");
+        assert_eq!(message.test_req_id,b"test_id".to_vec());
     }
 }
 
@@ -1285,11 +1283,11 @@ fn test_12B() {
 
         //Have server respond to Logout.
         let message = test_server.recv_message::<Logout>();
-        assert_eq!(message.text,"");
+        assert_eq!(message.text,b"".to_vec());
 
         let mut message = new_fixt_message!(Logout);
         message.msg_seq_num = 2;
-        message.session_status = String::from("4"); //Session logout complete.
+        message.session_status = b"4".to_vec(); //Session logout complete.
         test_server.send_message(message);
 
         //Give client thread a chance to disconnect.
@@ -1453,12 +1451,12 @@ fn test_14B() {
         let message = test_server.recv_message::<Reject>();
         assert_eq!(message.msg_seq_num,2);
         assert_eq!(message.session_reject_reason.unwrap(),session_reject_reason);
-        assert_eq!(message.ref_tag_id,String::from_utf8_lossy(ref_tag_id));
+        assert_eq!(message.ref_tag_id,ref_tag_id);
 
         //Make sure client incremented inbound sequence number.
         let mut message = new_fixt_message!(TestRequest);
         message.msg_seq_num = 3;
-        message.test_req_id = String::from("test_id");
+        message.test_req_id = b"test_id".to_vec();
         test_server.send_message(message);
 
         let message = client_poll_message!(client,connection_id,TestRequestResponse);
@@ -1475,8 +1473,8 @@ fn test_14B() {
         //Send message with undefined tag.
         let mut message = new_fixt_message!(TestRequestWithUndefinedField);
         message.msg_seq_num = 2;
-        message.test_req_id = String::from("test_id");
-        message.undefined = String::from("undefined");
+        message.test_req_id = b"test_id".to_vec();
+        message.undefined = b"undefined".to_vec();
         test_server.send_message(message);
 
         //Make sure client issued an error.
@@ -1516,7 +1514,7 @@ fn test_14B() {
         //Send message with wrong tag for message.
         let mut message = new_fixt_message!(TestRequestWithWrongField);
         message.msg_seq_num = 2;
-        message.test_req_id = String::from("test_id");
+        message.test_req_id = b"test_id".to_vec();
         message.heart_bt_int = 5;
         test_server.send_message(message);
 
@@ -1575,7 +1573,7 @@ fn test_14B() {
         do_garbled_test_with_dict::<_,TestRequestWithEnumeratedField>(SessionRejectReason::ValueIsIncorrectForThisTag,SideField::tag(),|test_server,client,connection_id| {
             //Send message with incorrect value.
             let mut message = new_fixt_message!(TestRequestWithIncorrectField);
-            message.test_req_id = String::from("test_id");
+            message.test_req_id = b"test_id".to_vec();
             message.enumerated_field = b'Z';
             test_server.send_message(message);
 
@@ -1596,7 +1594,7 @@ fn test_14B() {
         //Send message with incorrect value.
         let mut message = new_fixt_message!(ResendRequestWithStringBeginSeqNo);
         message.msg_seq_num = 2;
-        message.begin_seq_no = String::from("-1");
+        message.begin_seq_no = b"-1".to_vec();
         message.end_seq_no = 0;
         test_server.send_message(message);
 
@@ -1648,8 +1646,8 @@ fn test_14B() {
         //Send message with duplicate tag.
         let mut message = new_fixt_message!(TestRequestWithDuplicateField);
         message.msg_seq_num = 2;
-        message.test_req_id_1 = String::from("test_id_1");
-        message.test_req_id_2 = String::from("test_id_2");
+        message.test_req_id_1 = b"test_id_1".to_vec();
+        message.test_req_id_2 = b"test_id_2".to_vec();
         test_server.send_message(message);
 
         //Make sure client issued an error.
@@ -1719,7 +1717,7 @@ fn test_14B() {
         //Send message with conditionally required field (OrigSendingTime) missing.
         let mut message = new_fixt_message!(TestRequest);
         message.msg_seq_num = 2;
-        message.test_req_id = String::from("test_id");
+        message.test_req_id = b"test_id".to_vec();
         message.poss_dup_flag = true;
         test_server.send_message(message);
 
@@ -1736,13 +1734,13 @@ fn test_14B() {
         let message = test_server.recv_message::<Reject>();
         assert_eq!(message.msg_seq_num,2);
         assert_eq!(message.session_reject_reason.unwrap(),SessionRejectReason::RequiredTagMissing);
-        assert_eq!(message.ref_msg_type,String::from_utf8_lossy(<TestRequest as MessageDetails>::msg_type()));
-        assert_eq!(message.ref_tag_id,String::from_utf8_lossy(OrigSendingTime::tag()));
+        assert_eq!(message.ref_msg_type,<TestRequest as MessageDetails>::msg_type());
+        assert_eq!(message.ref_tag_id,OrigSendingTime::tag());
 
         //Make sure client incremented inbound sequence number.
         let mut message = new_fixt_message!(TestRequest);
         message.msg_seq_num = 3;
-        message.test_req_id = String::from("test_id");
+        message.test_req_id = b"test_id".to_vec();
         test_server.send_message(message);
 
         let message = client_poll_message!(client,connection_id,TestRequest);
@@ -1801,7 +1799,7 @@ fn test_20B() {
     //Have client send a few messages to server without server acknowledging them.
     for x in 2..6 {
         let mut message = new_fixt_message!(TestRequest);
-        message.test_req_id = x.to_string();
+        message.test_req_id = x.to_string().as_bytes().to_vec();
         client.send_message(connection_id,message);
 
         let message = test_server.recv_message::<TestRequest>();
@@ -1811,7 +1809,7 @@ fn test_20B() {
     //Trigger client to send a ResendRequest.
     let mut message = new_fixt_message!(TestRequest);
     message.msg_seq_num = 10;
-    message.test_req_id = String::from("10");
+    message.test_req_id = b"10".to_vec();
     test_server.send_message(message);
 
     let message = test_server.recv_message::<ResendRequest>();

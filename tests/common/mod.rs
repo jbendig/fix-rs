@@ -34,10 +34,10 @@ use fix_rs::message_version::MessageVersion;
 const SOCKET_BASE_PORT: usize = 7000;
 static SOCKET_PORT: AtomicUsize = AtomicUsize::new(SOCKET_BASE_PORT);
 
-const CLIENT_TARGET_COMP_ID: &'static str = "TX"; //Test Exchange
-const CLIENT_SENDER_COMP_ID: &'static str = "TEST";
-pub const SERVER_TARGET_COMP_ID: &'static str = CLIENT_SENDER_COMP_ID;
-pub const SERVER_SENDER_COMP_ID: &'static str = CLIENT_TARGET_COMP_ID;
+const CLIENT_TARGET_COMP_ID: &'static [u8] = b"TX"; //Test Exchange
+const CLIENT_SENDER_COMP_ID: &'static [u8] = b"TEST";
+pub const SERVER_TARGET_COMP_ID: &'static [u8] = CLIENT_SENDER_COMP_ID;
+pub const SERVER_SENDER_COMP_ID: &'static [u8] = CLIENT_TARGET_COMP_ID;
 
 #[macro_export]
 macro_rules! client_poll_event {
@@ -71,8 +71,8 @@ macro_rules! new_fixt_message {
             Some(1),
             //Set to from-server by default because if the message is sent by the client, it will
             //overwrite these.
-            String::from($crate::common::SERVER_SENDER_COMP_ID),
-            String::from($crate::common::SERVER_TARGET_COMP_ID)
+            $crate::common::SERVER_SENDER_COMP_ID.to_vec(),
+            $crate::common::SERVER_TARGET_COMP_ID.to_vec()
         );
 
         message
@@ -81,7 +81,7 @@ macro_rules! new_fixt_message {
 
 pub fn new_logon_message() -> Logon {
     let mut message = new_fixt_message!(Logon);
-    message.encrypt_method = String::from("0"); //Not encrypted.
+    message.encrypt_method = b"0".to_vec(); //Not encrypted.
     message.heart_bt_int = 5;
     message.default_appl_ver_id = MessageVersion::FIX50SP2;
 
@@ -156,7 +156,7 @@ impl TestServer {
         let listener = TcpListener::bind(&addr).unwrap();
 
         //Setup client and connect to socket.
-        let mut client = Client::new(message_dictionary.clone(),String::from(CLIENT_SENDER_COMP_ID),String::from(CLIENT_TARGET_COMP_ID)).unwrap();
+        let mut client = Client::new(message_dictionary.clone(),CLIENT_SENDER_COMP_ID,CLIENT_TARGET_COMP_ID).unwrap();
         let connection_id = client.add_connection(fix_version,message_version,addr).unwrap();
 
         //Try to accept connection from client. Fails on timeout or socket error.

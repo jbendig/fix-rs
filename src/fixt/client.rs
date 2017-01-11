@@ -22,9 +22,6 @@ use std::time::{Duration,Instant};
 
 use fixt::client_thread::{CONNECTION_COUNT_MAX,BASE_CONNECTION_TOKEN,INTERNAL_CLIENT_EVENT_TOKEN,InternalClientToThreadEvent,internal_client_thread};
 use fixt::message::FIXTMessage;
-use dictionary::fields::{SenderCompID,TargetCompID};
-use field::Field;
-use field_type::FieldType;
 use fix::ParseError;
 use fix_version::FIXVersion;
 use message_version::MessageVersion;
@@ -118,8 +115,8 @@ pub struct Client {
 
 impl Client {
     pub fn new(message_dictionary: HashMap<&'static [u8],Box<FIXTMessage + Send>>,
-               sender_comp_id: <<SenderCompID as Field>::Type as FieldType>::Type,
-               target_comp_id: <<TargetCompID as Field>::Type as FieldType>::Type) -> Result<Client,io::Error> {
+               sender_comp_id: &[u8],
+               target_comp_id: &[u8]) -> Result<Client,io::Error> {
         let client_poll = try!(Poll::new());
         let (thread_to_client_tx,thread_to_client_rx) = channel::<ClientEvent>();
         try!(client_poll.register(&thread_to_client_rx,CLIENT_EVENT_TOKEN,Ready::readable(),PollOpt::level()));
@@ -127,6 +124,9 @@ impl Client {
         let poll = try!(Poll::new());
         let (client_to_thread_tx,client_to_thread_rx) = channel::<InternalClientToThreadEvent>();
         try!(poll.register(&client_to_thread_rx,INTERNAL_CLIENT_EVENT_TOKEN,Ready::readable(),PollOpt::level()));
+
+        let sender_comp_id = sender_comp_id.to_vec();
+        let target_comp_id = target_comp_id.to_vec();
 
         Ok(Client {
             connection_id_seed: BASE_CONNECTION_TOKEN.0,

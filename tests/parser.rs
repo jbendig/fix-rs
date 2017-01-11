@@ -157,12 +157,12 @@ fn simple_test() {
     let message = b"8=FIX.4.2\x019=65\x0135=A\x0149=SERVER\x0156=CLIENT\x0134=177\x0152=20090107-18:15:16\x0198=0\x01108=30\x0110=062\x01";
 
     let message = parse_message::<LogonTest>(message).unwrap();
-    assert_eq!(message.encrypt_method,"0");
+    assert_eq!(message.encrypt_method,b"0".to_vec());
     assert_eq!(message.heart_bt_int,30);
     assert_eq!(message.msg_seq_num,177);
     assert_eq!(message.sending_time,UTC.ymd(2009,1,7).and_hms(18,15,16));
-    assert_eq!(message.sender_comp_id,"SERVER");
-    assert_eq!(message.target_comp_id,"CLIENT");
+    assert_eq!(message.sender_comp_id,b"SERVER".to_vec());
+    assert_eq!(message.target_comp_id,b"CLIENT".to_vec());
 }
 
 #[test]
@@ -539,7 +539,7 @@ fn repeating_groups_test() {
     assert_eq!(message.rate_sources.len(),1);
     assert_eq!(message.rate_sources.first().unwrap().rate_source,RateSource::Other);
     assert_eq!(message.rate_sources.first().unwrap().rate_source_type,RateSourceType::Primary);
-    assert_eq!(message.rate_sources.first().unwrap().reference_page,"SomeSource");
+    assert_eq!(message.rate_sources.first().unwrap().reference_page,b"SomeSource".to_vec());
 
     let two_repeating_groups_message = b"8=FIX.4.2\x019=40\x0135=A\x011445=2\x011446=0\x011447=0\x011446=1\x011447=1\x0110=23\x01";
     let message = parse_message::<RepeatingGroupsTestMessage>(two_repeating_groups_message).unwrap();
@@ -554,7 +554,7 @@ fn repeating_groups_test() {
     assert_eq!(message.rate_sources.len(),2);
     assert_eq!(message.rate_sources.first().unwrap().rate_source,RateSource::Other);
     assert_eq!(message.rate_sources.first().unwrap().rate_source_type,RateSourceType::Primary);
-    assert_eq!(message.rate_sources.first().unwrap().reference_page,"SomeSource");
+    assert_eq!(message.rate_sources.first().unwrap().reference_page,b"SomeSource".to_vec());
     assert_eq!(message.rate_sources.get(1).unwrap().rate_source,RateSource::Reuters);
     assert_eq!(message.rate_sources.get(1).unwrap().rate_source_type,RateSourceType::Secondary);
 
@@ -565,7 +565,7 @@ fn repeating_groups_test() {
     assert_eq!(message.rate_sources.first().unwrap().rate_source_type,RateSourceType::Primary);
     assert_eq!(message.rate_sources.get(1).unwrap().rate_source,RateSource::Other);
     assert_eq!(message.rate_sources.get(1).unwrap().rate_source_type,RateSourceType::Secondary);
-    assert_eq!(message.rate_sources.get(1).unwrap().reference_page,"SomeSource");
+    assert_eq!(message.rate_sources.get(1).unwrap().reference_page,b"SomeSource".to_vec());
 
     let two_repeating_groups_not_body_end_message = b"8=FIX.4.2\x019=66\x0135=A\x011445=2\x011446=0\x011447=0\x011446=99\x011447=1\x011448=SomeSource\x0155=[N/A]\x0110=146\x01";
     let message = parse_message::<RepeatingGroupsTestMessage>(two_repeating_groups_not_body_end_message).unwrap();
@@ -574,8 +574,8 @@ fn repeating_groups_test() {
     assert_eq!(message.rate_sources.first().unwrap().rate_source_type,RateSourceType::Primary);
     assert_eq!(message.rate_sources.get(1).unwrap().rate_source,RateSource::Other);
     assert_eq!(message.rate_sources.get(1).unwrap().rate_source_type,RateSourceType::Secondary);
-    assert_eq!(message.rate_sources.get(1).unwrap().reference_page,"SomeSource");
-    assert_eq!(message.symbol,"[N/A]");
+    assert_eq!(message.rate_sources.get(1).unwrap().reference_page,b"SomeSource".to_vec());
+    assert_eq!(message.symbol,b"[N/A]".to_vec());
 
     let missing_one_repeating_group_message = b"8=FIX.4.2\x019=35\x0135=A\x011445=2\x011446=0\x011447=0\x0155=[N/A]\x0110=244\x01";
     let result = parse_message::<RepeatingGroupsTestMessage>(missing_one_repeating_group_message);
@@ -691,9 +691,9 @@ fn nested_repeating_groups_test() {
     assert_eq!(message.meta.clone().unwrap().body_length,35);
     assert_eq!(message.meta.clone().unwrap().checksum,233);
     assert_eq!(message.orders.len(),1);
-    assert_eq!(message.orders.first().unwrap().cl_ord_id,"uniqueid");
+    assert_eq!(message.orders.first().unwrap().cl_ord_id,b"uniqueid".to_vec());
     assert_eq!(message.orders.first().unwrap().allocs.len(),1);
-    assert_eq!(message.orders.first().unwrap().allocs.first().unwrap().alloc_account,"acct");
+    assert_eq!(message.orders.first().unwrap().allocs.first().unwrap().alloc_account,b"acct".to_vec());
 }
 
 #[test]
@@ -713,11 +713,11 @@ fn stream_test() {
         assert_eq!(casted_message.meta.clone().unwrap().begin_string,FIXVersion::FIX_4_2);
         assert_eq!(casted_message.meta.clone().unwrap().body_length,65);
         assert_eq!(casted_message.meta.clone().unwrap().checksum,62);
-        assert_eq!(casted_message.sender_comp_id,"SERVER");
-        assert_eq!(casted_message.target_comp_id,"CLIENT");
+        assert_eq!(casted_message.sender_comp_id,b"SERVER".to_vec());
+        assert_eq!(casted_message.target_comp_id,b"CLIENT".to_vec());
         assert_eq!(casted_message.msg_seq_num,177);
         assert_eq!(casted_message.sending_time,UTC.ymd(2009,1,7).and_hms(18,15,16));
-        assert_eq!(casted_message.encrypt_method,"0");
+        assert_eq!(casted_message.encrypt_method,b"0".to_vec());
         assert_eq!(casted_message.heart_bt_int,30);
     }
 
@@ -730,11 +730,11 @@ fn stream_test() {
     assert_eq!(casted_message.meta.clone().unwrap().begin_string,FIXVersion::FIX_4_2);
     assert_eq!(casted_message.meta.clone().unwrap().body_length,65);
     assert_eq!(casted_message.meta.clone().unwrap().checksum,62);
-    assert_eq!(casted_message.sender_comp_id,"SERVER");
-    assert_eq!(casted_message.target_comp_id,"CLIENT");
+    assert_eq!(casted_message.sender_comp_id,b"SERVER".to_vec());
+    assert_eq!(casted_message.target_comp_id,b"CLIENT".to_vec());
     assert_eq!(casted_message.msg_seq_num,177);
     assert_eq!(casted_message.sending_time,UTC.ymd(2009,1,7).and_hms(18,15,16));
-    assert_eq!(casted_message.encrypt_method,"0");
+    assert_eq!(casted_message.encrypt_method,b"0".to_vec());
     assert_eq!(casted_message.heart_bt_int,30);
 
     let garbage_between_messages = b"8=FIX.4.2\x019=65\x0135=A\x0149=SERVER\x0156=CLIENT\x0134=177\x0152=20090107-18:15:16\x0198=0\x01108=30\x0110=062\x01garbage=before\x01m8ssage8=FIX.4.2\x019=65\x0135=A\x0149=SERVER\x0156=CLIENT\x0134=177\x0152=20090107-18:15:16\x0198=0\x01108=30\x0110=062\x01";
@@ -748,11 +748,11 @@ fn stream_test() {
         assert_eq!(casted_message.meta.clone().unwrap().begin_string,FIXVersion::FIX_4_2);
         assert_eq!(casted_message.meta.clone().unwrap().body_length,65);
         assert_eq!(casted_message.meta.clone().unwrap().checksum,62);
-        assert_eq!(casted_message.sender_comp_id,"SERVER");
-        assert_eq!(casted_message.target_comp_id,"CLIENT");
+        assert_eq!(casted_message.sender_comp_id,b"SERVER".to_vec());
+        assert_eq!(casted_message.target_comp_id,b"CLIENT".to_vec());
         assert_eq!(casted_message.msg_seq_num,177);
         assert_eq!(casted_message.sending_time,UTC.ymd(2009,1,7).and_hms(18,15,16));
-        assert_eq!(casted_message.encrypt_method,"0");
+        assert_eq!(casted_message.encrypt_method,b"0".to_vec());
         assert_eq!(casted_message.heart_bt_int,30);
     }
 
@@ -772,11 +772,11 @@ fn stream_test() {
     assert_eq!(casted_message.meta.clone().unwrap().begin_string,FIXVersion::FIX_4_2);
     assert_eq!(casted_message.meta.clone().unwrap().body_length,65);
     assert_eq!(casted_message.meta.clone().unwrap().checksum,62);
-    assert_eq!(casted_message.sender_comp_id,"SERVER");
-    assert_eq!(casted_message.target_comp_id,"CLIENT");
+    assert_eq!(casted_message.sender_comp_id,b"SERVER".to_vec());
+    assert_eq!(casted_message.target_comp_id,b"CLIENT".to_vec());
     assert_eq!(casted_message.msg_seq_num,177);
     assert_eq!(casted_message.sending_time,UTC.ymd(2009,1,7).and_hms(18,15,16));
-    assert_eq!(casted_message.encrypt_method,"0");
+    assert_eq!(casted_message.encrypt_method,b"0".to_vec());
     assert_eq!(casted_message.heart_bt_int,30);
 }
 
@@ -785,10 +785,10 @@ fn equal_character_in_text_test() {
     let message = b"8=FIX.4.2\x019=37\x0135=A\x0134=177\x0198=0\x01108=30\x0158=some=text\x0110=165\x01";
 
     let message = parse_message::<LogonTest>(message).unwrap();
-    assert_eq!(message.encrypt_method,"0");
+    assert_eq!(message.encrypt_method,b"0".to_vec());
     assert_eq!(message.heart_bt_int,30);
     assert_eq!(message.msg_seq_num,177);
-    assert_eq!(message.text,"some=text");
+    assert_eq!(message.text,b"some=text".to_vec());
 }
 
 #[test]

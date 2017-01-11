@@ -381,7 +381,7 @@ fn test_wrong_sender_comp_id_in_logon_response() {
 
     //Respond with a logon messaging containing the wrong SenderCompID.
     let mut message = new_logon_message();
-    message.sender_comp_id = String::from("unknown");
+    message.sender_comp_id = b"unknown".to_vec();
     test_server.send_message(message);
 
     //Confirm client sends Reject, Logout, and then disconnects.
@@ -389,17 +389,17 @@ fn test_wrong_sender_comp_id_in_logon_response() {
     assert_eq!(message.msg_seq_num,2);
     assert_eq!(message.ref_seq_num,1);
     assert_eq!(message.session_reject_reason.unwrap(),SessionRejectReason::CompIDProblem);
-    assert_eq!(message.text,"CompID problem");
+    assert_eq!(message.text,b"CompID problem".to_vec());
 
     let message = test_server.recv_message::<Logout>();
-    assert_eq!(message.text,"SenderCompID is wrong");
+    assert_eq!(message.text,b"SenderCompID is wrong".to_vec());
 
     client_poll_event!(client,ClientEvent::MessageRejected(msg_connection_id,rejected_message) => {
         assert_eq!(msg_connection_id,connection_id);
 
         let message = rejected_message.as_any().downcast_ref::<Logon>().expect("Not expected message type").clone();
         assert_eq!(message.msg_seq_num,1);
-        assert_eq!(message.sender_comp_id,"unknown");
+        assert_eq!(message.sender_comp_id,b"unknown".to_vec());
     });
 
     client_poll_event!(client,ClientEvent::ConnectionTerminated(terminated_connection_id,reason) => {
@@ -425,7 +425,7 @@ fn test_wrong_target_comp_id_in_logon_response() {
 
     //Respond with a logon messaging containing the wrong TargetCompID.
     let mut message = new_logon_message();
-    message.target_comp_id = String::from("unknown");
+    message.target_comp_id = b"unknown".to_vec();
     test_server.send_message(message);
 
     //Confirm client sends Reject, Logout, and then disconnects.
@@ -433,17 +433,17 @@ fn test_wrong_target_comp_id_in_logon_response() {
     assert_eq!(message.msg_seq_num,2);
     assert_eq!(message.ref_seq_num,1);
     assert_eq!(message.session_reject_reason.unwrap(),SessionRejectReason::CompIDProblem);
-    assert_eq!(message.text,"CompID problem");
+    assert_eq!(message.text,b"CompID problem".to_vec());
 
     let message = test_server.recv_message::<Logout>();
-    assert_eq!(message.text,"TargetCompID is wrong");
+    assert_eq!(message.text,b"TargetCompID is wrong".to_vec());
 
     client_poll_event!(client,ClientEvent::MessageRejected(msg_connection_id,rejected_message) => {
         assert_eq!(msg_connection_id,connection_id);
 
         let message = rejected_message.as_any().downcast_ref::<Logon>().expect("Not expected message type").clone();
         assert_eq!(message.msg_seq_num,1);
-        assert_eq!(message.target_comp_id,"unknown");
+        assert_eq!(message.target_comp_id,b"unknown".to_vec());
     });
 
     client_poll_event!(client,ClientEvent::ConnectionTerminated(terminated_connection_id,reason) => {
@@ -475,7 +475,7 @@ fn test_overflowing_inbound_messages_buffer_does_resume() {
     for x in 0..INBOUND_MESSAGES_BUFFER_LEN_MAX + 1 {
         let mut test_request_message = new_fixt_message!(TestRequest);
         test_request_message.msg_seq_num = (x + 2) as u64;
-        test_request_message.test_req_id = String::from("test");
+        test_request_message.test_req_id = b"test".to_vec();
 
         test_request_message.read(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,&mut bytes);
     }
@@ -528,7 +528,7 @@ fn test_sender_comp_id() {
         let message = test_server.recv_message::<Reject>();
         assert_eq!(message.msg_seq_num,2);
         assert_eq!(message.session_reject_reason.expect("SessionRejectReason must be provided"),SessionRejectReason::TagSpecifiedOutOfRequiredOrder);
-        assert_eq!(message.text,"SenderCompID must be the 4th tag");
+        assert_eq!(message.text,b"SenderCompID must be the 4th tag".to_vec());
 
         client_poll_event!(client,ClientEvent::MessageReceivedGarbled(msg_connection_id,parse_error) => {
             assert_eq!(msg_connection_id,connection_id);
@@ -543,7 +543,7 @@ fn test_sender_comp_id() {
         let message = test_server.recv_message::<Reject>();
         assert_eq!(message.msg_seq_num,3);
         assert_eq!(message.session_reject_reason.expect("SessionRejectReason must be provided"),SessionRejectReason::TagSpecifiedOutOfRequiredOrder);
-        assert_eq!(message.text,"SenderCompID must be the 4th tag");
+        assert_eq!(message.text,b"SenderCompID must be the 4th tag".to_vec());
 
         client_poll_event!(client,ClientEvent::MessageReceivedGarbled(msg_connection_id,parse_error) => {
             assert_eq!(msg_connection_id,connection_id);
@@ -581,7 +581,7 @@ fn test_sender_comp_id() {
 
        let message = test_server.recv_message::<Reject>();
         assert_eq!(message.msg_seq_num,2);
-        assert_eq!(message.text,"Required tag missing");
+        assert_eq!(message.text,b"Required tag missing".to_vec());
 
         client_poll_event!(client,ClientEvent::MessageReceivedGarbled(msg_connection_id,parse_error) => {
             assert_eq!(msg_connection_id,connection_id);
@@ -624,7 +624,7 @@ fn test_target_comp_id() {
         let message = test_server.recv_message::<Reject>();
         assert_eq!(message.msg_seq_num,2);
         assert_eq!(message.session_reject_reason.expect("SessionRejectReason must be provided"),SessionRejectReason::TagSpecifiedOutOfRequiredOrder);
-        assert_eq!(message.text,"TargetCompID must be the 5th tag");
+        assert_eq!(message.text,b"TargetCompID must be the 5th tag".to_vec());
 
         client_poll_event!(client,ClientEvent::MessageReceivedGarbled(msg_connection_id,parse_error) => {
             assert_eq!(msg_connection_id,connection_id);
@@ -639,7 +639,7 @@ fn test_target_comp_id() {
         let message = test_server.recv_message::<Reject>();
         assert_eq!(message.msg_seq_num,3);
         assert_eq!(message.session_reject_reason.expect("SessionRejectReason must be provided"),SessionRejectReason::TagSpecifiedOutOfRequiredOrder);
-        assert_eq!(message.text,"TargetCompID must be the 5th tag");
+        assert_eq!(message.text,b"TargetCompID must be the 5th tag".to_vec());
 
         client_poll_event!(client,ClientEvent::MessageReceivedGarbled(msg_connection_id,parse_error) => {
             assert_eq!(msg_connection_id,connection_id);
@@ -677,7 +677,7 @@ fn test_target_comp_id() {
 
         let message = test_server.recv_message::<Reject>();
         assert_eq!(message.msg_seq_num,2);
-        assert_eq!(message.text,"Required tag missing");
+        assert_eq!(message.text,b"Required tag missing".to_vec());
 
         client_poll_event!(client,ClientEvent::MessageReceivedGarbled(msg_connection_id,parse_error) => {
             assert_eq!(msg_connection_id,connection_id);
@@ -708,7 +708,7 @@ fn test_default_appl_ver_id() {
     {
         //Make client send a TestMessage.
         let mut message = new_fixt_message!(TestMessage);
-        message.text = String::from("text");
+        message.text = b"text".to_vec();
         client.send_message(connection_id,message);
 
         //Confirm text field was excluded by server due to requiring >= FIX50 but default is FIX40.
@@ -721,7 +721,7 @@ fn test_default_appl_ver_id() {
         //Make server send a TestMessage.
         let mut message = new_fixt_message!(TestMessage);
         message.msg_seq_num = 2;
-        message.text = String::from("text");
+        message.text = b"text".to_vec();
         test_server.send_message(message);
 
         //Confirm text field was excluded by client due to requiring >= FIX50 but default is FIX40.
@@ -731,7 +731,7 @@ fn test_default_appl_ver_id() {
         //Make sever send a TestMessage again but force the text field to be sent.
         let mut message = new_fixt_message!(TestMessage2);
         message.msg_seq_num = 3;
-        message.text = String::from("text");
+        message.text = b"text".to_vec();
         test_server.send_message(message);
 
         //Make sure message is considered invalid.
@@ -768,7 +768,7 @@ fn test_appl_ver_id() {
         //Make sure Client responds with an appropriate reject.
         let message = test_server.recv_message::<Reject>();
         assert_eq!(message.session_reject_reason.unwrap(),SessionRejectReason::TagSpecifiedOutOfRequiredOrder);
-        assert_eq!(message.text,"ApplVerID must be the 6th tag if specified");
+        assert_eq!(message.text,b"ApplVerID must be the 6th tag if specified".to_vec());
 
         //Make sure Client indicates that it rejected the message.
         client_poll_event!(client,ClientEvent::MessageReceivedGarbled(msg_connection_id,parse_error) => {
@@ -797,13 +797,13 @@ fn test_appl_ver_id() {
         let mut message = new_fixt_message!(TestMessage);
         message.msg_seq_num = 3;
         message.appl_ver_id = Some(MessageVersion::FIX40);
-        message.text = String::from("text");
+        message.text = b"text".to_vec();
         test_server.send_message_with_ver(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,message); //Force text field to be included.
 
         //Confirm Client rejected message because text field is unsupported for this version.
         let message = test_server.recv_message::<Reject>();
         assert_eq!(message.session_reject_reason.unwrap(),SessionRejectReason::TagNotDefinedForThisMessageType);
-        assert_eq!(message.text,"Tag not defined for this message type");
+        assert_eq!(message.text,b"Tag not defined for this message type".to_vec());
 
         client_poll_event!(client,ClientEvent::MessageReceivedGarbled(msg_connection_id,parse_error) => {
             assert_eq!(msg_connection_id,connection_id);
@@ -839,7 +839,7 @@ fn test_message_type_default_application_version() {
     response_message.heart_bt_int = message.heart_bt_int;
     response_message.default_appl_ver_id = message.default_appl_ver_id;
     let mut msg_type_grp = MsgTypeGrp::new();
-    msg_type_grp.ref_msg_type = String::from_utf8_lossy(TestMessage::msg_type()).into_owned();
+    msg_type_grp.ref_msg_type = TestMessage::msg_type().to_vec();
     msg_type_grp.ref_appl_ver_id = Some(MessageVersion::FIX50SP1);
     msg_type_grp.msg_direction = MsgDirection::Send;
     msg_type_grp.default_ver_indicator = true;
@@ -855,13 +855,13 @@ fn test_message_type_default_application_version() {
         //Send TestMessage text field.
         let mut message = new_fixt_message!(TestMessage);
         message.msg_seq_num = 2;
-        message.text = String::from("test");
+        message.text = b"test".to_vec();
         test_server.send_message_with_ver(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP1,message);
 
         //Confirm Client accepted message correctly.
         let message = client_poll_message!(client,connection_id,TestMessage);
         assert_eq!(message.appl_ver_id,Some(MessageVersion::FIX50SP1)); //Set by parser what it parsed message as.
-        assert_eq!(message.text,String::from("test"));
+        assert_eq!(message.text,b"test");
     }
 
     //Make sure ApplVerID overrides the message type specific default application version.
@@ -910,7 +910,7 @@ fn test_respond_to_test_request_immediately_after_logon() {
 
     let mut test_request_message = new_fixt_message!(TestRequest);
     test_request_message.msg_seq_num = 2;
-    test_request_message.test_req_id = String::from("test");
+    test_request_message.test_req_id = b"test".to_vec();
 
     let mut bytes = Vec::new();
     logon_message.read(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,&mut bytes);
@@ -965,7 +965,7 @@ fn test_respect_default_appl_ver_id_in_test_request_immediately_after_logon() {
 
     let mut test_message = new_fixt_message!(TestMessage);
     test_message.msg_seq_num = 2;
-    test_message.text = String::from("test");
+    test_message.text = b"test".to_vec();
 
     let mut bytes = Vec::new();
     logon_message.read(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,&mut bytes);
@@ -983,7 +983,7 @@ fn test_respect_default_appl_ver_id_in_test_request_immediately_after_logon() {
     //parsed.
     let message = client_poll_message!(client,connection_id,TestMessage);
     assert_eq!(message.msg_seq_num,2);
-    assert_eq!(message.text,String::from("test"));
+    assert_eq!(message.text,b"test".to_vec());
 }
 
 #[test]
@@ -1015,7 +1015,7 @@ fn test_logout_and_terminate_wrong_versioned_test_request_immediately_after_logo
 
     let mut test_request_message = new_fixt_message!(TestRequest);
     test_request_message.msg_seq_num = 2;
-    test_request_message.test_req_id = String::from("test");
+    test_request_message.test_req_id = b"test".to_vec();
 
     let mut bytes = Vec::new();
     logon_message.read(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,&mut bytes);
@@ -1031,7 +1031,7 @@ fn test_logout_and_terminate_wrong_versioned_test_request_immediately_after_logo
 
     //Make sure Client sends Logout and then disconnects.
     let message = test_server.recv_message::<Logout>();
-    assert_eq!(message.text,"BeginStr is wrong, expected 'FIXT.1.1' but received 'FIX.4.2'");
+    assert_eq!(message.text,b"BeginStr is wrong, expected 'FIXT.1.1' but received 'FIX.4.2'".to_vec());
 
     client_poll_event!(client,ClientEvent::ConnectionTerminated(terminated_connection_id,reason) => {
         assert_eq!(terminated_connection_id,connection_id);

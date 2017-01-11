@@ -38,7 +38,6 @@ use fixt::message::FIXTMessage;
 use message_version::MessageVersion;
 use network_read_retry::NetworkReadRetry;
 
-//TODO: Support Application Version. FIXT 1.1, page 8.
 //TODO: Make sure Logon message is sent automatically instead of waiting on caller. Althought, we
 //might have to support this for testing purposes.
 //TODO: Check for infinite resend loop when other side sends garbled messages, we later send
@@ -465,7 +464,7 @@ impl Connection {
         self.outbound_buffer.clear();
     }
 
-    fn initiate_logout(&mut self,timer: &mut Timer<(TimeoutType,Token)>,logging_out_type: LoggingOutType,text: &str) {
+    fn initiate_logout(&mut self,timer: &mut Timer<(TimeoutType,Token)>,logging_out_type: LoggingOutType,text: &[u8]) {
         //Begin the logout process. Use respond_to_logout() to respond to a logout message.
 
         assert!(match logging_out_type {
@@ -475,7 +474,7 @@ impl Connection {
         });
 
         let mut logout = Logout::new();
-        logout.text = String::from(text);
+        logout.text = text.to_vec();
 
         //TODO: The clearing of outbound messages might be optional. Probably need a receipt or
         //something for those that are left unprocessed.
@@ -539,7 +538,7 @@ impl Connection {
         //Same as above except client initiated logout and suspended it long enough to
         //retrieve messages.
         else if self.status.is_logging_out_with_resending_request_initiated_by_client() {
-            self.initiate_logout(timer,LoggingOutType::Ok,"");
+            self.initiate_logout(timer,LoggingOutType::Ok,b"");
         }
     }
 }
@@ -645,7 +644,7 @@ impl InternalThread {
                         ConnectionStatus::LoggingOut(_) => {}, //Already logging out.
                         ConnectionStatus::Established => {
                             //Begin logout.
-                            connection_entry.get_mut().initiate_logout(&mut self.timer,LoggingOutType::Ok,"");
+                            connection_entry.get_mut().initiate_logout(&mut self.timer,LoggingOutType::Ok,b"");
                             try_write_connection_or_terminate!(connection_entry,self);
                         },
                     };
@@ -671,7 +670,7 @@ impl InternalThread {
                         //We haven't sent any data in a while. Send a Heartbeat to let other side
                         //know we're still around.
                         let mut heartbeat = Heartbeat::new();
-                        heartbeat.test_req_id = String::from(""); //Left blank when not responding to TestRequest.
+                        heartbeat.test_req_id = Vec::new(); //Left blank when not responding to TestRequest.
                         connection_entry.get_mut().outbound_messages.push(OutboundMessage::from(heartbeat));
                     },
                     TimeoutType::Inbound if connection_entry.get().status.is_established() => {
@@ -682,9 +681,7 @@ impl InternalThread {
                         //Use current time as TestReqID as recommended. This might not exactly
                         //match the SendingTime field depending on when it gets sent though.
                         let now_time = UTCTimestampFieldType::new_now();
-                        let mut now_time_buffer = Vec::new();
-                        UTCTimestampFieldType::read(&now_time,FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,&mut now_time_buffer);
-                        test_request.test_req_id = String::from_utf8_lossy(&now_time_buffer[..]).into_owned();
+                        UTCTimestampFieldType::read(&now_time,FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,&mut test_request.test_req_id);
 
                         connection_entry.get_mut().outbound_messages.push(OutboundMessage::from(test_request));
 
@@ -822,7 +819,7 @@ impl InternalThread {
                     let mut reject = Reject::new();
                     reject.ref_seq_num = msg_seq_num;
                     reject.session_reject_reason = Some(SessionRejectReason::ValueIsIncorrectForThisTag);
-                    reject.text = String::from("EndSeqNo must be greater than BeginSeqNo or set to 0");
+                    reject.text = b"EndSeqNo must be greater than BeginSeqNo or set to 0".to_vec();
                     connection.outbound_messages.push(OutboundMessage::from(reject));
 
                     rejected = true;
@@ -882,7 +879,7 @@ impl InternalThread {
             let mut reject = Reject::new();
             reject.ref_seq_num = msg_seq_num;
             reject.session_reject_reason = Some(SessionRejectReason::SendingTimeAccuracyProblem);
-            reject.text = String::from("SendingTime accuracy problem");
+            reject.text = b"SendingTime accuracy problem".to_vec();
             connection.outbound_messages.push(OutboundMessage::from(reject));
 
             tx.send(ClientEvent::MessageRejected(connection.token.0,message)).unwrap();
@@ -990,11 +987,11 @@ impl InternalThread {
                 }
             }
             else {
-                use std::fmt::Write;
-
-                let mut text = String::new();
-                let _ = write!(text,"MsgSeqNum too low, expected {} but received {}",connection.inbound_msg_seq_num,msg_seq_num);
-                connection.initiate_logout(timer,LoggingOutType::Error(ConnectionTerminatedReason::InboundMsgSeqNumLowerThanExpectedError),&text);
+                let mut text = b"MsgSeqNum too low, expected ".to_vec();
+                text.extend_from_slice(connection.inbound_msg_seq_num.to_string().as_bytes());
+                text.extend_from_slice(b" but received ");
+                text.extend_from_slice(msg_seq_num.to_string().as_bytes());
+                connection.initiate_logout(timer,LoggingOutType::Error(ConnectionTerminatedReason::InboundMsgSeqNumLowerThanExpectedError),&text[..]);
             }
         }
 
@@ -1019,12 +1016,12 @@ impl InternalThread {
                     else {
                         //Attempting to rewind MsgSeqNum is not allowed according to FIXT v1.1,
                         //page 29.
-                        use std::fmt::Write;
 
                         let mut reject = Reject::new();
                         reject.ref_seq_num = msg_seq_num;
                         reject.session_reject_reason = Some(SessionRejectReason::ValueIsIncorrectForThisTag);
-                        let _ = write!(&mut reject.text,"Attempt to lower sequence number, invalid value NewSeqNo={}",sequence_reset.new_seq_no);
+                        reject.text = b"Attempt to lower sequence number, invalid value NewSeqNo=".to_vec();
+                        reject.text.extend_from_slice(sequence_reset.new_seq_no.to_string().as_bytes());
                         connection.outbound_messages.push(OutboundMessage::from(reject));
 
                         tx.send(ClientEvent::MessageRejected(connection.token.0,Box::new(mem::replace(sequence_reset,SequenceReset::new())))).unwrap();
@@ -1065,15 +1062,11 @@ impl InternalThread {
             let ref received_fix_version = message.meta().as_ref().expect("Meta should be set by parser").begin_string;
             let expected_fix_version = connection.fix_version;
             if *received_fix_version != expected_fix_version {
-                use std::fmt::Write;
-
-                let mut error_text = String::new();
-                let _ = write!(
-                    &mut error_text,
-                    "BeginStr is wrong, expected '{}' but received '{}'",
-                    String::from_utf8_lossy(expected_fix_version.begin_string()),
-                    String::from_utf8_lossy(received_fix_version.begin_string())
-                );
+                let mut error_text = b"BeginStr is wrong, expected '".to_vec();
+                error_text.extend_from_slice(expected_fix_version.begin_string());
+                error_text.extend_from_slice(b"' but received '");
+                error_text.extend_from_slice(received_fix_version.begin_string());
+                error_text.extend_from_slice(b"'");
 
                 connection.initiate_logout(
                     timer,
@@ -1093,12 +1086,12 @@ impl InternalThread {
         //Every message must have SenderCompID and TargetCompID set to the expected values or else
         //the message must be rejected and we should logout. See FIXT 1.1, page 52.
         if *message.sender_comp_id() != *connection.target_comp_id {
-            connection.initiate_logout(timer,LoggingOutType::Error(ConnectionTerminatedReason::SenderCompIDWrongError),"SenderCompID is wrong");
+            connection.initiate_logout(timer,LoggingOutType::Error(ConnectionTerminatedReason::SenderCompIDWrongError),b"SenderCompID is wrong");
 
             let mut reject = Reject::new();
             reject.ref_seq_num = connection.inbound_msg_seq_num;
             reject.session_reject_reason = Some(SessionRejectReason::CompIDProblem);
-            reject.text = String::from("CompID problem");
+            reject.text = b"CompID problem".to_vec();
             connection.outbound_messages.insert(0,OutboundMessage::from(reject));
 
             tx.send(ClientEvent::MessageRejected(connection.token.0,message)).unwrap();
@@ -1106,12 +1099,12 @@ impl InternalThread {
             return Ok(());
         }
         else if *message.target_comp_id() != *connection.sender_comp_id {
-            connection.initiate_logout(timer,LoggingOutType::Error(ConnectionTerminatedReason::TargetCompIDWrongError),"TargetCompID is wrong");
+            connection.initiate_logout(timer,LoggingOutType::Error(ConnectionTerminatedReason::TargetCompIDWrongError),b"TargetCompID is wrong");
 
             let mut reject = Reject::new();
             reject.ref_seq_num = connection.inbound_msg_seq_num;
             reject.session_reject_reason = Some(SessionRejectReason::CompIDProblem);
-            reject.text = String::from("CompID problem");
+            reject.text = b"CompID problem".to_vec();
             connection.outbound_messages.insert(0,OutboundMessage::from(reject));
 
             tx.send(ClientEvent::MessageRejected(connection.token.0,message)).unwrap();
@@ -1139,7 +1132,7 @@ impl InternalThread {
                     reset_inbound_timeout(timer,&mut connection.inbound_testrequest_timeout,&connection.inbound_testrequest_timeout_duration,&connection.token);
                 }
                 else if message.heart_bt_int < 0 {
-                    connection.initiate_logout(timer,LoggingOutType::Error(ConnectionTerminatedReason::LogonHeartBtIntNegativeError),"HeartBtInt cannot be negative");
+                    connection.initiate_logout(timer,LoggingOutType::Error(ConnectionTerminatedReason::LogonHeartBtIntNegativeError),b"HeartBtInt cannot be negative");
                     return Ok(());
                 }
 
@@ -1151,7 +1144,7 @@ impl InternalThread {
                 //Make parser use the Message Type Default Application Version if specified.
                 for msg_type in &message.no_msg_types {
                     if msg_type.default_ver_indicator && msg_type.msg_direction == MsgDirection::Send && msg_type.ref_appl_ver_id.is_some() {
-                        connection.parser.set_default_message_type_version(&msg_type.ref_msg_type.clone().into_bytes()[..],msg_type.ref_appl_ver_id.unwrap());
+                        connection.parser.set_default_message_type_version(&msg_type.ref_msg_type[..],msg_type.ref_appl_ver_id.unwrap());
                     }
                 }
 
@@ -1160,7 +1153,7 @@ impl InternalThread {
                 tx.send(ClientEvent::SessionEstablished(connection.token.0)).unwrap();
             }
             else {
-                connection.initiate_logout(timer,LoggingOutType::Error(ConnectionTerminatedReason::LogonNotFirstMessageError),"First message not a logon");
+                connection.initiate_logout(timer,LoggingOutType::Error(ConnectionTerminatedReason::LogonNotFirstMessageError),b"First message not a logon");
                 return Ok(());
             }
 
@@ -1183,12 +1176,11 @@ impl InternalThread {
                     tx.send(ClientEvent::SequenceResetResetHasNoEffect(connection.token.0)).unwrap();
                 }
                 else {//if sequence_reset.new_seq_no < connection.inbound_msg_seq_num
-                    use std::fmt::Write;
-
                     let mut reject = Reject::new();
                     reject.ref_seq_num = msg_seq_num;
                     reject.session_reject_reason = Some(SessionRejectReason::ValueIsIncorrectForThisTag); //TODO: Is there a better reason or maybe leave this blank?
-                    let _ = write!(&mut reject.text,"Attempt to lower sequence number, invalid value NewSeqNo={}",sequence_reset.new_seq_no);
+                    reject.text = b"Attempt to lower sequence number, invalid value NewSeqNo=".to_vec();
+                    reject.text.extend_from_slice(sequence_reset.new_seq_no.to_string().as_bytes());
                     connection.outbound_messages.push(OutboundMessage::from(reject));
 
                     tx.send(ClientEvent::SequenceResetResetInThePast(connection.token.0)).unwrap();
@@ -1247,13 +1239,13 @@ impl InternalThread {
     }
 
     fn on_network_parse_error(connection: &mut Connection,parse_error: ParseError,tx: &Sender<ClientEvent>)-> Result<(),ConnectionTerminatedReason> {
-        fn push_reject(connection: &mut Connection,ref_msg_type: &[u8],ref_tag_id: &[u8],session_reject_reason: SessionRejectReason,text: &str) -> Result<(),ConnectionTerminatedReason> {
+        fn push_reject(connection: &mut Connection,ref_msg_type: &[u8],ref_tag_id: &[u8],session_reject_reason: SessionRejectReason,text: &[u8]) -> Result<(),ConnectionTerminatedReason> {
             let mut reject = Reject::new();
-            reject.ref_msg_type = String::from_utf8_lossy(ref_msg_type).into_owned();
-            reject.ref_tag_id = String::from_utf8_lossy(ref_tag_id).into_owned();
+            reject.ref_msg_type = ref_msg_type.to_vec();
+            reject.ref_tag_id = ref_tag_id.to_vec();
             reject.ref_seq_num = connection.inbound_msg_seq_num;
             reject.session_reject_reason = Some(session_reject_reason);
-            reject.text = String::from(text);
+            reject.text = text.to_vec();
             connection.outbound_messages.push(OutboundMessage::from(reject));
 
             try!(connection.increment_inbound_msg_seq_num());
@@ -1273,31 +1265,31 @@ impl InternalThread {
             _ => {
                 match parse_error {
                     ParseError::MissingRequiredTag(ref tag,_) => {
-                        try!(push_reject(connection,b"",&tag[..],SessionRejectReason::RequiredTagMissing,"Required tag missing"));
+                        try!(push_reject(connection,b"",&tag[..],SessionRejectReason::RequiredTagMissing,b"Required tag missing"));
                     },
                     ParseError::UnexpectedTag(ref tag) => {
-                        try!(push_reject(connection,b"",&tag[..],SessionRejectReason::TagNotDefinedForThisMessageType,"Tag not defined for this message type"));
+                        try!(push_reject(connection,b"",&tag[..],SessionRejectReason::TagNotDefinedForThisMessageType,b"Tag not defined for this message type"));
                     },
                     ParseError::UnknownTag(ref tag) => {
-                        try!(push_reject(connection,b"",&tag[..],SessionRejectReason::InvalidTagNumber,"Invalid tag number"));
+                        try!(push_reject(connection,b"",&tag[..],SessionRejectReason::InvalidTagNumber,b"Invalid tag number"));
                     },
                     ParseError::NoValueAfterTag(ref tag) => {
-                        try!(push_reject(connection,b"",&tag[..],SessionRejectReason::TagSpecifiedWithoutAValue,"Tag specified without a value"));
+                        try!(push_reject(connection,b"",&tag[..],SessionRejectReason::TagSpecifiedWithoutAValue,b"Tag specified without a value"));
                     },
                     ParseError::OutOfRangeTag(ref tag) => {
-                        try!(push_reject(connection,b"",&tag[..],SessionRejectReason::ValueIsIncorrectForThisTag,"Value is incorrect (out of range) for this tag"));
+                        try!(push_reject(connection,b"",&tag[..],SessionRejectReason::ValueIsIncorrectForThisTag,b"Value is incorrect (out of range) for this tag"));
                     },
                     ParseError::WrongFormatTag(ref tag) => {
-                        try!(push_reject(connection,b"",&tag[..],SessionRejectReason::IncorrectDataFormatForValue,"Incorrect data format for value"));
+                        try!(push_reject(connection,b"",&tag[..],SessionRejectReason::IncorrectDataFormatForValue,b"Incorrect data format for value"));
                     },
                     ParseError::SenderCompIDNotFourthTag => {
-                        try!(push_reject(connection,b"",SenderCompID::tag(),SessionRejectReason::TagSpecifiedOutOfRequiredOrder,"SenderCompID must be the 4th tag"));
+                        try!(push_reject(connection,b"",SenderCompID::tag(),SessionRejectReason::TagSpecifiedOutOfRequiredOrder,b"SenderCompID must be the 4th tag"));
                     },
                     ParseError::TargetCompIDNotFifthTag => {
-                        try!(push_reject(connection,b"",TargetCompID::tag(),SessionRejectReason::TagSpecifiedOutOfRequiredOrder,"TargetCompID must be the 5th tag"));
+                        try!(push_reject(connection,b"",TargetCompID::tag(),SessionRejectReason::TagSpecifiedOutOfRequiredOrder,b"TargetCompID must be the 5th tag"));
                     },
                     ParseError::ApplVerIDNotSixthTag => {
-                        try!(push_reject(connection,b"",ApplVerID::tag(),SessionRejectReason::TagSpecifiedOutOfRequiredOrder,"ApplVerID must be the 6th tag if specified"));
+                        try!(push_reject(connection,b"",ApplVerID::tag(),SessionRejectReason::TagSpecifiedOutOfRequiredOrder,b"ApplVerID must be the 6th tag if specified"));
                     },
                     /* TODO: These should probably be considered garbled instead of
                      * responding to.
@@ -1311,19 +1303,19 @@ impl InternalThread {
                      },
                      */
                     ParseError::DuplicateTag(ref tag) => {
-                        try!(push_reject(connection,b"",&tag[..],SessionRejectReason::TagAppearsMoreThanOnce,"Tag appears more than once"));
+                        try!(push_reject(connection,b"",&tag[..],SessionRejectReason::TagAppearsMoreThanOnce,b"Tag appears more than once"));
                     },
                     ParseError::MissingConditionallyRequiredTag(ref tag,ref message) => {
                         if *tag == OrigSendingTime::tag() { //Session level conditionally required tag.
-                            try!(push_reject(connection,message.msg_type(),&tag[..],SessionRejectReason::RequiredTagMissing,"Conditionally required tag missing"));
+                            try!(push_reject(connection,message.msg_type(),&tag[..],SessionRejectReason::RequiredTagMissing,b"Conditionally required tag missing"));
                         }
                         else {
                             let mut business_message_reject = BusinessMessageReject::new();
                             business_message_reject.ref_seq_num = connection.inbound_msg_seq_num;
-                            business_message_reject.ref_msg_type = String::from_utf8_lossy(message.msg_type()).into_owned();
+                            business_message_reject.ref_msg_type = message.msg_type().to_vec();
                             business_message_reject.business_reject_reason = BusinessRejectReason::ConditionallyRequiredFieldMissing;
-                            business_message_reject.business_reject_ref_id = String::from_utf8_lossy(tag).into_owned();
-                            business_message_reject.text = String::from("Conditionally required field missing");
+                            business_message_reject.business_reject_ref_id = tag.to_vec();
+                            business_message_reject.text = b"Conditionally required field missing".to_vec();
                             connection.outbound_messages.push(OutboundMessage::from(business_message_reject));
 
                             try!(connection.increment_inbound_msg_seq_num());
@@ -1332,7 +1324,7 @@ impl InternalThread {
                     ParseError::MissingFirstRepeatingGroupTagAfterNumberOfRepeatingGroupTag(ref tag) |
                     ParseError::NonRepeatingGroupTagInRepeatingGroup(ref tag) |
                     ParseError::RepeatingGroupTagWithNoRepeatingGroup(ref tag) => {
-                        try!(push_reject(connection,b"",&tag[..],SessionRejectReason::IncorrectNumInGroupCountForRepeatingGroup,"Incorrect NumInGroup count for repeating group"));
+                        try!(push_reject(connection,b"",&tag[..],SessionRejectReason::IncorrectNumInGroupCountForRepeatingGroup,b"Incorrect NumInGroup count for repeating group"));
                     },
                     ParseError::MsgTypeUnknown(ref msg_type) => {
                         //If we're here, we know the MsgType is not user defined. So we just need
@@ -1342,17 +1334,17 @@ impl InternalThread {
                             //MsgType is unsupported.
                             let mut business_message_reject = BusinessMessageReject::new();
                             business_message_reject.ref_seq_num = connection.inbound_msg_seq_num;
-                            business_message_reject.ref_msg_type = String::from_utf8_lossy(msg_type).into_owned();
+                            business_message_reject.ref_msg_type = msg_type.to_vec();
                             business_message_reject.business_reject_reason = BusinessRejectReason::UnsupportedMessageType;
                             business_message_reject.business_reject_ref_id = business_message_reject.ref_msg_type.clone();
-                            business_message_reject.text = String::from("Unsupported Message Type");
+                            business_message_reject.text = b"Unsupported Message Type".to_vec();
                             connection.outbound_messages.push(OutboundMessage::from(business_message_reject));
 
                             try!(connection.increment_inbound_msg_seq_num());
                         }
                         else {
                             //MsgType is invalid.
-                            try!(push_reject(connection,&msg_type[..],&msg_type[..],SessionRejectReason::InvalidMsgType,"Invalid MsgType"));
+                            try!(push_reject(connection,&msg_type[..],&msg_type[..],SessionRejectReason::InvalidMsgType,b"Invalid MsgType"));
                         }
                     },
                     _ => {}, //TODO: Support other errors as appropriate.

@@ -61,22 +61,22 @@ fn main() {
     let mut serialized_bytes = Vec::new();
     match message_to_enum(&**(parser.messages.first().unwrap())) {
         MessageEnum::Logon(message) => {
-            assert_eq!(message.encrypt_method,"0");
+            assert_eq!(message.encrypt_method,b"0");
             assert_eq!(message.heart_bt_int,30);
             assert_eq!(message.msg_seq_num,177);
-            assert_eq!(message.sender_comp_id,"SERVER");
-            assert_eq!(message.target_comp_id,"CLIENT");
+            assert_eq!(message.sender_comp_id,b"SERVER");
+            assert_eq!(message.target_comp_id,b"CLIENT");
             assert_eq!(message.sending_time,UTC.ymd(2009,1,7).and_hms(18,15,16));
             assert_eq!(message.raw_data,b"This\x01is=atest");
             assert_eq!(message.default_appl_ver_id,MessageVersion::FIX42);
             assert_eq!(message.no_msg_types.len(),2);
 
             let message_type_0 = &message.no_msg_types[0];
-            assert_eq!(message_type_0.ref_msg_type,"Test");
+            assert_eq!(message_type_0.ref_msg_type,b"Test");
             assert_eq!(message_type_0.msg_direction,MsgDirection::Send);
 
             let message_type_1 = &message.no_msg_types[1];
-            assert_eq!(message_type_1.ref_msg_type,"Test2");
+            assert_eq!(message_type_1.ref_msg_type,b"Test2");
             assert_eq!(message_type_1.msg_direction,MsgDirection::Receive);
 
             message1 = Some(message.clone());
@@ -100,6 +100,6 @@ fn main() {
         }
     }
 
-    let client = Client::new(build_dictionary(),String::from("TEST_C"),String::from("TEST_S"));
+    let client = Client::new(build_dictionary(),b"TEST_C",b"TEST_S");
 }
 
