@@ -1047,3 +1047,107 @@ fn test_logout_and_terminate_wrong_versioned_test_request_immediately_after_logo
         );
     });
 }
+
+#[test]
+fn test_max_message_size() {
+    const MAX_MESSAGE_SIZE: u64 = 4096;
+
+    define_fixt_message!(TestMessage: b"9999" => {
+        REQUIRED, text: Text [FIX40..],
+    });
+
+    define_dictionary!(
+        Logon : Logon,
+        Logout : Logout,
+        Reject : Reject,
+        TestMessage : TestMessage,
+    );
+
+    fn message_length<T: Message>(message: &T) -> u64 {
+        let mut buffer = Vec::new();
+        message.read(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,&mut buffer);
+        buffer.len() as u64
+    }
+
+    //Make sure exceeding the MaxMessageSize in messages after Logon results in a Reject message.
+    {
+        //Connect to server.
+        let (mut test_server,mut client,connection_id) = TestServer::setup(build_dictionary());
+
+        //Have client send Logon.
+        let mut message = new_logon_message();
+        message.max_message_size = MAX_MESSAGE_SIZE;
+        client.send_message_box(connection_id,Box::new(message));
+        let message = test_server.recv_message::<Logon>();
+        assert_eq!(message.msg_seq_num,1);
+        assert_eq!(message.max_message_size,MAX_MESSAGE_SIZE);
+
+        //Acknowledge Logon.
+        let mut response_message = new_fixt_message!(Logon);
+        response_message.encrypt_method = message.encrypt_method;
+        response_message.heart_bt_int = message.heart_bt_int;
+        response_message.default_appl_ver_id = message.default_appl_ver_id;
+        test_server.send_message(response_message);
+        client_poll_event!(client,ClientEvent::SessionEstablished(_) => {});
+        let message = client_poll_message!(client,connection_id,Logon);
+        assert_eq!(message.msg_seq_num,1);
+
+        //Try and send Client a message exceeding MAX_MESSAGE_SIZE.
+        let mut message = new_fixt_message!(TestMessage);
+        message.msg_seq_num = 2;
+        let current_message_len = message_length(&message);
+        for _ in 0..(MAX_MESSAGE_SIZE - current_message_len) + 1 {
+            message.text.push(b'A');
+        }
+        test_server.send_message(message);
+
+        //Make sure Client rejected the message.
+        let message = test_server.recv_message::<Reject>();
+        assert_eq!(message.msg_seq_num,2);
+        assert_eq!(message.ref_seq_num,2);
+        assert_eq!(message.session_reject_reason.unwrap(),SessionRejectReason::Other);
+        let mut expected_error_text = b"Message size exceeds MaxMessageSize=".to_vec();
+        expected_error_text.extend_from_slice(MAX_MESSAGE_SIZE.to_string().as_bytes());
+        assert_eq!(message.text,expected_error_text);
+    }
+
+    //Make sure exceeding the MaxMessageSize in the Logon response results in the Client just
+    //disconnecting.
+    {
+        //Connect to server.
+        let (mut test_server,mut client,connection_id) = TestServer::setup(build_dictionary());
+
+        //Have client send Logon.
+        let mut message = new_logon_message();
+        message.max_message_size = MAX_MESSAGE_SIZE;
+        client.send_message_box(connection_id,Box::new(message));
+        let message = test_server.recv_message::<Logon>();
+        assert_eq!(message.msg_seq_num,1);
+        assert_eq!(message.max_message_size,MAX_MESSAGE_SIZE);
+
+        //Respond with Logon message that exceeds MAX_MESSAGE_SIZE.
+        let mut response_message = new_fixt_message!(Logon);
+        response_message.encrypt_method = message.encrypt_method.clone();
+        response_message.heart_bt_int = message.heart_bt_int;
+        response_message.default_appl_ver_id = message.default_appl_ver_id;
+        while message_length(&response_message) <= MAX_MESSAGE_SIZE {
+            let mut msg_type_grp = MsgTypeGrp::new();
+            msg_type_grp.ref_msg_type = b"L".to_vec();
+            msg_type_grp.ref_appl_ver_id = Some(MessageVersion::FIX50SP1);
+            msg_type_grp.msg_direction = MsgDirection::Send;
+            response_message.no_msg_types.push(Box::new(msg_type_grp));
+        }
+        test_server.send_message(response_message);
+
+        //Make sure Client just disconnects.
+        client_poll_event!(client,ClientEvent::ConnectionTerminated(terminated_connection_id,reason) => {
+            assert_eq!(terminated_connection_id,connection_id);
+            assert!(if let ConnectionTerminatedReason::LogonParseError(parse_error) = reason {
+                if let ParseError::MessageSizeTooBig = parse_error { true } else { false }
+            }
+            else {
+                false
+            });
+        });
+    }
+}

@@ -50,15 +50,14 @@ fn main() {
         Logon : Logon,
     );
 
-    let message_bytes = b"8=FIX.4.2\x019=132\x0135=A\x0149=SERVER\x0156=CLIENT\x0134=177\x0152=20090107-18:15:16\x0198=0\x01108=30\x0195=13\x0196=This\x01is=atest\x011137=4\x01384=2\x01372=Test\x01385=S\x01372=Test2\x01385=R\x0110=171\x01";
+    let message_bytes = b"8=FIXT.1.1\x019=136\x0135=A\x0149=SERVER\x0156=CLIENT\x0134=177\x0152=20090107-18:15:16.000\x0198=0\x01108=30\x0195=13\x0196=This\x01is=atest\x011137=4\x01384=2\x01372=Test\x01385=S\x01372=Test2\x01385=R\x0110=223\x01";
 
-    let mut parser = Parser::new(build_dictionary());
+    let mut parser = Parser::new(build_dictionary(),4096);
     let (bytes_read,result) = parser.parse(message_bytes);
     assert!(result.is_ok());
     assert_eq!(bytes_read,message_bytes.len());
 
-    let message1;
-    let mut serialized_bytes = Vec::new();
+    let mut message1;
     match message_to_enum(&**(parser.messages.first().unwrap())) {
         MessageEnum::Logon(message) => {
             assert_eq!(message.encrypt_method,b"0");
@@ -79,12 +78,13 @@ fn main() {
             assert_eq!(message_type_1.ref_msg_type,b"Test2");
             assert_eq!(message_type_1.msg_direction,MsgDirection::Receive);
 
-            message1 = Some(message.clone());
+            message1 = message.clone();
         }
     }
 
-    let message1 = message1.unwrap();
-    message1.read(FIXVersion::FIX_4_2,MessageVersion::FIX42,&mut serialized_bytes);
+    let mut serialized_bytes = Vec::new();
+    message1.appl_ver_id = None;
+    message1.read(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,&mut serialized_bytes);
 
     println!("{}",String::from_utf8_lossy(serialized_bytes.as_slice()).into_owned());
     println!("Compared to...");
@@ -95,11 +95,12 @@ fn main() {
     assert_eq!(bytes_read,message_bytes.len());
 
     match message_to_enum(&**(parser.messages.first().unwrap())) {
-        MessageEnum::Logon(message) => {
+        MessageEnum::Logon(mut message) => {
+            message.appl_ver_id = None;
             assert!(message1 == message);
         }
     }
 
-    let client = Client::new(build_dictionary(),b"TEST_C",b"TEST_S");
+    let client = Client::new(build_dictionary(),b"TEST_C",b"TEST_S",4096);
 }
 

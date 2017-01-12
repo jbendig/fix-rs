@@ -412,7 +412,7 @@ impl Connection {
                 //Logon or else we'll disconnect). This gives us a chance to use the Logon response
                 //to setup message versioning defaults for the parser.
                 else if connection.status.is_logging_on() {
-                    assert!(messages.len() == 1);
+                    assert!(messages.len() <= 1);
                     return false;
                 }
             }
@@ -558,6 +558,7 @@ struct InternalThread {
     message_dictionary: HashMap<&'static [u8],Box<FIXTMessage + Send>>,
     sender_comp_id: Rc<<<SenderCompID as Field>::Type as FieldType>::Type>,
     target_comp_id: Rc<<<TargetCompID as Field>::Type as FieldType>::Type>,
+    max_message_size: u64,
     connections: HashMap<Token,Connection>,
     timer: Timer<(TimeoutType,Token)>,
     network_read_retry: NetworkReadRetry,
@@ -584,7 +585,7 @@ impl InternalThread {
                 //Force all administrative messages to use the newest message version for the
                 //specified FIX version. This way they can't be overridden during Logon and it
                 //makes sure the Logon message supports all of the fields we support.
-                let mut parser = Parser::new(self.message_dictionary.clone());
+                let mut parser = Parser::new(self.message_dictionary.clone(),self.max_message_size);
                 let administrative_msg_types = vec![Logon::msg_type(),Logout::msg_type(),Reject::msg_type(),ResendRequest::msg_type(),SequenceReset::msg_type(),TestRequest::msg_type(),Heartbeat::msg_type()];
                 for msg_type in administrative_msg_types {
                     parser.set_default_message_type_version(msg_type,fix_version.max_message_version());
@@ -1291,6 +1292,11 @@ impl InternalThread {
                     ParseError::ApplVerIDNotSixthTag => {
                         try!(push_reject(connection,b"",ApplVerID::tag(),SessionRejectReason::TagSpecifiedOutOfRequiredOrder,b"ApplVerID must be the 6th tag if specified"));
                     },
+                    ParseError::MessageSizeTooBig => {
+                        let mut error_text = b"Message size exceeds MaxMessageSize=".to_vec();
+                        error_text.extend_from_slice(connection.parser.max_message_size().to_string().as_bytes());
+                        try!(push_reject(connection,b"",b"",SessionRejectReason::Other,&error_text[..]));
+                    },
                     /* TODO: These should probably be considered garbled instead of
                      * responding to.
                      ParseError::BeginStrNotFirstTag |
@@ -1364,7 +1370,8 @@ pub fn internal_client_thread(poll: Poll,
                               rx: Receiver<InternalClientToThreadEvent>,
                               message_dictionary: HashMap<&'static [u8],Box<FIXTMessage + Send>>,
                               sender_comp_id: <<SenderCompID as Field>::Type as FieldType>::Type,
-                              target_comp_id: <<TargetCompID as Field>::Type as FieldType>::Type) {
+                              target_comp_id: <<TargetCompID as Field>::Type as FieldType>::Type,
+                              max_message_size: u64) {
     //TODO: There should probably be a mechanism to log every possible message, even those we
     //handle automatically. One method might be to have a layer above this that handles the
     //automatic stuff and allows for logging...this is probably just too low level.
@@ -1376,6 +1383,7 @@ pub fn internal_client_thread(poll: Poll,
         message_dictionary: message_dictionary,
         sender_comp_id: Rc::new(sender_comp_id),
         target_comp_id: Rc::new(target_comp_id),
+        max_message_size: max_message_size,
         connections: HashMap::new(),
         timer: TimerBuilder::default()
             .tick_duration(Duration::from_millis(TIMER_TICK_MS))

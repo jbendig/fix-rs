@@ -1076,6 +1076,9 @@ impl FieldType for IntFieldType {
     }
 }
 
+//LengthFieldType is used identically to SeqNumFieldType.
+pub type LengthFieldType = SeqNumFieldType;
+
 pub struct LocalMktDateFieldType;
 
 impl LocalMktDateFieldType {
@@ -1294,7 +1297,7 @@ impl FieldType for SeqNumFieldType {
     type Type = u64;
 
     fn default_value() -> Self::Type {
-        Default::default()
+        0
     }
 
     fn set_value(field: &mut Self::Type,bytes: &[u8]) -> Result<(),SetValueError> {

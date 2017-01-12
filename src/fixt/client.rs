@@ -116,7 +116,8 @@ pub struct Client {
 impl Client {
     pub fn new(message_dictionary: HashMap<&'static [u8],Box<FIXTMessage + Send>>,
                sender_comp_id: &[u8],
-               target_comp_id: &[u8]) -> Result<Client,io::Error> {
+               target_comp_id: &[u8],
+               max_message_size: u64) -> Result<Client,io::Error> {
         let client_poll = try!(Poll::new());
         let (thread_to_client_tx,thread_to_client_rx) = channel::<ClientEvent>();
         try!(client_poll.register(&thread_to_client_rx,CLIENT_EVENT_TOKEN,Ready::readable(),PollOpt::level()));
@@ -135,7 +136,7 @@ impl Client {
             rx: thread_to_client_rx,
             poll: client_poll,
             thread_handle: Some(thread::spawn(move || {
-                internal_client_thread(poll,thread_to_client_tx,client_to_thread_rx,message_dictionary,sender_comp_id,target_comp_id);
+                internal_client_thread(poll,thread_to_client_tx,client_to_thread_rx,message_dictionary,sender_comp_id,target_comp_id,max_message_size);
             })),
         })
     }

@@ -9,7 +9,7 @@
 // at your option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use dictionary::field_types::generic::{BoolTrueOrBlankFieldType,CharFieldType,CountryFieldType,CurrencyFieldType,DataFieldType,DayOfMonthFieldType,IntFieldType,LocalMktDateFieldType,MonthYearFieldType,NoneFieldType,RepeatingGroupFieldType,SeqNumFieldType,StringFieldType,UTCTimeOnlyFieldType,UTCTimestampFieldType};
+use dictionary::field_types::generic::{BoolTrueOrBlankFieldType,CharFieldType,CountryFieldType,CurrencyFieldType,DataFieldType,DayOfMonthFieldType,IntFieldType,LengthFieldType,LocalMktDateFieldType,MonthYearFieldType,NoneFieldType,RepeatingGroupFieldType,SeqNumFieldType,StringFieldType,UTCTimeOnlyFieldType,UTCTimestampFieldType};
 use dictionary::field_types::other as other_field_types;
 use dictionary::field_types::other::{ApplVerIDFieldType,BusinessRejectReasonFieldType,ComplexEventConditionFieldType,ComplexEventPriceBoundaryMethodFieldType,ComplexEventPriceTimeTypeFieldType,ComplexEventTypeFieldType,ContractMultiplierUnitFieldType,CPProgramFieldType,DefaultApplVerIDFieldType,EmailTypeFieldType,EventTypeFieldType,ExerciseStyleFieldType,FlowScheduleTypeFieldType,HandlInstFieldType,InstrmtAssignmentMethodFieldType,IssuerFieldType,ListMethodFieldType,MsgDirectionFieldType,NotRequiredSecurityIDSourceFieldType,NotRequiredSecurityTypeFieldType as SecurityTypeFieldType,NotRequiredSideFieldType,NotRequiredSymbolSfxFieldType as SymbolSfxFieldType,NotRequiredTimeUnitFieldType as TimeUnitFieldType,OptPayoutTypeFieldType,OrdTypeFieldType,PartyIDSourceFieldType,PartyRoleFieldType,PartySubIDTypeFieldType,PriceQuoteMethodFieldType,ProductFieldType,PutOrCallFieldType,RateSourceFieldType,RateSourceTypeFieldType,RequiredSecurityIDSourceFieldType,RequiredSideFieldType,RequiredStipulationTypeFieldType as StipulationTypeFieldType,RestructuringTypeFieldType,RoutingTypeFieldType,SecurityStatusFieldType,SeniorityFieldType,SessionRejectReasonFieldType,SettlMethodFieldType,SettlTypeFieldType,StrikePriceBoundaryMethodFieldType,StrikePriceDeterminationMethodFieldType,TimeInForceFieldType,UnderlyingCashTypeFieldType,UnderlyingFXRateCalcFieldType,UnderlyingPriceDeterminationMethodFieldType,UnderlyingSettlementTypeFieldType,UnitOfMeasureFieldType,ValuationMethodFieldType};
 use fix_version::FIXVersion;
@@ -162,7 +162,7 @@ define_fields!(
     SessionRejectReason: SessionRejectReasonFieldType = b"373",
     BusinessRejectRefID: StringFieldType = b"379",
     BusinessRejectReason: BusinessRejectReasonFieldType = b"380",
-    MaxMessageSize: StringFieldType = b"383", //Length
+    MaxMessageSize: LengthFieldType = b"383",
     NoMsgTypeGrp: RepeatingGroupFieldType<MsgTypeGrp> = b"384",
     MsgDirection: MsgDirectionFieldType = b"385",
     UnderlyingCouponRate: PercentageFieldType = b"435",

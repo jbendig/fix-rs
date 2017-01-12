@@ -31,7 +31,8 @@ use fix_rs::fixt::message::FIXTMessage;
 use fix_rs::message::{MessageDetails,REQUIRED,NOT_REQUIRED};
 use fix_rs::message_version::MessageVersion;
 
-const PARSE_MESSAGE_BY_STREAM : bool = true;
+const PARSE_MESSAGE_BY_STREAM: bool = true;
+const MAX_MESSAGE_SIZE: u64 = 4096;
 
 define_message!(LogonTest: b"L" => {
     REQUIRED, encrypt_method: EncryptMethod,
@@ -101,7 +102,7 @@ fn parse_message_with_ver<T: FIXTMessage + MessageDetails + Default + Any + Clon
     let mut message_dictionary: HashMap<&'static [u8],Box<FIXTMessage + Send>> = HashMap::new();
     message_dictionary.insert(<T as MessageDetails>::msg_type(),Box::new(<T as Default>::default()));
 
-    let mut parser = Parser::new(message_dictionary);
+    let mut parser = Parser::new(message_dictionary,MAX_MESSAGE_SIZE);
 
     let message_bytes = Vec::from(message);
     if PARSE_MESSAGE_BY_STREAM {
@@ -730,8 +731,8 @@ fn stream_test() {
         LogonTest : LogonTest,
     );
 
-    let mut parser = Parser::new(build_dictionary());
     let two_messages = b"8=FIX.4.2\x019=65\x0135=L\x0149=SERVER\x0156=CLIENT\x0134=177\x0152=20090107-18:15:16\x0198=0\x01108=30\x0110=073\x018=FIX.4.2\x019=65\x0135=L\x0149=SERVER\x0156=CLIENT\x0134=177\x0152=20090107-18:15:16\x0198=0\x01108=30\x0110=073\x01";
+    let mut parser = Parser::new(build_dictionary(),MAX_MESSAGE_SIZE);
     let (bytes_read,result) = parser.parse(&two_messages.to_vec());
     assert!(result.is_ok());
     assert_eq!(bytes_read,two_messages.len());
@@ -749,8 +750,8 @@ fn stream_test() {
         assert_eq!(casted_message.heart_bt_int,30);
     }
 
-    let mut parser = Parser::new(build_dictionary());
     let garbage_before_message = b"garbage\x01before=message8=FIX.4.2\x019=65\x0135=L\x0149=SERVER\x0156=CLIENT\x0134=177\x0152=20090107-18:15:16\x0198=0\x01108=30\x0110=073\x01";
+    let mut parser = Parser::new(build_dictionary(),MAX_MESSAGE_SIZE);
     let (bytes_read,result) = parser.parse(&garbage_before_message.to_vec());
     assert_eq!(bytes_read,garbage_before_message.len());
     assert!(result.is_ok());
@@ -765,8 +766,8 @@ fn stream_test() {
     assert_eq!(casted_message.encrypt_method,b"0".to_vec());
     assert_eq!(casted_message.heart_bt_int,30);
 
-    let mut parser = Parser::new(build_dictionary());
     let garbage_between_messages = b"8=FIX.4.2\x019=65\x0135=L\x0149=SERVER\x0156=CLIENT\x0134=177\x0152=20090107-18:15:16\x0198=0\x01108=30\x0110=073\x01garbage=before\x01m8ssage8=FIX.4.2\x019=65\x0135=L\x0149=SERVER\x0156=CLIENT\x0134=177\x0152=20090107-18:15:16\x0198=0\x01108=30\x0110=073\x01";
+    let mut parser = Parser::new(build_dictionary(),MAX_MESSAGE_SIZE);
     let (bytes_read,result) = parser.parse(&garbage_between_messages.to_vec());
     assert!(result.is_ok());
     assert_eq!(bytes_read,garbage_between_messages.len());
@@ -784,8 +785,8 @@ fn stream_test() {
         assert_eq!(casted_message.heart_bt_int,30);
     }
 
-    let mut parser = Parser::new(build_dictionary());
     let invalid_message_before_valid_message = b"8=FIX.4.2\x0110=0\x018=FIX.4.2\x019=65\x0135=L\x0149=SERVER\x0156=CLIENT\x0134=177\x0152=20090107-18:15:16\x0198=0\x01108=30\x0110=073\x01";
+    let mut parser = Parser::new(build_dictionary(),MAX_MESSAGE_SIZE);
     let (bytes_read_failure,result) = parser.parse(&invalid_message_before_valid_message.to_vec());
     assert!(result.is_err());
     match result.err().unwrap() {

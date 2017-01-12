@@ -39,6 +39,8 @@ const CLIENT_SENDER_COMP_ID: &'static [u8] = b"TEST";
 pub const SERVER_TARGET_COMP_ID: &'static [u8] = CLIENT_SENDER_COMP_ID;
 pub const SERVER_SENDER_COMP_ID: &'static [u8] = CLIENT_TARGET_COMP_ID;
 
+const MAX_MESSAGE_SIZE: u64 = 4096;
+
 #[macro_export]
 macro_rules! client_poll_event {
     ( $client:ident,$pat:pat => $body:expr ) => {{
@@ -156,7 +158,7 @@ impl TestServer {
         let listener = TcpListener::bind(&addr).unwrap();
 
         //Setup client and connect to socket.
-        let mut client = Client::new(message_dictionary.clone(),CLIENT_SENDER_COMP_ID,CLIENT_TARGET_COMP_ID).unwrap();
+        let mut client = Client::new(message_dictionary.clone(),CLIENT_SENDER_COMP_ID,CLIENT_TARGET_COMP_ID,MAX_MESSAGE_SIZE).unwrap();
         let connection_id = client.add_connection(fix_version,message_version,addr).unwrap();
 
         //Try to accept connection from client. Fails on timeout or socket error.
@@ -175,7 +177,7 @@ impl TestServer {
             message_version: message_version,
             stream: stream,
             poll: poll,
-            parser: Parser::new(message_dictionary),
+            parser: Parser::new(message_dictionary,MAX_MESSAGE_SIZE),
         },client,connection_id)
     }
 

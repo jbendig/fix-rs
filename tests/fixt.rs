@@ -1758,6 +1758,7 @@ fn test_15B() {
 }
 
 #[test]
+#[ignore]
 fn test_16B() {
     //TODO: API does not support queuing while disconnected at the moment. Might be too low of
     //level.
@@ -1775,6 +1776,7 @@ fn test_18B() {
 }
 
 #[test]
+#[ignore]
 fn test_19B() {
     //TODO: This is Message specific functionality that has to wait until we support non-admin
     //messages.

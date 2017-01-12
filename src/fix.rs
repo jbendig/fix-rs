@@ -62,6 +62,7 @@ pub enum ParseError {
     NonRepeatingGroupTagInRepeatingGroup(Vec<u8>), //Tag that doesn't belong in a repeating group was found.
     RepeatingGroupTagWithNoRepeatingGroup(Vec<u8>), //Repeating group tag was found outside of a repeating group.
     MissingFirstRepeatingGroupTagAfterNumberOfRepeatingGroupTag(Vec<u8>), //Tag indicating start of a repeating group was not found immediatelly after tag indicating the number of repeating groups.
+    MessageSizeTooBig,
 }
 
 fn tag_to_string(tag: &[u8]) -> String {
@@ -95,6 +96,7 @@ impl fmt::Display for ParseError {
             ParseError::NonRepeatingGroupTagInRepeatingGroup(ref tag) => write!(f,"ParseError::NonRepeatingGroupTagInRepeatingGroup({})",tag_to_string(tag)),
             ParseError::RepeatingGroupTagWithNoRepeatingGroup(ref tag) => write!(f,"ParseError::RepeatingGroupTagWithNoRepeatingGroup({})",tag_to_string(tag)),
             ParseError::MissingFirstRepeatingGroupTagAfterNumberOfRepeatingGroupTag(ref number_of_tag) => write!(f,"ParseError::MissingFirstRepeatingGroupTagAfterNumberOfRepeatingGroupTag({})",tag_to_string(number_of_tag)),
+            ParseError::MessageSizeTooBig => write!(f,"ParseError::MessageSizeTooBig"),
         }
     }
 }
@@ -197,6 +199,7 @@ fn set_message_value<T: Message + ?Sized>(message: &mut T,tag: &[u8],bytes: &[u8
 
 pub struct Parser {
     message_dictionary: HashMap<&'static [u8],Box<FIXTMessage + Send>>,
+    max_message_length: u64,
     default_message_version: MessageVersion,
     default_message_type_version: HashMap<&'static [u8],MessageVersion>,
     value_to_length_tags: HashMap<&'static [u8],&'static [u8]>,
@@ -225,7 +228,7 @@ pub struct Parser {
 }
 
 impl Parser {
-    pub fn new(message_dictionary: HashMap<&'static [u8],Box<FIXTMessage + Send>>) -> Parser {
+    pub fn new(message_dictionary: HashMap<&'static [u8],Box<FIXTMessage + Send>>,max_message_length: u64) -> Parser {
         //Perform a sanity check to make sure message dictionary was defined correctly. For now,
         //validate_message_dictionary() panics on failure because dictionaries should be composed
         //using a compile time macro. Thus, there's no practical reason to try and recover.
@@ -255,6 +258,7 @@ impl Parser {
 
         Parser {
             message_dictionary: message_dictionary,
+            max_message_length: max_message_length,
             default_message_version: DefaultApplVerIDFieldType::default_value(),
             default_message_type_version: HashMap::new(),
             value_to_length_tags: value_to_length_tags,
@@ -323,6 +327,10 @@ impl Parser {
                 break;
             }
         }
+    }
+
+    pub fn max_message_size(&self) -> u64 {
+        self.max_message_length
     }
 
     pub fn validate_message_dictionary(message_dictionary: &HashMap<&'static [u8],Box<FIXTMessage + Send>>) {
@@ -737,6 +745,17 @@ impl Parser {
                     self.body_remaining_length = length;
                 },
                 Err(_) => return Err(ParseError::BodyLengthNotNumber),
+            }
+
+            //Messages that are too long are outright rejected. The remaining bytes will be skipped
+            //on the next parse because they are considered garbled. If the actual body length is
+            //different from the presented number, there will be an appropriate error.
+            let total_message_length = BEGINSTR_TAG.len() as u64 + b"=\x01".len() as u64 + self.fix_version.begin_string().len() as u64 +
+                BODYLENGTH_TAG.len() as u64 + b"=\x01".len() as u64 + self.current_bytes.len() as u64 +
+                self.body_length +
+                CHECKSUM_TAG.len() as u64 + b"=000\x01".len() as u64;
+            if total_message_length > self.max_message_length {
+                return Err(ParseError::MessageSizeTooBig);
             }
         }
         else if self.found_tag_count == 2 {
