@@ -85,6 +85,9 @@ pub trait Message {
             //Checksum must always have a length of 3.
             //FIXT version 1.1, page 55.
             buf.write(b"0").unwrap();
+            if checksum < 10 {
+                buf.write(b"0").unwrap();
+            }
         }
         byte_count += buf.write(checksum_str.as_bytes()).unwrap();
         byte_count += buf.write(b"\x01").unwrap();

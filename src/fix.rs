@@ -50,7 +50,7 @@ pub enum ParseError {
     ApplVerIDNotSixthTag, //ApplVerID must be the sixth tag if specified at all.
     ChecksumNotLastTag, //Checksum is not exactly where BodyLength says it should be.
     ChecksumDoesNotMatch(u8,u8), //Calculated checksum, Stated checksum
-    ChecksumNotNumber,
+    ChecksumWrongFormat,
     DuplicateTag(Vec<u8>),
     UnexpectedTag(Vec<u8>), //Tag found does not belong to the current message type.
     UnknownTag(Vec<u8>), //Tag found does not beling to any known message.
@@ -83,7 +83,7 @@ impl fmt::Display for ParseError {
             ParseError::ApplVerIDNotSixthTag => write!(f,"ParseError::ApplVerIDNotSixthTag"),
             ParseError::ChecksumNotLastTag => write!(f,"ParseError::ChecksumNotLastTag"),
             ParseError::ChecksumDoesNotMatch(ref calculated_checksum,ref stated_checksum) => write!(f,"ParseError::ChecksumDoesNotMatch({},{})",calculated_checksum,stated_checksum),
-            ParseError::ChecksumNotNumber => write!(f,"ParseError::ChecksumNotNumber"),
+            ParseError::ChecksumWrongFormat => write!(f,"ParseError::ChecksumWrongFormat"),
             ParseError::DuplicateTag(ref tag) => write!(f,"ParseError::DuplicateTag({})",tag_to_string(tag)),
             ParseError::UnexpectedTag(ref tag) => write!(f,"ParseError::UnexpectedTag({})",tag_to_string(tag)),
             ParseError::UnknownTag(ref tag) => write!(f,"ParseError::UnknownTag({})",tag_to_string(tag)),
@@ -492,6 +492,11 @@ impl Parser {
     }
 
     fn validate_checksum(&mut self) -> Result<(),ParseError> {
+        //Checksum must be EXACTLY three characters according to FIX 5.0SP2, Volume 6, page 7.
+        if self.current_bytes.len() != 3 {
+            return Err(ParseError::ChecksumWrongFormat);
+        }
+
         //Remove checksum tag that should not be part of the current checksum.
         let mut checksum = self.checksum.overflowing_sub(CHECKSUM_TAG[0] + CHECKSUM_TAG[1] + TAG_END + VALUE_END).0;
         let checksum_bytes = &self.current_bytes;
@@ -503,7 +508,7 @@ impl Parser {
             Ok(stated_checksum) => if checksum != stated_checksum {
                 return Err(ParseError::ChecksumDoesNotMatch(checksum,stated_checksum));
             },
-            Err(_) => return Err(ParseError::ChecksumNotNumber),
+            Err(_) => return Err(ParseError::ChecksumWrongFormat),
         }
 
         self.checksum = checksum;
