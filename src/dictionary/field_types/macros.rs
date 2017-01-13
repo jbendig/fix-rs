@@ -31,10 +31,7 @@ macro_rules! define_enum_field_type_impl {
             field.is_none()
         }
     };
-}
 
-#[macro_export]
-macro_rules! define_enum_field_type {
     ( NEW_VALUE_FUNC $base_type:ident, $field_type_type:ident ) => {
         |bytes: &[u8]| {
             $base_type::new(bytes)
@@ -100,7 +97,7 @@ macro_rules! define_enum_field_type {
             }
 
             fn set_value(field: &mut Self::Type,bytes: &[u8]) -> Result<(),$crate::message::SetValueError> {
-                if let Some(value) = define_enum_field_type!( NEW_VALUE_FUNC $base_type, $( $field_type_type )* )(bytes) {
+                if let Some(value) = define_enum_field_type_impl!( NEW_VALUE_FUNC $base_type, $( $field_type_type )* )(bytes) {
                     *field = value;
                     return Ok(());
                 }
@@ -116,19 +113,19 @@ macro_rules! define_enum_field_type {
                 0 //Unused for this type.
             }
 
-            define_enum_field_type!( READ_FUNC_DEF $( $field_type_type )* );
+            define_enum_field_type_impl!( READ_FUNC_DEF $( $field_type_type )* );
         }
     };
 
     ( 2=> $base_type:ident, $field_type:ident [ $( $field_type_type:tt )* ] { $( $base_type_field:path ),* $(),* } MUST_BE_STRING ) => {
-        define_enum_field_type!( 2=> $base_type, $field_type [ $( $field_type_type )* ] { $( $base_type_field, )* } WITH_CUSTOM_SET_VALUE_ERROR_CHECK |_bytes: &[u8]| {
+        define_enum_field_type_impl!( 2=> $base_type, $field_type [ $( $field_type_type )* ] { $( $base_type_field, )* } WITH_CUSTOM_SET_VALUE_ERROR_CHECK |_bytes: &[u8]| {
             //Not one of the supported bytes.
             Err($crate::message::SetValueError::OutOfRange)
         });
     };
 
     ( 2=> $base_type:ident, $field_type:ident [ $( $field_type_type:tt )* ] { $( $base_type_field:path ),* $(),* } MUST_BE_CHAR ) => {
-        define_enum_field_type!( 2=> $base_type, $field_type [ $( $field_type_type )* ] { $( $base_type_field, )* } WITH_CUSTOM_SET_VALUE_ERROR_CHECK |bytes: &[u8]| {
+        define_enum_field_type_impl!( 2=> $base_type, $field_type [ $( $field_type_type )* ] { $( $base_type_field, )* } WITH_CUSTOM_SET_VALUE_ERROR_CHECK |bytes: &[u8]| {
             //Figure out what went wrong.
             if bytes.len() == 1 {
                 //Not one of the supported bytes.
@@ -142,7 +139,7 @@ macro_rules! define_enum_field_type {
     };
 
     ( 2=> $base_type:ident, $field_type:ident [ $( $field_type_type:tt )* ] { $( $base_type_field:path ),* $(),* } MUST_BE_INT ) => {
-        define_enum_field_type!( 2=> $base_type, $field_type [ $( $field_type_type )* ] { $( $base_type_field, )* } WITH_CUSTOM_SET_VALUE_ERROR_CHECK |bytes: &[u8]| {
+        define_enum_field_type_impl!( 2=> $base_type, $field_type [ $( $field_type_type )* ] { $( $base_type_field, )* } WITH_CUSTOM_SET_VALUE_ERROR_CHECK |bytes: &[u8]| {
             //Figure out what went wrong.
             let value_string = String::from_utf8_lossy(bytes).into_owned();
             if <$crate::dictionary::field_types::generic::IntFieldType as $crate::field_type::FieldType>::Type::from_str(&value_string).is_ok() {
@@ -157,19 +154,72 @@ macro_rules! define_enum_field_type {
     };
 
     ( REQUIRED, $base_type:ident, $field_type:ident { $( $base_type_field:path => $base_type_value:expr ),* $(),* } $must_be_sym:tt ) => {
-        define_enum_field_type!( 1=> $base_type { $( $base_type_field => $base_type_value, )* } );
-        define_enum_field_type!( 2=> $base_type, $field_type [ $base_type ] { $( $base_type_field, )* } $must_be_sym);
+        define_enum_field_type_impl!( 1=> $base_type { $( $base_type_field => $base_type_value, )* } );
+        define_enum_field_type_impl!( 2=> $base_type, $field_type [ $base_type ] { $( $base_type_field, )* } $must_be_sym);
     };
 
     ( NOT_REQUIRED, $base_type:ident, $field_type:ident { $( $base_type_field:path => $base_type_value:expr ),* $(),* } $must_be_sym:tt ) => {
-        define_enum_field_type!( 1=> $base_type { $( $base_type_field => $base_type_value, )* } );
-        define_enum_field_type!( 2=> $base_type, $field_type [ Option<$base_type> ] { $( $base_type_field, )* } $must_be_sym);
+        define_enum_field_type_impl!( 1=> $base_type { $( $base_type_field => $base_type_value, )* } );
+        define_enum_field_type_impl!( 2=> $base_type, $field_type [ Option<$base_type> ] { $( $base_type_field, )* } $must_be_sym);
     };
 
     ( REQUIRED_AND_NOT_REQUIRED, $base_type:ident, $required_field_type:ident, $not_required_field_type:ident { $( $base_type_field:path => $base_type_value:expr ),* $(),* } $must_be_sym:tt ) => {
-        define_enum_field_type!( 1=> $base_type { $( $base_type_field => $base_type_value, )* } );
-        define_enum_field_type!( 2=> $base_type, $required_field_type [ $base_type ] { $( $base_type_field, )* } $must_be_sym);
-        define_enum_field_type!( 2=> $base_type, $not_required_field_type [ Option<$base_type> ] { $( $base_type_field, )* } $must_be_sym);
+        define_enum_field_type_impl!( 1=> $base_type { $( $base_type_field => $base_type_value, )* } );
+        define_enum_field_type_impl!( 2=> $base_type, $required_field_type [ $base_type ] { $( $base_type_field, )* } $must_be_sym);
+        define_enum_field_type_impl!( 2=> $base_type, $not_required_field_type [ Option<$base_type> ] { $( $base_type_field, )* } $must_be_sym);
+    };
+}
+
+#[macro_export]
+macro_rules! define_enum_field_type {
+    (FIELD $enum_name:ident {
+        $( $variant:ident => $value:expr, )+
+    } $other_variant:tt,
+    FIELD_TYPE [REQUIRED_AND_NOT_REQUIRED,BYTES] $required_field_type:ident $not_required_field_type:ident ) => {
+        #[derive(Clone,Debug,PartialEq)]
+        pub enum $enum_name {
+            $( $variant ),+,
+            $other_variant(Vec<u8>),
+        }
+
+        define_enum_field_type_with_reserved!(BYTES, $enum_name, $required_field_type, $not_required_field_type { $( $enum_name::$variant => $value ),+ , } $enum_name::$other_variant);
+    };
+
+    (FIELD $enum_name:ident {
+        $( $variant:ident => $value:expr, )+
+    } $other_variant:tt => WITH_MINIMUM $minimum_value:expr,
+    FIELD_TYPE [$required_sym:tt] $field_type:ident ) => {
+        #[derive(Clone,Debug,PartialEq)]
+        pub enum $enum_name {
+            $( $variant ),+,
+            $other_variant(i64),
+        }
+
+        define_enum_field_type_with_reserved!($required_sym, $enum_name, $field_type { $( $enum_name::$variant => $value ),+ , } $enum_name::$other_variant => WITH_MINIMUM $minimum_value);
+    };
+
+    (FIELD $enum_name:ident {
+        $( $variant:ident => $value:expr, )+
+    },
+    FIELD_TYPE [REQUIRED_AND_NOT_REQUIRED,$must_be_sym:tt] $required_field_type:ident $not_required_field_type:ident ) => {
+        #[derive(Clone,Debug,PartialEq)]
+        pub enum $enum_name {
+            $( $variant ),+
+        }
+
+        define_enum_field_type_impl!(REQUIRED_AND_NOT_REQUIRED, $enum_name, $required_field_type, $not_required_field_type { $( $enum_name::$variant => $value ),+ , } $must_be_sym);
+    };
+
+    (FIELD $enum_name:ident {
+        $( $variant:ident => $value:expr, )+
+    },
+    FIELD_TYPE [$required_sym:tt,$must_be_sym:tt] $field_type:ident ) => {
+        #[derive(Clone,Debug,PartialEq)]
+        pub enum $enum_name {
+            $( $variant ),+
+        }
+
+        define_enum_field_type_impl!($required_sym, $enum_name, $field_type { $( $enum_name::$variant => $value ),+ , } $must_be_sym);
     };
 }
 
