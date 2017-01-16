@@ -31,7 +31,7 @@ fn parse_simple_message_bench(b: &mut Bencher) {
         NewOrderSingle : NewOrderSingle,
     );
 
-    let mut parser = Parser::new(build_dictionary());
+    let mut parser = Parser::new(build_dictionary(),4096);
     b.iter(|| {
         let (bytes_read,result) = parser.parse(MESSAGE_BYTES);
         assert!(result.is_ok());
@@ -45,7 +45,7 @@ fn serialize_simple_message_bench(b: &mut Bencher) {
         NewOrderSingle : NewOrderSingle,
     );
 
-    let mut parser = Parser::new(build_dictionary());
+    let mut parser = Parser::new(build_dictionary(),4096);
     let (bytes_read,result) = parser.parse(MESSAGE_BYTES);
     assert!(result.is_ok());
     assert!(bytes_read == MESSAGE_BYTES.len());
