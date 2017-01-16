@@ -47,7 +47,7 @@ fn estimate_body_length(message_bytes: &[u8]) -> usize {
 
 fn main() {
     define_dictionary!(
-        Logon : Logon,
+        Logon,
     );
 
     let message_bytes = b"8=FIXT.1.1\x019=136\x0135=A\x0149=SERVER\x0156=CLIENT\x0134=177\x0152=20090107-18:15:16.000\x0198=0\x01108=30\x0195=13\x0196=This\x01is=atest\x011137=4\x01384=2\x01372=Test\x01385=S\x01372=Test2\x01385=R\x0110=223\x01";

@@ -28,7 +28,7 @@ const MESSAGE_BYTES: &'static [u8] = b"8=FIX.4.2\x019=206\x0135=D\x0149=AFUNDMGR
 #[bench]
 fn parse_simple_message_bench(b: &mut Bencher) {
     define_dictionary!(
-        NewOrderSingle : NewOrderSingle,
+        NewOrderSingle,
     );
 
     let mut parser = Parser::new(build_dictionary(),4096);
@@ -42,7 +42,7 @@ fn parse_simple_message_bench(b: &mut Bencher) {
 #[bench]
 fn serialize_simple_message_bench(b: &mut Bencher) {
     define_dictionary!(
-        NewOrderSingle : NewOrderSingle,
+        NewOrderSingle,
     );
 
     let mut parser = Parser::new(build_dictionary(),4096);

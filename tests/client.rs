@@ -38,9 +38,9 @@ use fix_rs::message_version::MessageVersion;
 #[test]
 fn test_recv_resend_request_invalid_end_seq_no() {
     define_dictionary!(
-        Logon : Logon,
-        ResendRequest : ResendRequest,
-        Reject : Reject,
+        Logon,
+        ResendRequest,
+        Reject,
     );
 
     //Connect and Logon.
@@ -63,8 +63,8 @@ fn test_recv_resend_request_invalid_end_seq_no() {
 #[test]
 fn test_send_logout_before_logon() {
     define_dictionary!(
-        Logon : Logon,
-        Logout : Logout,
+        Logon,
+        Logout,
     );
 
     let (mut test_server,mut client,connection_id) = TestServer::setup(build_dictionary());
@@ -90,10 +90,10 @@ fn test_send_logout_before_logon() {
 #[test]
 fn test_recv_logout_with_high_msg_seq_num() {
     define_dictionary!(
-        Logon : Logon,
-        Logout : Logout,
-        ResendRequest : ResendRequest,
-        SequenceReset : SequenceReset,
+        Logon,
+        Logout,
+        ResendRequest,
+        SequenceReset,
     );
 
     //Connect and Logon.
@@ -132,10 +132,10 @@ fn test_recv_logout_with_high_msg_seq_num() {
 #[test]
 fn test_recv_logout_with_high_msg_seq_num_and_no_reply() {
     define_dictionary!(
-        Logon : Logon,
-        Logout : Logout,
-        ResendRequest : ResendRequest,
-        SequenceReset : SequenceReset,
+        Logon,
+        Logout,
+        ResendRequest,
+        SequenceReset,
     );
 
     //Connect and Logon.
@@ -169,12 +169,12 @@ fn test_recv_logout_with_high_msg_seq_num_and_no_reply() {
 #[test]
 fn test_recv_logout_send_logout_recv_resend_request() {
     define_dictionary!(
-        Heartbeat : Heartbeat,
-        Logon : Logon,
-        Logout : Logout,
-        ResendRequest : ResendRequest,
-        SequenceReset : SequenceReset,
-        TestRequest : TestRequest,
+        Heartbeat,
+        Logon,
+        Logout,
+        ResendRequest,
+        SequenceReset,
+        TestRequest,
     );
 
     //Connect and Logon.
@@ -226,12 +226,12 @@ fn test_recv_logout_send_logout_recv_resend_request() {
 #[test]
 fn test_send_logout_and_recv_resend_request() {
     define_dictionary!(
-        Heartbeat : Heartbeat,
-        Logon : Logon,
-        Logout : Logout,
-        ResendRequest : ResendRequest,
-        SequenceReset : SequenceReset,
-        TestRequest : TestRequest,
+        Heartbeat,
+        Logon,
+        Logout,
+        ResendRequest,
+        SequenceReset,
+        TestRequest,
     );
 
     //Connect and Logon.
@@ -274,12 +274,12 @@ fn test_send_logout_and_recv_resend_request() {
 #[test]
 fn test_send_logout_and_recv_logout_with_high_msg_seq_num() {
     define_dictionary!(
-        Heartbeat : Heartbeat,
-        Logon : Logon,
-        Logout : Logout,
-        ResendRequest : ResendRequest,
-        SequenceReset : SequenceReset,
-        TestRequest : TestRequest,
+        Heartbeat,
+        Logon,
+        Logout,
+        ResendRequest,
+        SequenceReset,
+        TestRequest,
     );
 
     //Connect and Logon.
@@ -325,12 +325,12 @@ fn test_send_logout_and_recv_logout_with_high_msg_seq_num() {
 #[test]
 fn test_send_logout_and_recv_logout_with_high_msg_seq_num_and_no_reply() {
     define_dictionary!(
-        Heartbeat : Heartbeat,
-        Logon : Logon,
-        Logout : Logout,
-        ResendRequest : ResendRequest,
-        SequenceReset : SequenceReset,
-        TestRequest : TestRequest,
+        Heartbeat,
+        Logon,
+        Logout,
+        ResendRequest,
+        SequenceReset,
+        TestRequest,
     );
 
     //Connect and Logon.
@@ -367,9 +367,9 @@ fn test_send_logout_and_recv_logout_with_high_msg_seq_num_and_no_reply() {
 #[test]
 fn test_wrong_sender_comp_id_in_logon_response() {
     define_dictionary!(
-        Logon : Logon,
-        Logout : Logout,
-        Reject : Reject,
+        Logon,
+        Logout,
+        Reject,
     );
 
     //Connect and attempt logon.
@@ -411,9 +411,9 @@ fn test_wrong_sender_comp_id_in_logon_response() {
 #[test]
 fn test_wrong_target_comp_id_in_logon_response() {
     define_dictionary!(
-        Logon : Logon,
-        Logout : Logout,
-        Reject : Reject,
+        Logon,
+        Logout,
+        Reject,
     );
 
     //Connect and attempt logon.
@@ -461,9 +461,9 @@ fn test_overflowing_inbound_messages_buffer_does_resume() {
     //for a new network notification.
 
     define_dictionary!(
-        Logon : Logon,
-        Heartbeat : Heartbeat,
-        TestRequest : TestRequest,
+        Logon,
+        Heartbeat,
+        TestRequest,
     );
 
     //Connect and logon.
@@ -501,9 +501,9 @@ fn test_sender_comp_id() {
     });
 
     define_dictionary!(
-        Logon : Logon,
-        Reject : Reject,
-        TestMessage : TestMessage,
+        Logon,
+        Reject,
+        TestMessage,
     );
 
     //FIXT.1.1: Make sure SenderCompID has to be the fourth field.
@@ -597,9 +597,9 @@ fn test_target_comp_id() {
     });
 
     define_dictionary!(
-        Logon : Logon,
-        Reject : Reject,
-        TestMessage : TestMessage,
+        Logon,
+        Reject,
+        TestMessage,
     );
 
     //FIXT.1.1: Make sure TargetCompID has to be the fifth field.
@@ -697,8 +697,8 @@ fn test_default_appl_ver_id() {
     });
 
     define_dictionary!(
-        Logon : Logon,
-        TestMessage : TestMessage,
+        Logon,
+        TestMessage,
     );
 
     //Connect and logon.
@@ -749,9 +749,9 @@ fn test_appl_ver_id() {
     });
 
     define_dictionary!(
-        Logon : Logon,
-        Reject : Reject,
-        TestMessage : TestMessage,
+        Logon,
+        Reject,
+        TestMessage,
     );
 
     //Make sure when ApplVerID is specified after the sixth field, Client responds with an
@@ -819,9 +819,9 @@ fn test_message_type_default_application_version() {
     });
 
     define_dictionary!(
-        Logon : Logon,
-        Reject : Reject,
-        TestMessage : TestMessage,
+        Logon,
+        Reject,
+        TestMessage,
     );
 
     //Connect.
@@ -888,9 +888,9 @@ fn test_respond_to_test_request_immediately_after_logon() {
     //TestRequest that would cause the remaining data to be read.
 
     define_dictionary!(
-        Logon : Logon,
-        Heartbeat : Heartbeat,
-        TestRequest : TestRequest,
+        Logon,
+        Heartbeat,
+        TestRequest,
     );
 
     //Connect to server.
@@ -940,10 +940,10 @@ fn test_respect_default_appl_ver_id_in_test_request_immediately_after_logon() {
     });
 
     define_dictionary!(
-        Logon : Logon,
-        Logout : Logout,
-        Reject : Reject,
-        TestMessage : TestMessage,
+        Logon,
+        Logout,
+        Reject,
+        TestMessage,
     );
 
     //Connect to server.
@@ -993,9 +993,9 @@ fn test_logout_and_terminate_wrong_versioned_test_request_immediately_after_logo
     //expected.
 
     define_dictionary!(
-        Logon : Logon,
-        Logout : Logout,
-        TestRequest : TestRequest,
+        Logon,
+        Logout,
+        TestRequest,
     );
 
     //Connect to server.
@@ -1057,10 +1057,10 @@ fn test_max_message_size() {
     });
 
     define_dictionary!(
-        Logon : Logon,
-        Logout : Logout,
-        Reject : Reject,
-        TestMessage : TestMessage,
+        Logon,
+        Logout,
+        Reject,
+        TestMessage,
     );
 
     fn message_length<T: Message>(message: &T) -> u64 {

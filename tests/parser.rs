@@ -728,7 +728,7 @@ fn nested_repeating_groups_test() {
 #[test]
 fn stream_test() {
     define_dictionary!(
-        LogonTest : LogonTest,
+        LogonTest,
     );
 
     let two_messages = b"8=FIX.4.2\x019=65\x0135=L\x0149=SERVER\x0156=CLIENT\x0134=177\x0152=20090107-18:15:16\x0198=0\x01108=30\x0110=073\x018=FIX.4.2\x019=65\x0135=L\x0149=SERVER\x0156=CLIENT\x0134=177\x0152=20090107-18:15:16\x0198=0\x01108=30\x0110=073\x01";

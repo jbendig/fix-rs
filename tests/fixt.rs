@@ -50,11 +50,11 @@ fn is_logon_valid(message: &Logon) -> bool {
 #[test]
 fn test_1B() {
     define_dictionary!(
-        Logout : Logout,
-        Logon : Logon,
-        NewOrderSingle : NewOrderSingle,
-        ResendRequest : ResendRequest,
-        SequenceReset : SequenceReset,
+        Logout,
+        Logon,
+        NewOrderSingle,
+        ResendRequest,
+        SequenceReset,
     );
 
     fn do_logon<F>(server_response_func: F) -> (TestServer,Client,usize,Logon)
@@ -228,13 +228,13 @@ fn test_2B() {
     }
 
     define_dictionary!(
-        Logout : Logout,
-        Logon : Logon,
-        ResendRequest : ResendRequest,
-        TestRequest : TestRequest,
-        Heartbeat : Heartbeat,
-        SequenceReset : SequenceReset,
-        Reject : Reject,
+        Logout,
+        Logon,
+        ResendRequest,
+        TestRequest,
+        Heartbeat,
+        SequenceReset,
+        Reject,
     );
 
     //a. Basic conversation should be numbered correctly and all responses should be accepted as
@@ -611,9 +611,9 @@ fn test_2B() {
     //respond with a Reject, increment the inbound expected MsgSeqNum, and issue a warning.
     {
         define_dictionary!(
-            Logon : Logon,
-            Reject : Reject,
-            TestRequest : TestRequest,
+            Logon,
+            Reject,
+            TestRequest,
         );
 
         define_fixt_message!(MessageWithInvalidMsgType: b"99999" => {
@@ -659,9 +659,9 @@ fn test_2B() {
     //TODO: Send Reject (< FIX 4.2) or Business Message Reject (>= FIX 4.2)
     {
         define_dictionary!(
-            BusinessMessageReject : BusinessMessageReject,
-            Logon : Logon,
-            TestRequest : TestRequest,
+            BusinessMessageReject,
+            Logon,
+            TestRequest,
         );
 
         define_fixt_message!(MessageWithUnsupportedMsgType: b"AA" => {
@@ -720,9 +720,9 @@ fn test_3B() {
 #[test]
 fn test_4B() {
     define_dictionary!(
-        Logon : Logon,
-        TestRequest : TestRequest,
-        Heartbeat : Heartbeat,
+        Logon,
+        TestRequest,
+        Heartbeat,
     );
 
     //a. Make sure a Heartbeat message is sent automatically after no data is sent after
@@ -787,8 +787,8 @@ fn test_5B() {
     //Receive a valid Heartbeat message.
 
     define_dictionary!(
-        Logon : Logon,
-        Heartbeat : Heartbeat,
+        Logon,
+        Heartbeat,
     );
 
     //Connect and logon.
@@ -808,9 +808,9 @@ fn test_5B() {
 #[test]
 fn test_6B() {
     define_dictionary!(
-        Logon : Logon,
-        TestRequest : TestRequest,
-        Heartbeat : Heartbeat,
+        Logon,
+        TestRequest,
+        Heartbeat,
     );
 
     //When no data is sent from server to client for HeartBeatInt + "some reasonable period of
@@ -876,9 +876,9 @@ fn test_7B() {
     //MsgSeqNum should be incremented.
 
     define_dictionary!(
-        Logon : Logon,
-        TestRequest : TestRequest,
-        Reject : Reject,
+        Logon,
+        TestRequest,
+        Reject,
     );
 
     //Connect and logon.
@@ -912,11 +912,11 @@ fn test_8B() {
     //TODO: Need to handle ResendRequest on non-administrative messages too.
 
     define_dictionary!(
-        Logon : Logon,
-        TestRequest : TestRequest,
-        Heartbeat : Heartbeat,
-        ResendRequest : ResendRequest,
-        SequenceReset : SequenceReset,
+        Logon,
+        TestRequest,
+        Heartbeat,
+        ResendRequest,
+        SequenceReset,
     );
 
     //Connect and logon.
@@ -950,12 +950,12 @@ fn test_9B() {
 #[test]
 fn test_10B() {
     define_dictionary!(
-        Logon : Logon,
-        ResendRequest : ResendRequest,
-        SequenceReset : SequenceReset,
-        TestRequest : TestRequest,
-        Logout : Logout,
-        Reject : Reject,
+        Logon,
+        ResendRequest,
+        SequenceReset,
+        TestRequest,
+        Logout,
+        Reject,
     );
 
     //a. Send SequenceReset-GapFill to client with NewSeqNo > MsgSeqNum > expected inbound sequence
@@ -1113,12 +1113,12 @@ fn test_10B() {
 #[test]
 fn test_11B() {
     define_dictionary!(
-        Logon : Logon,
-        SequenceReset : SequenceReset,
-        ResendRequest : ResendRequest,
-        TestRequest : TestRequest,
-        Logout : Logout,
-        Reject : Reject,
+        Logon,
+        SequenceReset,
+        ResendRequest,
+        TestRequest,
+        Logout,
+        Reject,
     );
 
     //Try a few msg_seq_nums to make sure they are ignored.
@@ -1268,8 +1268,8 @@ fn test_11B() {
 #[test]
 fn test_12B() {
     define_dictionary!(
-        Logon : Logon,
-        Logout : Logout,
+        Logon,
+        Logout,
     );
 
     //Client should be able to initiate a Logout via the API. The client should wait for a Logout
@@ -1332,8 +1332,8 @@ fn test_12B() {
 #[test]
 fn test_13B() {
     define_dictionary!(
-        Logon : Logon,
-        Logout : Logout,
+        Logon,
+        Logout,
     );
 
     //a. Client receives Logout response in response to its Logout message and then should
@@ -1399,11 +1399,11 @@ fn test_13B() {
 #[test]
 fn test_14B() {
     define_dictionary!(
-        Logon : Logon,
-        TestRequest : TestRequest,
-        ResendRequest : ResendRequest,
-        Reject : Reject,
-        BusinessMessageReject : BusinessMessageReject,
+        Logon,
+        TestRequest,
+        ResendRequest,
+        Reject,
+        BusinessMessageReject,
     );
 
     define_fields!(
@@ -1564,10 +1564,10 @@ fn test_14B() {
         });
 
         define_dictionary!(
-            Logon : Logon,
-            TestRequestWithEnumeratedField : TestRequestWithEnumeratedField,
-            ResendRequest : ResendRequest,
-            Reject : Reject,
+            Logon,
+            TestRequestWithEnumeratedField,
+            ResendRequest,
+            Reject,
         );
 
         do_garbled_test_with_dict::<_,TestRequestWithEnumeratedField>(SessionRejectReason::ValueIsIncorrectForThisTag,SideField::tag(),|test_server,client,connection_id| {
@@ -1786,10 +1786,10 @@ fn test_19B() {
 #[test]
 fn test_20B() {
     define_dictionary!(
-        Logon : Logon,
-        ResendRequest : ResendRequest,
-        SequenceReset : SequenceReset,
-        TestRequest : TestRequest,
+        Logon,
+        ResendRequest,
+        SequenceReset,
+        TestRequest,
     );
 
     //Client sends a ResendRequest and then receives a ResendRequest. The client should resend

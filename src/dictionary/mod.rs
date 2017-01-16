@@ -19,7 +19,7 @@ use fixt::message::FIXTMessage;
 
 #[macro_export]
 macro_rules! define_dictionary {
-    ( $( $msg:ty : $msg_enum:ident ),* $(),* ) => {
+    ( $( $msg:ident ),* $(),* ) => {
         fn build_dictionary() -> std::collections::HashMap<&'static [u8],Box<$crate::fixt::message::FIXTMessage + Send>> {
             let mut message_dictionary: std::collections::HashMap<&'static [u8],Box<$crate::fixt::message::FIXTMessage + Send>> = std::collections::HashMap::new();
             $( message_dictionary.insert(<$msg as $crate::message::MessageDetails>::msg_type(),Box::new(<$msg as Default>::default())); )*
@@ -30,7 +30,7 @@ macro_rules! define_dictionary {
         #[allow(dead_code)]
         enum MessageEnum
         {
-            $( $msg_enum($msg), )*
+            $( $msg($msg), )*
         };
 
         #[allow(dead_code)]
@@ -39,7 +39,7 @@ macro_rules! define_dictionary {
             }
             $( else if message.as_any().is::<$msg>() {
                 //TODO: Avoid the clone.
-                return MessageEnum::$msg_enum(message.as_any().downcast_ref::<$msg>().unwrap().clone());
+                return MessageEnum::$msg(message.as_any().downcast_ref::<$msg>().unwrap().clone());
             } )*
 
             panic!("Unsupported message");
