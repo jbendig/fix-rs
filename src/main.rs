@@ -16,7 +16,7 @@ extern crate fix_rs;
 use chrono::offset::utc::UTC;
 use chrono::TimeZone;
 
-use fix_rs::dictionary::field_types::other::MsgDirection;
+use fix_rs::dictionary::field_types::other::{EncryptMethod,MsgDirection};
 use fix_rs::dictionary::messages::Logon;
 use fix_rs::fix::Parser;
 use fix_rs::fix_version::FIXVersion;
@@ -60,7 +60,7 @@ fn main() {
     let mut message1;
     match message_to_enum(&**(parser.messages.first().unwrap())) {
         MessageEnum::Logon(message) => {
-            assert_eq!(message.encrypt_method,b"0");
+            assert_eq!(message.encrypt_method,EncryptMethod::None);
             assert_eq!(message.heart_bt_int,30);
             assert_eq!(message.msg_seq_num,177);
             assert_eq!(message.sender_comp_id,b"SERVER");

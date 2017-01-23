@@ -9,6 +9,8 @@
 // at your option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(non_camel_case_types)]
+
 use std::io::Write;
 use std::str::FromStr;
 
@@ -176,6 +178,19 @@ define_enum_field_type!(
         AdminReply => b"2",
     },
     FIELD_TYPE [REQUIRED,MUST_BE_CHAR] EmailTypeFieldType
+);
+
+define_enum_field_type!(
+    FIELD EncryptMethod {
+        None => b"0", //Or Other
+        PKCS => b"1", //(Proprietary)
+        DES => b"2", //(ECB Mode)
+        PKCS_DES => b"3", //(Proprietary)
+        PGP_DES => b"4", //(Defunct)
+        PGP_DES_MD5 => b"5",
+        PEM_DES_MD5 => b"6",
+    },
+    FIELD_TYPE [REQUIRED,MUST_BE_INT] EncryptMethodFieldType
 );
 
 define_enum_field_type!(

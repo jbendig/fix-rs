@@ -24,6 +24,7 @@ use std::thread;
 use std::time::{Duration,Instant};
 
 use fix_rs::dictionary::CloneDictionary;
+use fix_rs::dictionary::field_types::other::EncryptMethod;
 use fix_rs::dictionary::messages::Logon;
 use fix_rs::fix::Parser;
 use fix_rs::fix_version::FIXVersion;
@@ -83,7 +84,7 @@ macro_rules! new_fixt_message {
 
 pub fn new_logon_message() -> Logon {
     let mut message = new_fixt_message!(Logon);
-    message.encrypt_method = b"0".to_vec(); //Not encrypted.
+    message.encrypt_method = EncryptMethod::None;
     message.heart_bt_int = 5;
     message.default_appl_ver_id = MessageVersion::FIX50SP2;
 

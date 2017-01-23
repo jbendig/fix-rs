@@ -20,8 +20,8 @@ use chrono::TimeZone;
 use std::any::Any;
 use std::collections::HashMap;
 
-use fix_rs::dictionary::field_types::other::{RateSource,RateSourceType};
-use fix_rs::dictionary::fields::{EncryptMethod,HeartBtInt,MsgSeqNum,SendingTime,SenderCompID,TargetCompID,NoMsgTypeGrp,RawData,RawDataLength,NoRateSources,Symbol,NoOrders,TestReqID,Text,OrigSendingTime};
+use fix_rs::dictionary::field_types::other::{EncryptMethod,RateSource,RateSourceType};
+use fix_rs::dictionary::fields::{EncryptMethod as EncryptMethodField,HeartBtInt,MsgSeqNum,SendingTime,SenderCompID,TargetCompID,NoMsgTypeGrp,RawData,RawDataLength,NoRateSources,Symbol,NoOrders,TestReqID,Text,OrigSendingTime};
 use fix_rs::dictionary::messages::Heartbeat;
 use fix_rs::field::Field;
 use fix_rs::field_type::FieldType;
@@ -35,7 +35,7 @@ const PARSE_MESSAGE_BY_STREAM: bool = true;
 const MAX_MESSAGE_SIZE: u64 = 4096;
 
 define_message!(LogonTest: b"L" => {
-    REQUIRED, encrypt_method: EncryptMethod,
+    REQUIRED, encrypt_method: EncryptMethodField,
     REQUIRED, heart_bt_int: HeartBtInt,
     REQUIRED, msg_seq_num: MsgSeqNum,
     NOT_REQUIRED, sending_time: SendingTime,
@@ -165,7 +165,7 @@ fn simple_test() {
     let message = b"8=FIX.4.2\x019=65\x0135=L\x0149=SERVER\x0156=CLIENT\x0134=177\x0152=20090107-18:15:16\x0198=0\x01108=30\x0110=073\x01";
 
     let message = parse_message::<LogonTest>(message).unwrap();
-    assert_eq!(message.encrypt_method,b"0".to_vec());
+    assert_eq!(message.encrypt_method,EncryptMethod::None);
     assert_eq!(message.heart_bt_int,30);
     assert_eq!(message.msg_seq_num,177);
     assert_eq!(message.sending_time,UTC.ymd(2009,1,7).and_hms(18,15,16));
@@ -746,7 +746,7 @@ fn stream_test() {
         assert_eq!(casted_message.target_comp_id,b"CLIENT".to_vec());
         assert_eq!(casted_message.msg_seq_num,177);
         assert_eq!(casted_message.sending_time,UTC.ymd(2009,1,7).and_hms(18,15,16));
-        assert_eq!(casted_message.encrypt_method,b"0".to_vec());
+        assert_eq!(casted_message.encrypt_method,EncryptMethod::None);
         assert_eq!(casted_message.heart_bt_int,30);
     }
 
@@ -763,7 +763,7 @@ fn stream_test() {
     assert_eq!(casted_message.target_comp_id,b"CLIENT".to_vec());
     assert_eq!(casted_message.msg_seq_num,177);
     assert_eq!(casted_message.sending_time,UTC.ymd(2009,1,7).and_hms(18,15,16));
-    assert_eq!(casted_message.encrypt_method,b"0".to_vec());
+    assert_eq!(casted_message.encrypt_method,EncryptMethod::None);
     assert_eq!(casted_message.heart_bt_int,30);
 
     let garbage_between_messages = b"8=FIX.4.2\x019=65\x0135=L\x0149=SERVER\x0156=CLIENT\x0134=177\x0152=20090107-18:15:16\x0198=0\x01108=30\x0110=073\x01garbage=before\x01m8ssage8=FIX.4.2\x019=65\x0135=L\x0149=SERVER\x0156=CLIENT\x0134=177\x0152=20090107-18:15:16\x0198=0\x01108=30\x0110=073\x01";
@@ -781,7 +781,7 @@ fn stream_test() {
         assert_eq!(casted_message.target_comp_id,b"CLIENT".to_vec());
         assert_eq!(casted_message.msg_seq_num,177);
         assert_eq!(casted_message.sending_time,UTC.ymd(2009,1,7).and_hms(18,15,16));
-        assert_eq!(casted_message.encrypt_method,b"0".to_vec());
+        assert_eq!(casted_message.encrypt_method,EncryptMethod::None);
         assert_eq!(casted_message.heart_bt_int,30);
     }
 
@@ -805,7 +805,7 @@ fn stream_test() {
     assert_eq!(casted_message.target_comp_id,b"CLIENT".to_vec());
     assert_eq!(casted_message.msg_seq_num,177);
     assert_eq!(casted_message.sending_time,UTC.ymd(2009,1,7).and_hms(18,15,16));
-    assert_eq!(casted_message.encrypt_method,b"0".to_vec());
+    assert_eq!(casted_message.encrypt_method,EncryptMethod::None);
     assert_eq!(casted_message.heart_bt_int,30);
 }
 
@@ -814,7 +814,7 @@ fn equal_character_in_text_test() {
     let message = b"8=FIX.4.2\x019=37\x0135=L\x0134=177\x0198=0\x01108=30\x0158=some=text\x0110=176\x01";
 
     let message = parse_message::<LogonTest>(message).unwrap();
-    assert_eq!(message.encrypt_method,b"0".to_vec());
+    assert_eq!(message.encrypt_method,EncryptMethod::None);
     assert_eq!(message.heart_bt_int,30);
     assert_eq!(message.msg_seq_num,177);
     assert_eq!(message.text,b"some=text".to_vec());
