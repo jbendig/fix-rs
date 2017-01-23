@@ -51,6 +51,7 @@ const NO_INBOUND_TIMEOUT_PADDING_MS: u64 = 250;
 const AUTO_DISCONNECT_AFTER_LOGOUT_RESPONSE_SECS: u64 = 10;
 const AUTO_DISCONNECT_AFTER_INITIATING_LOGOUT_SECS: u64 = 10;
 const AUTO_CONTINUE_AFTER_LOGOUT_RESEND_REQUEST_SECS: u64 = 10;
+const AUTO_DISCONNECT_AFTER_WRITE_BLOCKS_SECS: u64 = 10;
 const EVENT_POLL_CAPACITY: usize = 1024;
 pub const INBOUND_MESSAGES_BUFFER_LEN_MAX: usize = 10;
 pub const INBOUND_BYTES_BUFFER_CAPACITY: usize = 2048;
@@ -183,6 +184,7 @@ enum TimeoutType {
     Outbound,
     Inbound,
     InboundTestRequest,
+    InboundBlocked,
     ContinueLogout,
     Logout,
     HangUp,
@@ -293,6 +295,8 @@ struct Connection {
     inbound_testrequest_timeout: Option<Timeout>,
     inbound_testrequest_timeout_duration: Option<Duration>,
     inbound_resend_request_msg_seq_num: Option<MsgSeqNumType>,
+    inbound_blocked: bool,
+    inbound_blocked_timeout: Option<Timeout>,
     logout_timeout: Option<Timeout>,
     parser: Parser,
     status: ConnectionStatus,
@@ -301,7 +305,7 @@ struct Connection {
 }
 
 impl Connection {
-    fn write(&mut self,timer: &mut Timer<(TimeoutType,Token)>) -> Result<(),ConnectionTerminatedReason> {
+    fn write(&mut self,timer: &mut Timer<(TimeoutType,Token)>,network_read_retry: &mut NetworkReadRetry) -> Result<(),ConnectionTerminatedReason> {
         //Send data until no more messages are available or until the socket returns WouldBlock.
         let mut sent_data = false;
         loop { //TODO: This loop might make this function too greedy. Maybe not?
@@ -363,10 +367,22 @@ impl Connection {
             match self.outbound_buffer.write(&mut self.socket) {
                 Ok(_) => {
                     sent_data = true;
+
+                    //When data has been successfully sent, it's okay to start reading in new data
+                    //again.
+                    if self.inbound_blocked {
+                        self.end_blocking_inbound(timer,network_read_retry);
+                    }
                 },
                 Err(e) => {
                     match e.kind() {
-                        ErrorKind::WouldBlock => break,
+                        ErrorKind::WouldBlock => {
+                            //Could not write anymore data at the moment. Just in case the other
+                            //side of the connection is over whelmed or we're being attacked, stop
+                            //processing any new messages.
+                            self.begin_blocking_inbound(timer);
+                            break;
+                        },
                         ErrorKind::BrokenPipe => {
                             //TODO: This might not be an actual error if all logging out has been
                             //performed. Could be a Hup.
@@ -422,6 +438,13 @@ impl Connection {
 
         let mut messages = Vec::new();
         let mut keep_reading = parse_bytes(self,&mut messages);
+
+        //Don't read in any new messages for now. This happens when we can't write to the socket
+        //right now. The block applies some back pressure and prevents us from being put into a
+        //situation where we're over whelmed.
+        if self.inbound_blocked {
+            return Ok(messages);
+        }
 
         //Keep reading all available bytes on the socket until it's exhausted or
         //INBOUND_MESSAGES_BUFFER_LEN_MAX messages have been read. The bytes are parsed
@@ -541,11 +564,42 @@ impl Connection {
             self.initiate_logout(timer,LoggingOutType::Ok,b"");
         }
     }
+
+    fn begin_blocking_inbound(&mut self,timer: &mut Timer<(TimeoutType,Token)>) {
+        if self.inbound_blocked {
+            return;
+        }
+
+        self.inbound_blocked = true;
+
+        //Setup a timer to disconnect if inbound blocking is not stopped shortly. Otherwise, the
+        //connection is just sitting there wasting space and is unusable.
+        self.inbound_blocked_timeout = Some(timer.set_timeout(
+            Duration::from_secs(AUTO_DISCONNECT_AFTER_WRITE_BLOCKS_SECS),
+            (TimeoutType::InboundBlocked,self.token)
+        ).unwrap());
+    }
+
+    fn end_blocking_inbound(&mut self,timer: &mut Timer<(TimeoutType,Token)>,network_read_retry: &mut NetworkReadRetry) {
+        if !self.inbound_blocked {
+            return;
+        }
+
+        self.inbound_blocked = false;
+
+        //Stop the auto-disconnect timer. We can read and write to the socket again.
+        if let Some(ref timeout) = self.inbound_blocked_timeout {
+            timer.cancel_timeout(timeout);
+        }
+
+        //Immediately try to read from the socket in case there is any data waiting.
+        network_read_retry.queue(self.token);
+    }
 }
 
 macro_rules! try_write_connection_or_terminate {
     ( $connection_entry:ident, $internal_thread:ident ) => {
-        if let Err(e) = $connection_entry.get_mut().write(&mut $internal_thread.timer) {
+        if let Err(e) = $connection_entry.get_mut().write(&mut $internal_thread.timer,&mut $internal_thread.network_read_retry) {
             return Err(ConnectionEventError::TerminateConnection($connection_entry.remove(),e));
         }
     }
@@ -606,6 +660,8 @@ impl InternalThread {
                     inbound_testrequest_timeout: None,
                     inbound_testrequest_timeout_duration: None,
                     inbound_resend_request_msg_seq_num: None,
+                    inbound_blocked: false,
+                    inbound_blocked_timeout: None,
                     logout_timeout: None,
                     parser: parser,
                     status: ConnectionStatus::LoggingOn,
@@ -708,6 +764,11 @@ impl InternalThread {
                         println!("Shutting down connection after other side failed to respond to TestRequest before timeout");
                         return Err(ConnectionEventError::TerminateConnection(connection_entry.remove(),ConnectionTerminatedReason::TestRequestNotRespondedError));
                     },
+                    TimeoutType::InboundBlocked => {
+                        connection_entry.get_mut().shutdown();
+                        println!("Shutting down connection after writing to socket resulted in WouldBlock for too long");
+                        return Err(ConnectionEventError::TerminateConnection(connection_entry.remove(),ConnectionTerminatedReason::SocketNotWritableTimeoutError));
+                    }
                     TimeoutType::ContinueLogout if connection_entry.get().status.is_logging_out_with_resending_request_initiated_by_server() => {
                         connection_entry.get_mut().respond_to_logout();
                     },
@@ -1454,6 +1515,9 @@ pub fn internal_client_thread(poll: Poll,
                 internal_thread.timer.cancel_timeout(timeout);
             }
             if let Some(ref timeout) = connection.inbound_testrequest_timeout {
+                internal_thread.timer.cancel_timeout(timeout);
+            }
+            if let Some(ref timeout) = connection.inbound_blocked_timeout {
                 internal_thread.timer.cancel_timeout(timeout);
             }
             if let Some(ref timeout) = connection.logout_timeout {

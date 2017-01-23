@@ -18,7 +18,9 @@ extern crate mio;
 use mio::tcp::Shutdown;
 use std::io::Write;
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration,Instant};
+use std::sync::{Arc,Mutex};
+use std::sync::atomic::{AtomicBool,Ordering};
 
 #[macro_use]
 mod common;
@@ -1149,5 +1151,128 @@ fn test_max_message_size() {
                 false
             });
         });
+    }
+}
+
+#[test]
+fn test_block_read_when_write_blocks() {
+
+    define_dictionary!(
+        Logon,
+        Heartbeat,
+        TestRequest,
+    );
+
+    //Send a bunch of messages to Client without reading the responses. Client should stop reading
+    //until it can write again.
+    {
+        //Connect and Logon.
+        let (mut test_server,client,_) = TestServer::setup_and_logon(build_dictionary());
+
+        //Run a background thread to drain client events until they stop. The stopping indicates the
+        //client has stopped accepting new messages.
+        let client = Arc::new(Mutex::new(client)); //Keep client around even after thread ends.
+        let client_clone = client.clone(); //Clone to be passed to thread.
+        let thread_running = Arc::new(AtomicBool::new(true));
+        let thread_running_clone = thread_running.clone();
+        let thread_handle = thread::spawn(move || {
+            let mut client = client_clone.lock().unwrap();
+            while let Some(event) = client.poll(Duration::from_secs(2)) {
+                match event {
+                    ClientEvent::ConnectionTerminated(_,_) => panic!("Client should not have terminated connection yet."),
+                    _ => {},
+                }
+            }
+
+            thread_running_clone.store(false,Ordering::Relaxed);
+        });
+
+        //Flood client with TestRequest messages until thread notifies that messages are being
+        //blocked.
+        let mut outbound_msg_seq_num = 2;
+        let now = Instant::now();
+        let mut stop_writing = false;
+        loop {
+            if !thread_running.load(Ordering::Relaxed) {
+                thread_handle.join().expect("Thread must be stopped.");
+                break;
+            }
+            else if now.elapsed() > Duration::from_secs(15) {
+                panic!("Client never blocked receiving of new messages.");
+            }
+
+            if !stop_writing {
+                let mut message = new_fixt_message!(TestRequest);
+                message.msg_seq_num = outbound_msg_seq_num;
+                message.test_req_id = b"test".to_vec();
+                if let Err(bytes_not_written) = test_server.send_message_with_timeout(message,Duration::from_millis(10)) {
+                    //Stop writing new messages because TCP indicated that the other side is
+                    //congested.
+                    stop_writing = true;
+
+                    if bytes_not_written > 0 {
+                        continue;
+                    }
+                }
+
+                outbound_msg_seq_num += 1;
+            }
+        }
+
+        //Drain server's read buffer.
+        loop {
+            let message = test_server.recv_message::<Heartbeat>();
+            if message.msg_seq_num == outbound_msg_seq_num - 1 {
+                break;
+            }
+        }
+
+        //Send gibberish that will force an incomplete message to be discarded.
+        let _ = test_server.stream.write(b"\x0110=000\x01=000");
+
+        //Make sure messages continue to flow again.
+        let mut message = new_fixt_message!(TestRequest);
+        message.msg_seq_num = outbound_msg_seq_num;
+        message.test_req_id = b"final".to_vec();
+        test_server.send_message(message);
+
+        let message = test_server.recv_message::<Heartbeat>();
+        assert_eq!(message.test_req_id,b"final");
+    }
+
+    //Same as above but never drain the server's read buffer so the connection must eventually be
+    //dropped.
+    {
+        //Connect and Logon.
+        let (mut test_server,mut client,_) = TestServer::setup_and_logon(build_dictionary());
+
+        //Flood client with TestRequest messages until Client drops the connection.
+        let mut outbound_msg_seq_num = 2;
+        let now = Instant::now();
+        let mut stop_writing = false;
+        loop {
+            if now.elapsed() > Duration::from_secs(30) {
+                panic!("Client never disconnected.");
+            }
+
+            if let Some(ClientEvent::ConnectionTerminated(_,reason)) = client.poll(Duration::from_millis(0)) {
+                assert!(if let ConnectionTerminatedReason::SocketNotWritableTimeoutError = reason { true } else { false });
+                assert!(test_server.is_stream_closed(Duration::from_secs(3)));
+
+                //Success! Client disconnected.
+                break;
+            }
+
+            if !stop_writing {
+                let mut message = new_fixt_message!(TestRequest);
+                message.msg_seq_num = outbound_msg_seq_num;
+                message.test_req_id = b"test".to_vec();
+                if let Err(_) = test_server.send_message_with_timeout(message,Duration::from_millis(10)) {
+                    stop_writing = true;
+                }
+
+                outbound_msg_seq_num += 1;
+            }
+        }
     }
 }

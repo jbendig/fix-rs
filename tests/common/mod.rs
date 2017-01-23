@@ -124,13 +124,21 @@ pub fn recv_bytes_with_timeout(stream: &mut TcpStream,timeout: Duration) -> Opti
     None
 }
 
-pub fn send_message(stream: &mut TcpStream,fix_version: FIXVersion,message_version: MessageVersion,message: Box<FIXTMessage + Send>) {
+pub fn send_message_with_timeout(stream: &mut TcpStream,fix_version: FIXVersion,message_version: MessageVersion,message: Box<FIXTMessage + Send>,timeout: Option<Duration>) -> Result<(),usize> {
     let mut bytes = Vec::new();
     message.read(fix_version,message_version,&mut bytes);
 
+    let now = Instant::now();
     let mut bytes_written_total = 0;
     while bytes_written_total < bytes.len() {
-        match  stream.write(&bytes[bytes_written_total..bytes.len()]) {
+        if let Some(timeout) = timeout {
+            if now.elapsed() > timeout {
+                println!("Timing out from write...");
+                return Err(bytes.len() - bytes_written_total);
+            }
+        }
+
+        match stream.write(&bytes[bytes_written_total..bytes.len()]) {
             Ok(bytes_written) => bytes_written_total += bytes_written,
             Err(e) => {
                 if e.kind() == ::std::io::ErrorKind::WouldBlock {
@@ -140,6 +148,12 @@ pub fn send_message(stream: &mut TcpStream,fix_version: FIXVersion,message_versi
             },
         }
     }
+
+    Ok(())
+}
+
+pub fn send_message(stream: &mut TcpStream,fix_version: FIXVersion,message_version: MessageVersion,message: Box<FIXTMessage + Send>) {
+    let _ = send_message_with_timeout(stream,fix_version,message_version,message,None);
 }
 
 pub struct TestServer {
@@ -291,6 +305,12 @@ impl TestServer {
         let fix_version = self.fix_version;
         let message_version = self.message_version;
         self.send_message_with_ver::<T>(fix_version,message_version,message);
+    }
+
+    pub fn send_message_with_timeout<T: FIXTMessage + Any + Send>(&mut self,message: T,timeout: Duration) -> Result<(),usize> {
+        let fix_version = self.fix_version;
+        let message_version = self.message_version;
+        send_message_with_timeout(&mut self.stream,fix_version,message_version,Box::new(message),Some(timeout))
     }
 }
 
