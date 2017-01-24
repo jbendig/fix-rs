@@ -213,6 +213,7 @@ More About Optimization
   - [perf](https://perf.wiki.kernel.org/index.php/Main_Page) and [OProfile](http://oprofile.sourceforge.net/news/) can both do system-wide profiling which is useful when you're optimizing around system calls.
   - [What Every Programmer Should Know About Memory by Ulrich Drepper [PDF]](https://people.freebsd.org/~lstewart/articles/cpumemory.pdf) is an essential read when working on memory bottlenecked algorithms. In summary, the cache is king.
   - [Agner's Optimization Manuals](http://agner.org/optimize/#manuals), particularly those on assembly, are fantastic when calculating performance across different CPU models.
+  - [Profiling Rust applications on Linux](https://llogiq.github.io/2015/07/15/profiling.html) Llogiq covered this topic awhile ago. In particular, he covers reviewing Valgrind's output using the command line and how to profile with OProfile.
 
 Footnotes
 =========
