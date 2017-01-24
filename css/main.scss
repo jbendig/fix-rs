@@ -37,3 +37,24 @@ $on-laptop:        800px;
 
 // Import partials from the `minima` theme.
 @import "minima";
+
+// Custom stuff.
+div.note {
+	background-color: #b2c2ff;
+	padding: $spacing-unit/2;
+	margin-bottom: $spacing-unit/2;
+}
+
+div.note h5 {
+	display: table-cell;
+	font-size: 1.33em;
+	font-weight: bold;
+	float: left;
+	padding-right: $spacing-unit/2;
+}
+
+div.note p:last-child {
+	display: table-cell;
+	margin-bottom: 0;
+}
+
