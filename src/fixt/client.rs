@@ -78,6 +78,7 @@ impl fmt::Debug for ConnectionTerminatedReason {
 
 pub enum ClientEvent {
     ConnectionFailed(usize,io::Error), //Could not setup connection.
+    ConnectionSucceeded(usize), //Connection completed and ready to begin logon.
     ConnectionTerminated(usize,ConnectionTerminatedReason), //Connection ended for ConnectionTerminatedReason reason.
     SessionEstablished(usize), //Connection completed logon process successfully.
     MessageReceived(usize,Box<FIXTMessage + Send>), //New valid message was received.
@@ -93,6 +94,7 @@ impl fmt::Debug for ClientEvent {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             ClientEvent::ConnectionFailed(connection_id,ref error) => write!(f,"ClientEvent::ConnectionFailed({},{:?})",connection_id,error),
+            ClientEvent::ConnectionSucceeded(connection_id) => write!(f,"ClientEvent::ConnectionSucceeded({})",connection_id),
             ClientEvent::ConnectionTerminated(connection_id,ref reason) => write!(f,"ClientEvent::ConnectionTerminated({},{:?})",connection_id,reason),
             ClientEvent::SessionEstablished(connection_id) => write!(f,"ClientEvent::SessionEstablished({})",connection_id),
             ClientEvent::MessageReceived(connection_id,ref message) => write!(f,"ClientEvent::MessageReceived({},{:?})",connection_id,message),

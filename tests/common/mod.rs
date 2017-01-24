@@ -179,6 +179,10 @@ impl TestServer {
         //Try to accept connection from client. Fails on timeout or socket error.
         let stream = accept_with_timeout(&listener,Duration::from_secs(5)).expect("Could not accept connection");
 
+        //Confirm client was able to connect.
+        let event = client.poll(Duration::from_secs(5)).expect("Could not connect");
+        assert!(if let ClientEvent::ConnectionSucceeded(id) = event { id == connection_id } else { false });
+
         //Setup a single Poll to watch the TCPStream. This way we can check for disconnects in
         //is_stream_closed(). Unfortunately, as of mio 0.6.1, Linux implementation emulates OS X
         //and Windows where a stream can only be registered with one Poll for the life of the

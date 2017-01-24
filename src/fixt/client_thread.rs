@@ -17,7 +17,7 @@ use mio::timer::Builder as TimerBuilder;
 use std::cmp;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
-use std::io::ErrorKind;
+use std::io;
 use std::mem;
 use std::net::SocketAddr;
 use std::rc::Rc;
@@ -299,6 +299,7 @@ struct Connection {
     inbound_blocked_timeout: Option<Timeout>,
     logout_timeout: Option<Timeout>,
     parser: Parser,
+    is_connected: bool, //TODO: Might belong better as part of ConnectionStatus if the state machine design works well.
     status: ConnectionStatus,
     sender_comp_id: Rc<<<SenderCompID as Field>::Type as FieldType>::Type>,
     target_comp_id: Rc<<<TargetCompID as Field>::Type as FieldType>::Type>,
@@ -376,14 +377,14 @@ impl Connection {
                 },
                 Err(e) => {
                     match e.kind() {
-                        ErrorKind::WouldBlock => {
+                        io::ErrorKind::WouldBlock => {
                             //Could not write anymore data at the moment. Just in case the other
                             //side of the connection is over whelmed or we're being attacked, stop
                             //processing any new messages.
                             self.begin_blocking_inbound(timer);
                             break;
                         },
-                        ErrorKind::BrokenPipe => {
+                        io::ErrorKind::BrokenPipe => {
                             //TODO: This might not be an actual error if all logging out has been
                             //performed. Could be a Hup.
                             return Err(ConnectionTerminatedReason::SocketWriteError(e));
@@ -462,8 +463,7 @@ impl Connection {
                     keep_reading = parse_bytes(self,&mut messages);
                 },
                 Err(e) => {
-                    use std::io::ErrorKind::WouldBlock;
-                    if let WouldBlock = e.kind() {
+                    if let io::ErrorKind::WouldBlock = e.kind() {
                         //Socket exhausted.
                         break;
                     }
@@ -664,6 +664,7 @@ impl InternalThread {
                     inbound_blocked_timeout: None,
                     logout_timeout: None,
                     parser: parser,
+                    is_connected: false,
                     status: ConnectionStatus::LoggingOn,
                     sender_comp_id: self.sender_comp_id.clone(),
                     target_comp_id: self.target_comp_id.clone(),
@@ -845,6 +846,12 @@ impl InternalThread {
             //fills up and would block. Whichever happens first.
             if event.kind().is_writable() {
                 try_write_connection_or_terminate!(connection_entry,self);
+
+                if !connection_entry.get().is_connected {
+                    //Let user know that the socket's connect() call succeeded.
+                    connection_entry.get_mut().is_connected = true;
+                    self.tx.send(ClientEvent::ConnectionSucceeded(connection_entry.get().token.0)).unwrap();
+                }
             }
 
             //Socket was closed on the other side. If already responded to a Logout initiated by
@@ -1509,7 +1516,9 @@ pub fn internal_client_thread(poll: Poll,
         }
 
         //Clean-up connections that have been shutdown (cleanly or on error).
-        for (connection,e) in terminated_connections.drain(..) {
+        terminated_connections.drain(..).all(|terminated_connection| {
+            let (connection,e) = terminated_connection;
+
             let _ = internal_thread.poll.deregister(&connection.socket);
             if let Some(ref timeout) = connection.outbound_heartbeat_timeout {
                 internal_thread.timer.cancel_timeout(timeout);
@@ -1526,7 +1535,21 @@ pub fn internal_client_thread(poll: Poll,
 
             internal_thread.network_read_retry.remove_all(connection.token);
 
+            //Notify user in the special case where connection was never even established. This
+            //block is incredibly ugly but required to appease the borrow checker.
+            let e = if let ConnectionTerminatedReason::SocketReadError(err) = e {
+                if !connection.is_connected {
+                    internal_thread.tx.send(ClientEvent::ConnectionFailed(connection.token.0,err)).unwrap();
+                    return true;
+                }
+
+                ConnectionTerminatedReason::SocketReadError(err)
+            } else { e };
+
+            //Notify user that connection was terminated.
             internal_thread.tx.send(ClientEvent::ConnectionTerminated(connection.token.0,e)).unwrap();
-        }
+
+            true
+        });
     }
 }
