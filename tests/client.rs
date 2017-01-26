@@ -32,7 +32,7 @@ use fix_rs::field::Field;
 use fix_rs::fix::ParseError;
 use fix_rs::fix_version::FIXVersion;
 use fix_rs::fixt::client::{ClientEvent,ConnectionTerminatedReason};
-use fix_rs::fixt::tests::{INBOUND_MESSAGES_BUFFER_LEN_MAX,INBOUND_BYTES_BUFFER_CAPACITY};
+use fix_rs::fixt::tests::{AUTO_DISCONNECT_AFTER_INBOUND_RESEND_REQUEST_LOOP_COUNT,INBOUND_MESSAGES_BUFFER_LEN_MAX,INBOUND_BYTES_BUFFER_CAPACITY};
 use fix_rs::fixt::message::FIXTMessage;
 use fix_rs::message::{NOT_REQUIRED,REQUIRED,Message};
 use fix_rs::message_version::MessageVersion;
@@ -1275,4 +1275,63 @@ fn test_block_read_when_write_blocks() {
             }
         }
     }
+}
+
+#[test]
+fn test_inbound_resend_loop_detection() {
+    define_dictionary!(
+        Logon,
+        Logout,
+        Heartbeat,
+        ResendRequest,
+        SequenceReset,
+        TestRequest,
+    );
+
+    //Connect and logon.
+    let (mut test_server,mut client,connection_id) = TestServer::setup_and_logon(build_dictionary());
+
+    //Have server send TestRequest so Client responds with a Heartbeat.
+    let mut message = new_fixt_message!(TestRequest);
+    message.msg_seq_num = 2;
+    message.test_req_id = b"test".to_vec();
+    test_server.send_message(message);
+    client_poll_message!(client,connection_id,TestRequest);
+    let message = test_server.recv_message::<Heartbeat>();
+    assert_eq!(message.msg_seq_num,2);
+    assert_eq!(message.test_req_id,b"test");
+
+    //Have server ignore the Heartbeat response by sending ResendRequest a few times. The client
+    //should eventually logout and disconnect.
+    //TODO: Doesn't actually logout yet. :X
+    const BASE_MSG_SEQ_NUM: u64 = 3;
+    for x in 0..AUTO_DISCONNECT_AFTER_INBOUND_RESEND_REQUEST_LOOP_COUNT {
+        let mut message = new_fixt_message!(ResendRequest);
+        message.msg_seq_num = BASE_MSG_SEQ_NUM + x;
+        message.begin_seq_no = 2;
+        message.end_seq_no = 0;
+        test_server.send_message(message);
+
+        let _ = client_poll_message!(client,connection_id,ResendRequest);
+
+        let message = test_server.recv_message::<SequenceReset>();
+        assert_eq!(message.gap_fill_flag,true);
+        assert_eq!(message.new_seq_no,3);
+        assert_eq!(message.msg_seq_num,2);
+    }
+
+    let mut message = new_fixt_message!(ResendRequest);
+    message.msg_seq_num = BASE_MSG_SEQ_NUM + AUTO_DISCONNECT_AFTER_INBOUND_RESEND_REQUEST_LOOP_COUNT;
+    message.begin_seq_no = 2;
+    message.end_seq_no = 0;
+    test_server.send_message(message);
+
+    let message = test_server.recv_message::<Logout>();
+    assert_eq!(message.text,b"Detected ResendRequest loop for BeginSeqNo 2".to_vec());
+
+    client_poll_event!(client,ClientEvent::ConnectionTerminated(terminated_connection_id,reason) => {
+        assert_eq!(terminated_connection_id,connection_id);
+        assert!(if let ConnectionTerminatedReason::InboundResendRequestLoopError = reason { true } else { false });
+    });
+    assert!(test_server.is_stream_closed(Duration::from_secs(3)));
 }

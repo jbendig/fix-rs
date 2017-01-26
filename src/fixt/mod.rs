@@ -15,5 +15,9 @@ mod client_thread;
 pub mod message;
 
 pub mod tests {
-    pub use super::client_thread::{INBOUND_MESSAGES_BUFFER_LEN_MAX,INBOUND_BYTES_BUFFER_CAPACITY};
+    pub use super::client_thread::{
+        AUTO_DISCONNECT_AFTER_INBOUND_RESEND_REQUEST_LOOP_COUNT,
+        INBOUND_MESSAGES_BUFFER_LEN_MAX,
+        INBOUND_BYTES_BUFFER_CAPACITY
+    };
 }

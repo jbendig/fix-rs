@@ -33,6 +33,7 @@ pub enum ConnectionTerminatedReason {
     ClientRequested,
     InboundMsgSeqNumMaxExceededError,
     InboundMsgSeqNumLowerThanExpectedError,
+    InboundResendRequestLoopError,
     LogonHeartBtIntNegativeError,
     LogonParseError(ParseError),
     LogonNotFirstMessageError,
@@ -59,6 +60,7 @@ impl fmt::Debug for ConnectionTerminatedReason {
             ConnectionTerminatedReason::ClientRequested => write!(f,"Client requested logout and it was performed cleanly."),
             ConnectionTerminatedReason::InboundMsgSeqNumMaxExceededError => write!(f,"Expected inbound MsgSeqNum exceeded maximum allowed."),
             ConnectionTerminatedReason::InboundMsgSeqNumLowerThanExpectedError => write!(f,"Received message with lower MsgSeqNum than expected."),
+            ConnectionTerminatedReason::InboundResendRequestLoopError => write!(f,"Received too many ResendRequests with the same BeginSeqNo."),
             ConnectionTerminatedReason::LogonHeartBtIntNegativeError => write!(f,"Response to logon included negative HeartBtInt."),
             ConnectionTerminatedReason::LogonParseError(_) => write!(f,"Could not parse logon response."), //Did you connect to a server not running a FIX engine?
             ConnectionTerminatedReason::LogonNotFirstMessageError => write!(f,"Server responded to logon with a non-logon message."),

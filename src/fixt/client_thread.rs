@@ -52,6 +52,7 @@ const AUTO_DISCONNECT_AFTER_LOGOUT_RESPONSE_SECS: u64 = 10;
 const AUTO_DISCONNECT_AFTER_INITIATING_LOGOUT_SECS: u64 = 10;
 const AUTO_CONTINUE_AFTER_LOGOUT_RESEND_REQUEST_SECS: u64 = 10;
 const AUTO_DISCONNECT_AFTER_WRITE_BLOCKS_SECS: u64 = 10;
+pub const AUTO_DISCONNECT_AFTER_INBOUND_RESEND_REQUEST_LOOP_COUNT: u64 = 5;
 const EVENT_POLL_CAPACITY: usize = 1024;
 pub const INBOUND_MESSAGES_BUFFER_LEN_MAX: usize = 10;
 pub const INBOUND_BYTES_BUFFER_CAPACITY: usize = 2048;
@@ -280,6 +281,11 @@ enum ConnectionReadMessage {
     Error(ParseError),
 }
 
+struct LastSeenResendRequest {
+    begin_seq_no: MsgSeqNumType,
+    count: u64,
+}
+
 struct Connection {
     fix_version: FIXVersion,
     default_message_version: MessageVersion,
@@ -295,6 +301,7 @@ struct Connection {
     inbound_testrequest_timeout: Option<Timeout>,
     inbound_testrequest_timeout_duration: Option<Duration>,
     inbound_resend_request_msg_seq_num: Option<MsgSeqNumType>,
+    inbound_last_seen_resend_request: LastSeenResendRequest,
     inbound_blocked: bool,
     inbound_blocked_timeout: Option<Timeout>,
     logout_timeout: Option<Timeout>,
@@ -660,6 +667,10 @@ impl InternalThread {
                     inbound_testrequest_timeout: None,
                     inbound_testrequest_timeout_duration: None,
                     inbound_resend_request_msg_seq_num: None,
+                    inbound_last_seen_resend_request: LastSeenResendRequest {
+                        begin_seq_no: 0,
+                        count: 0,
+                    },
                     inbound_blocked: false,
                     inbound_blocked_timeout: None,
                     logout_timeout: None,
@@ -905,6 +916,24 @@ impl InternalThread {
                     else {
                         resend_request.end_seq_no
                     };
+
+                    //Detect if we're stuck in a ResendRequest loop by examining the BeginSeqNo
+                    //field. If the same sequence is seen too many times, initiate logout and
+                    //disconnect.
+                    if resend_request.begin_seq_no == connection.inbound_last_seen_resend_request.begin_seq_no {
+                        connection.inbound_last_seen_resend_request.count += 1;
+
+                        if connection.inbound_last_seen_resend_request.count > AUTO_DISCONNECT_AFTER_INBOUND_RESEND_REQUEST_LOOP_COUNT {
+                            let mut text = b"Detected ResendRequest loop for BeginSeqNo ".to_vec();
+                            text.extend_from_slice(resend_request.begin_seq_no.to_string().as_bytes());
+                            connection.initiate_logout(timer,LoggingOutType::Error(ConnectionTerminatedReason::InboundResendRequestLoopError),&text[..]);
+                            return None;
+                        }
+                    }
+                    else {
+                        connection.inbound_last_seen_resend_request.begin_seq_no = resend_request.begin_seq_no;
+                        connection.inbound_last_seen_resend_request.count = 1;
+                    }
 
                     //Fill message gap by resending messages.
                     //TODO: This shouldn't always be a gap fill. Only for
