@@ -1346,8 +1346,6 @@ impl InternalThread {
             reject.text = text.to_vec();
             connection.outbound_messages.push(OutboundMessage::from(reject));
 
-            try!(connection.increment_inbound_msg_seq_num());
-
             Ok(())
         }
 
@@ -1358,8 +1356,7 @@ impl InternalThread {
                 connection.shutdown();
                 return Err(ConnectionTerminatedReason::LogonParseError(parse_error));
             },
-            //Handle parse error as normal. Usually just respond with a Reject and increment the
-            //expected inbound MsgSeqNum.
+            //Handle parse error as normal. Usually just respond with a Reject
             _ => {
                 match parse_error {
                     ParseError::MissingRequiredTag(ref tag,_) => {
@@ -1420,8 +1417,6 @@ impl InternalThread {
                             business_message_reject.business_reject_ref_id = tag.to_vec();
                             business_message_reject.text = b"Conditionally required field missing".to_vec();
                             connection.outbound_messages.push(OutboundMessage::from(business_message_reject));
-
-                            try!(connection.increment_inbound_msg_seq_num());
                         }
                     },
                     ParseError::MissingFirstRepeatingGroupTagAfterNumberOfRepeatingGroupTag(ref tag) |
@@ -1442,8 +1437,6 @@ impl InternalThread {
                             business_message_reject.business_reject_ref_id = business_message_reject.ref_msg_type.clone();
                             business_message_reject.text = b"Unsupported Message Type".to_vec();
                             connection.outbound_messages.push(OutboundMessage::from(business_message_reject));
-
-                            try!(connection.increment_inbound_msg_seq_num());
                         }
                         else {
                             //MsgType is invalid.
@@ -1452,6 +1445,10 @@ impl InternalThread {
                     },
                     _ => {}, //TODO: Support other errors as appropriate.
                 };
+
+                //Always increment expected inbound MsgSeqNum after encountering a message that is
+                //garbled, cannot be parsed, or is otherwise invalid. See FIXT 1.1, page 26.
+                try!(connection.increment_inbound_msg_seq_num());
 
                 //Tell user about the garbled message just in case they care.
                 tx.send(ClientEvent::MessageReceivedGarbled(connection.token.0,parse_error)).unwrap();

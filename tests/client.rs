@@ -1232,7 +1232,7 @@ fn test_block_read_when_write_blocks() {
 
         //Make sure messages continue to flow again.
         let mut message = new_fixt_message!(TestRequest);
-        message.msg_seq_num = outbound_msg_seq_num;
+        message.msg_seq_num = outbound_msg_seq_num + 1;
         message.test_req_id = b"final".to_vec();
         test_server.send_message(message);
 

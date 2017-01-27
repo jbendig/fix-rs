@@ -341,12 +341,12 @@ fn test_2B() {
 
         //Send valid message.
         let mut message = new_fixt_message!(TestRequest);
-        message.msg_seq_num = 2;
+        message.msg_seq_num = 3;
         message.test_req_id = b"1".to_vec();
         test_server.send_message(message);
 
         let message = client_poll_message!(client,connection_id,TestRequest);
-        assert_eq!(message.msg_seq_num,2);
+        assert_eq!(message.msg_seq_num,3);
     }
 
     //e. Logon, send message with PossDupFlag set to Y, MsgSeqNum lower than expected, and:
