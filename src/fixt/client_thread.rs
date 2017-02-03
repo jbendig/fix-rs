@@ -1391,17 +1391,14 @@ impl InternalThread {
                         error_text.extend_from_slice(connection.parser.max_message_size().to_string().as_bytes());
                         try!(push_reject(connection,b"",Vec::new(),SessionRejectReason::Other,&error_text[..]));
                     },
-                    /* TODO: These should probably be considered garbled instead of
-                     * responding to.
-                     ParseError::BeginStrNotFirstTag |
-                     ParseError::BodyLengthNotSecondTag |
-                     ParseError::MsgTypeNotThirdTag |
-                     ParseError::ChecksumNotLastTag |
-                     ParseError::MissingPrecedingLengthTag(_) |
-                     ParseError::MissingFollowingLengthTag(_) => {
-                         try!(push_reject(connection,None,SessionRejectReason::TagSpecifiedOutOfRequiredOrder,"Tag specified out of required order"));
-                     },
-                     */
+                    ParseError::BeginStrNotFirstTag |
+                    ParseError::BodyLengthNotSecondTag |
+                    ParseError::MsgTypeNotThirdTag |
+                    ParseError::ChecksumNotLastTag |
+                    ParseError::MissingPrecedingLengthTag(_) |
+                    ParseError::MissingFollowingLengthTag(_) => {
+                        try!(push_reject(connection,b"",Vec::new(),SessionRejectReason::TagSpecifiedOutOfRequiredOrder,b"Tag specified out of required order"));
+                    },
                     ParseError::DuplicateTag(ref tag) => {
                         try!(push_reject(connection,b"",*tag,SessionRejectReason::TagAppearsMoreThanOnce,b"Tag appears more than once"));
                     },

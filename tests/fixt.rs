@@ -1617,16 +1617,16 @@ fn test_14B() {
     //g. Send message with one of the header fields after after the body fields or the trailer
     //fields are not at the end. Client should respond with Reject, increment inbound sequence
     //number, and issue an error.
-    /* TODO: This test conflicts with the fact that these issues indicate that the message is
-     * garbled. Page 26 of FIXT Version 1.1 clearly states that garbled messages should be outright
-     * ignored.
+    //This test seems to somewhat contradict page 26 of FIXT Version 1.1 that states a garbled
+    //message should be ignored. We are opting to respond with a Reject whenever possible to ease
+    //debugging since this shouldn't occur in a live system.
     for message_bytes in vec![
         b"49=TEST\x018=FIX.4.2\x019=38\x0135=1\x0156=TX\x0134=1\x0152=20090107-18:15:16\x01112=1\x0110=204\x01", //BeginStr is not the first tag.
         b"8=FIX.4.2\x0149=TEST\x019=38\x0135=1\x0156=TX\x0134=1\x0152=20090107-18:15:16\x01112=1\x0110=204\x01", //BodyLength is not the second tag.
         b"8=FIX.4.2\x019=38\x0149=TEST\x0135=1\x0156=TX\x0134=1\x0152=20090107-18:15:16\x01112=1\x0110=204\x01", //MsgType is not the third tag.
         b"8=FIX.4.2\x019=38\x0135=1\x0149=TEST\x0156=TX\x0134=1\x0152=20090107-18:15:16\x0110=204\x01112=1\x01" //Checksum is not the last tag.
     ] {
-        do_garbled_test(SessionRejectReason::TagSpecifiedOutOfRequiredOrder,|test_server,client,connection_id| {
+        do_garbled_test(SessionRejectReason::TagSpecifiedOutOfRequiredOrder,b"",|test_server,client,connection_id| {
             //Send message.
             let bytes_written = test_server.stream.write(message_bytes).unwrap();
             assert_eq!(bytes_written,message_bytes.len());
@@ -1644,7 +1644,6 @@ fn test_14B() {
             });
         });
     }
-    */
 
     //h. Send message with a tag duplicated outside of an appropriate repeating group. Client
     //should respond with Reject, increment inbound sequence number, and issue an error.
