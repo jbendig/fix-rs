@@ -3,6 +3,7 @@
 *.doc
 *.txt
 target/*
+fix-rs-macros/target/*
 callgrind.out.*
 cachegrind.out.*
 Cargo.lock

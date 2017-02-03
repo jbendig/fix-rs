@@ -9,6 +9,7 @@
 // at your option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use field_tag::FieldTag;
 use field_type::FieldType;
 use fix_version::FIXVersion;
 use message_version::MessageVersion;
@@ -17,7 +18,8 @@ use rule::Rule;
 pub trait Field {
     type Type;
     fn rule() -> Rule;
-    fn tag() -> &'static [u8];
+    fn tag_bytes() -> &'static [u8];
+    fn tag() -> FieldTag;
     fn read(field: &<<Self as Field>::Type as FieldType>::Type,fix_version: FIXVersion,message_version: MessageVersion,buf: &mut Vec<u8>,required: bool) -> usize
         where <Self as Field>::Type: FieldType;
 }
@@ -25,7 +27,12 @@ pub trait Field {
 #[macro_export]
 macro_rules! define_fields {
     ( $( $field_name:ident : $field_type:ty = $tag:expr $( => $rule:expr )* ),* $(),* ) => { $(
-        pub struct $field_name;
+        #[derive(BuildField)]
+        pub struct $field_name {
+            #[tag=$tag]
+            _tag_gen: ::std::marker::PhantomData<()>,
+        }
+
         impl $crate::field::Field for $field_name {
             type Type = $field_type;
 
@@ -48,8 +55,12 @@ macro_rules! define_fields {
                 }
             }
 
-            fn tag() -> &'static [u8] {
-                $tag
+            fn tag_bytes() -> &'static [u8] {
+                Self::tag_bytes()
+            }
+
+            fn tag() -> $crate::field_tag::FieldTag {
+                Self::tag()
             }
 
             fn read(field: &<<Self as $crate::field::Field>::Type as $crate::field_type::FieldType>::Type,fix_version: $crate::fix_version::FIXVersion,message_version: $crate::message_version::MessageVersion,buf: &mut Vec<u8>,required: bool) -> usize {
@@ -70,8 +81,9 @@ macro_rules! define_fields {
                     //If this is the second part of a Rule::PrepareForBytes and
                     //Rule::ConfirmPreviousTag pair, insert the length tag first.
                     $crate::rule::Rule::ConfirmPreviousTag{ previous_tag } => {
+                        let previous_tag = previous_tag.to_bytes();
                         result += 2;
-                        result += buf.write(previous_tag).unwrap();
+                        result += buf.write(&previous_tag[..]).unwrap();
                         buf.push($crate::constant::TAG_END);
                         result += buf.write(<$field_type as $crate::field_type::FieldType>::len(field).to_string().as_bytes()).unwrap();
                         buf.push($crate::constant::VALUE_END);
@@ -87,7 +99,7 @@ macro_rules! define_fields {
                 };
 
                 //Write tag and value.
-                result += buf.write($tag).unwrap();
+                result += buf.write(Self::tag_bytes()).unwrap();
                 buf.push($crate::constant::TAG_END);
                 result += <$field_type as $crate::field_type::FieldType>::read(field,fix_version,message_version,buf);
 

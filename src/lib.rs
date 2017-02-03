@@ -9,12 +9,20 @@
 // at your option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(attr_literals)]
 #![feature(duration_checked_ops)]
+#![feature(plugin)]
+#![feature(proc_macro)]
+
+#![plugin(phf_macros)]
 
 #![allow(unknown_lints)]
 
 extern crate chrono;
+#[macro_use]
+extern crate fix_rs_macros;
 extern crate mio;
+extern crate phf;
 extern crate time;
 
 mod byte_buffer;
@@ -23,9 +31,11 @@ pub mod fixt;
 pub mod constant;
 #[macro_use]
 pub mod field;
+pub mod field_tag;
 pub mod field_type;
 pub mod fix;
 pub mod fix_version;
+pub mod hash;
 #[macro_use]
 pub mod message;
 pub mod message_version;

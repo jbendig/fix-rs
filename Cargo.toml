@@ -11,6 +11,9 @@ keywords = ["fix", "protocol", "finance", "trading", "library"]
 license = "MIT/Apache-2.0"
 
 [dependencies]
+"fix-rs-macros" = { path = "fix-rs-macros", version ="0.1.0" }
 "mio" = "0.6"
 "chrono" = "0.2"
 "time" = "0.1"
+"phf" = "0.7.21"
+"phf_macros" = "0.7.21"

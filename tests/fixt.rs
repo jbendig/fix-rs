@@ -9,6 +9,7 @@
 // at your option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(attr_literals)]
 #![feature(const_fn)]
 #![allow(non_snake_case)]
 
@@ -17,7 +18,10 @@
 extern crate chrono;
 #[macro_use]
 extern crate fix_rs;
+#[macro_use]
+extern crate fix_rs_macros;
 extern crate mio;
+extern crate phf;
 
 use mio::tcp::Shutdown;
 use std::any::Any;
@@ -32,15 +36,17 @@ use common::{SERVER_SENDER_COMP_ID,SERVER_TARGET_COMP_ID,TestServer,new_logon_me
 use fix_rs::dictionary::standard_msg_types;
 use fix_rs::dictionary::field_types::generic::{CharFieldType,NoneFieldType,StringFieldType};
 use fix_rs::dictionary::field_types::other::{BusinessRejectReason,OrdType,SecurityIDSource,SessionRejectReason,Side};
-use fix_rs::dictionary::fields::{TestReqID,HeartBtInt,BeginSeqNo,EndSeqNo,SideField,OrigSendingTime,NoHops,HopCompID};
+use fix_rs::dictionary::fields::{TestReqID,HeartBtInt,EndSeqNo,SideField,OrigSendingTime,NoHops,HopCompID};
 use fix_rs::dictionary::messages::{Logon,Logout,NewOrderSingle,ResendRequest,TestRequest,Heartbeat,SequenceReset,Reject,BusinessMessageReject};
 use fix_rs::field::Field;
 use fix_rs::fix::ParseError;
+use fix_rs::field_tag::{self,FieldTag};
 use fix_rs::fix_version::FIXVersion;
+use fix_rs::fixt;
 use fix_rs::fixt::client::{Client,ClientEvent,ConnectionTerminatedReason};
-use fix_rs::fixt::message::FIXTMessage;
-use fix_rs::message::{NOT_REQUIRED,REQUIRED,MessageDetails};
-use fix_rs::message_version::MessageVersion;
+use fix_rs::fixt::message::{BuildFIXTMessage,FIXTMessage};
+use fix_rs::message::{self,NOT_REQUIRED,REQUIRED,MessageDetails};
+use fix_rs::message_version::{self,MessageVersion};
 
 fn is_logon_valid(message: &Logon) -> bool {
     //TODO: Confirm Logon message is valid.
@@ -1407,9 +1413,9 @@ fn test_14B() {
     );
 
     define_fields!(
-        BeginSeqNoString: StringFieldType = BeginSeqNo::tag(),
-        TestReqIDEmpty: NoneFieldType = TestReqID::tag(),
-        UndefinedField: StringFieldType = b"9999999",
+        BeginSeqNoString: StringFieldType = 7,
+        TestReqIDEmpty: NoneFieldType = 112,
+        UndefinedField: StringFieldType = 9999999,
     );
 
     define_fixt_message!(TestRequestWithUndefinedField: b"1" => {
@@ -1440,7 +1446,7 @@ fn test_14B() {
         REQUIRED, test_req_id_2: TestReqID [FIX40..],
     });
 
-    fn do_garbled_test_with_dict<F: Fn(&mut TestServer,&mut Client,usize),TestRequestResponse: FIXTMessage + Any + Clone>(session_reject_reason: SessionRejectReason,ref_tag_id: &'static [u8],test_func: F,dict: HashMap<&'static [u8],Box<FIXTMessage + Send>>) {
+    fn do_garbled_test_with_dict<F: Fn(&mut TestServer,&mut Client,usize),TestRequestResponse: FIXTMessage + Any + Clone>(session_reject_reason: SessionRejectReason,ref_tag_id: &'static [u8],test_func: F,dict: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>) {
         //Connect and Logon.
         let (mut test_server,mut client,connection_id) = TestServer::setup_and_logon(dict);
 
@@ -1469,7 +1475,7 @@ fn test_14B() {
 
     //a. Send message with tag not defined in spec (tag shouldn't be allowed in any message).
     //Client should respond with Reject, increment inbound sequence number, and issue an error.
-    do_garbled_test(SessionRejectReason::InvalidTagNumber,UndefinedField::tag(),|test_server,client,connection_id| {
+    do_garbled_test(SessionRejectReason::InvalidTagNumber,UndefinedField::tag_bytes(),|test_server,client,connection_id| {
         //Send message with undefined tag.
         let mut message = new_fixt_message!(TestRequestWithUndefinedField);
         message.msg_seq_num = 2;
@@ -1489,7 +1495,7 @@ fn test_14B() {
 
     //b. Send message with a required field missing. Client should respond with Reject, increment
     //inbound sequence number, and issue an error.
-    do_garbled_test(SessionRejectReason::RequiredTagMissing,TestReqID::tag(),|test_server,client,connection_id| {
+    do_garbled_test(SessionRejectReason::RequiredTagMissing,TestReqID::tag_bytes(),|test_server,client,connection_id| {
         //Send message with missing required tag.
         let mut message = new_fixt_message!(TestRequestWithNotRequiredField);
         message.msg_seq_num = 2;
@@ -1510,7 +1516,7 @@ fn test_14B() {
 
     //c. Send message with defined field but not for the message type. Client should respond with
     //Reject, increment inbound sequence number, and issue an error.
-    do_garbled_test(SessionRejectReason::TagNotDefinedForThisMessageType,HeartBtInt::tag(),|test_server,client,connection_id| {
+    do_garbled_test(SessionRejectReason::TagNotDefinedForThisMessageType,HeartBtInt::tag_bytes(),|test_server,client,connection_id| {
         //Send message with wrong tag for message.
         let mut message = new_fixt_message!(TestRequestWithWrongField);
         message.msg_seq_num = 2;
@@ -1530,7 +1536,7 @@ fn test_14B() {
 
     //d. Send message with a tag containing no value. Client should respond with Reject, increment
     //inbound sequence number, and issue an error.
-    do_garbled_test(SessionRejectReason::TagSpecifiedWithoutAValue,TestReqIDEmpty::tag(),|test_server,client,connection_id| {
+    do_garbled_test(SessionRejectReason::TagSpecifiedWithoutAValue,TestReqIDEmpty::tag_bytes(),|test_server,client,connection_id| {
         //Send message with valid tag but empty field for message.
         let mut message = new_fixt_message!(TestRequestWithEmptyField);
         message.msg_seq_num = 2;
@@ -1555,7 +1561,7 @@ fn test_14B() {
         });
 
         define_fields!(
-            SideChar: CharFieldType = SideField::tag(),
+            SideChar: CharFieldType = 54,
         );
 
         define_fixt_message!(TestRequestWithIncorrectField: b"1" => {
@@ -1570,7 +1576,7 @@ fn test_14B() {
             Reject,
         );
 
-        do_garbled_test_with_dict::<_,TestRequestWithEnumeratedField>(SessionRejectReason::ValueIsIncorrectForThisTag,SideField::tag(),|test_server,client,connection_id| {
+        do_garbled_test_with_dict::<_,TestRequestWithEnumeratedField>(SessionRejectReason::ValueIsIncorrectForThisTag,SideField::tag_bytes(),|test_server,client,connection_id| {
             //Send message with incorrect value.
             let mut message = new_fixt_message!(TestRequestWithIncorrectField);
             message.test_req_id = b"test_id".to_vec();
@@ -1590,7 +1596,7 @@ fn test_14B() {
 
     //f. Send message with an incorrect data format for a field. Client should respond with Reject,
     //increment inbound sequence number, and issue an error.
-    do_garbled_test(SessionRejectReason::IncorrectDataFormatForValue,BeginSeqNoString::tag(),|test_server,client,connection_id| {
+    do_garbled_test(SessionRejectReason::IncorrectDataFormatForValue,BeginSeqNoString::tag_bytes(),|test_server,client,connection_id| {
         //Send message with incorrect value.
         let mut message = new_fixt_message!(ResendRequestWithStringBeginSeqNo);
         message.msg_seq_num = 2;
@@ -1642,7 +1648,7 @@ fn test_14B() {
 
     //h. Send message with a tag duplicated outside of an appropriate repeating group. Client
     //should respond with Reject, increment inbound sequence number, and issue an error.
-    do_garbled_test(SessionRejectReason::TagAppearsMoreThanOnce,TestReqID::tag(),|test_server,client,connection_id| {
+    do_garbled_test(SessionRejectReason::TagAppearsMoreThanOnce,TestReqID::tag_bytes(),|test_server,client,connection_id| {
         //Send message with duplicate tag.
         let mut message = new_fixt_message!(TestRequestWithDuplicateField);
         message.msg_seq_num = 2;
@@ -1663,12 +1669,12 @@ fn test_14B() {
     //i. Send message with repeating groups that don't match the specified count. Client should
     //respond with Reject, increment inbound sequence number, and issue an error.
     {
-        let mut messages_bytes: Vec<(&'static [u8],&'static [u8])> = Vec::new();
-        messages_bytes.push((NoHops::tag(),b"8=FIX.4.3\x019=999\x0135=1\x0149=TEST\x0156=TX\x0134=1\x0152=20090107-18:15:16\x01627=2\x01112=1\x0110=204\x01")); //Claim two groups but have zero.
-        messages_bytes.push((TestReqID::tag(),b"8=FIX.4.3\x019=999\x0135=1\x0149=TEST\x0156=TX\x0134=1\x0152=20090107-18:15:16\x01627=2\x01628=1\x01112=1\x0110=204\x01")); //Claim two groups but have one.
-        messages_bytes.push((HopCompID::tag(),b"8=FIX.4.3\x019=999\x0135=1\x0149=TEST\x0156=TX\x0134=1\x0152=20090107-18:15:16\x01627=2\x01628=1\x01628=2\x01628=3\x01112=1\x0110=204\x01")); //Claim two groups but have three.
-        for (ref_tag_id,message_bytes) in messages_bytes {
-            do_garbled_test(SessionRejectReason::IncorrectNumInGroupCountForRepeatingGroup,ref_tag_id,|test_server,client,connection_id| {
+        let mut messages_bytes: Vec<(FieldTag,&'static[u8],&'static [u8])> = Vec::new();
+        messages_bytes.push((NoHops::tag(),NoHops::tag_bytes(),b"8=FIX.4.3\x019=999\x0135=1\x0149=TEST\x0156=TX\x0134=1\x0152=20090107-18:15:16\x01627=2\x01112=1\x0110=204\x01")); //Claim two groups but have zero.
+        messages_bytes.push((TestReqID::tag(),TestReqID::tag_bytes(),b"8=FIX.4.3\x019=999\x0135=1\x0149=TEST\x0156=TX\x0134=1\x0152=20090107-18:15:16\x01627=2\x01628=1\x01112=1\x0110=204\x01")); //Claim two groups but have one.
+        messages_bytes.push((HopCompID::tag(),HopCompID::tag_bytes(),b"8=FIX.4.3\x019=999\x0135=1\x0149=TEST\x0156=TX\x0134=1\x0152=20090107-18:15:16\x01627=2\x01628=1\x01628=2\x01628=3\x01112=1\x0110=204\x01")); //Claim two groups but have three.
+        for (ref_tag_id,ref_tag_id_bytes,message_bytes) in messages_bytes {
+            do_garbled_test(SessionRejectReason::IncorrectNumInGroupCountForRepeatingGroup,ref_tag_id_bytes,|test_server,client,connection_id| {
                 //Send message.
                 let bytes_written = test_server.stream.write(message_bytes).unwrap();
                 assert_eq!(bytes_written,message_bytes.len());
@@ -1735,7 +1741,7 @@ fn test_14B() {
         assert_eq!(message.msg_seq_num,2);
         assert_eq!(message.session_reject_reason.unwrap(),SessionRejectReason::RequiredTagMissing);
         assert_eq!(message.ref_msg_type,<TestRequest as MessageDetails>::msg_type());
-        assert_eq!(message.ref_tag_id,OrigSendingTime::tag());
+        assert_eq!(message.ref_tag_id,OrigSendingTime::tag_bytes());
 
         //Make sure client incremented inbound sequence number.
         let mut message = new_fixt_message!(TestRequest);

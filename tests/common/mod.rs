@@ -29,7 +29,7 @@ use fix_rs::dictionary::messages::Logon;
 use fix_rs::fix::Parser;
 use fix_rs::fix_version::FIXVersion;
 use fix_rs::fixt::client::{Client,ClientEvent};
-use fix_rs::fixt::message::FIXTMessage;
+use fix_rs::fixt::message::{BuildFIXTMessage,FIXTMessage};
 use fix_rs::message_version::MessageVersion;
 
 const SOCKET_BASE_PORT: usize = 7000;
@@ -134,7 +134,6 @@ pub fn send_message_with_timeout(stream: &mut TcpStream,fix_version: FIXVersion,
     while bytes_written_total < bytes.len() {
         if let Some(timeout) = timeout {
             if now.elapsed() > timeout {
-                println!("Timing out from write...");
                 return Err(bytes.len() - bytes_written_total);
             }
         }
@@ -167,7 +166,7 @@ pub struct TestServer {
 }
 
 impl TestServer {
-    pub fn setup_with_ver(fix_version: FIXVersion,message_version: MessageVersion,message_dictionary: HashMap<&'static [u8],Box<FIXTMessage + Send>>) -> (TestServer,Client,usize) {
+    pub fn setup_with_ver(fix_version: FIXVersion,message_version: MessageVersion,message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>) -> (TestServer,Client,usize) {
         //Setup server listener socket.
         let addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127,0,0,1),SOCKET_PORT.fetch_add(1,Ordering::SeqCst) as u16));
         let listener = TcpListener::bind(&addr).unwrap();
@@ -200,11 +199,11 @@ impl TestServer {
         },client,connection_id)
     }
 
-    pub fn setup(message_dictionary: HashMap<&'static [u8],Box<FIXTMessage + Send>>) -> (TestServer,Client,usize) {
+    pub fn setup(message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>) -> (TestServer,Client,usize) {
         Self::setup_with_ver(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,message_dictionary)
     }
 
-    pub fn setup_and_logon_with_ver(fix_version: FIXVersion,message_version: MessageVersion,message_dictionary: HashMap<&'static [u8],Box<FIXTMessage + Send>>) -> (TestServer,Client,usize) {
+    pub fn setup_and_logon_with_ver(fix_version: FIXVersion,message_version: MessageVersion,message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>) -> (TestServer,Client,usize) {
         //Connect.
         let (mut test_server,mut client,connection_id) = TestServer::setup_with_ver(fix_version,message_version,message_dictionary);
 
@@ -231,7 +230,7 @@ impl TestServer {
         (test_server,client,connection_id)
     }
 
-    pub fn setup_and_logon(message_dictionary: HashMap<&'static [u8],Box<FIXTMessage + Send>>) -> (TestServer,Client,usize) {
+    pub fn setup_and_logon(message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>) -> (TestServer,Client,usize) {
         Self::setup_and_logon_with_ver(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,message_dictionary)
     }
 

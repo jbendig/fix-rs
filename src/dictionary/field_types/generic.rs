@@ -21,7 +21,7 @@ use std::str::FromStr;
 use constant::VALUE_END;
 use field_type::FieldType;
 use fix_version::FIXVersion;
-use message::{Message,SetValueError};
+use message::{Message,MessageBuildable,SetValueError};
 use message_version::MessageVersion;
 use rule::Rule;
 
@@ -929,11 +929,12 @@ pub struct RepeatingGroupFieldType<T: Message + PartialEq> {
     message_type: PhantomData<T>,
 }
 
-impl<T: Message + Any + Clone + Default + PartialEq> FieldType for RepeatingGroupFieldType<T> {
+impl<T: Message + MessageBuildable + Any + Clone + Default + PartialEq + Send + Sized> FieldType for RepeatingGroupFieldType<T> {
     type Type = Vec<Box<T>>;
 
     fn rule() -> Option<Rule> {
-        Some(Rule::BeginGroup{ message: Box::new(<T as Default>::default()) })
+        let message = <T as Default>::default();
+        Some(Rule::BeginGroup{ builder_func: <T as MessageBuildable>::builder_func(&message) })
     }
 
     fn default_value() -> Self::Type {
@@ -1043,7 +1044,10 @@ impl UTCTimestampFieldType {
     pub fn new_empty() -> <UTCTimestampFieldType as FieldType>::Type {
         //Create a new time stamp that can be considered empty. An Option<_> might be preferred
         //but that would make using the timestamp needlessly complicated.
-        UTC.ymd(-1,1,1).and_hms(0,0,0)
+        DateTime::<UTC>::from_utc(
+            NaiveDate::from_ymd(-1,1,1).and_hms(0,0,0),
+            UTC
+        )
     }
 }
 

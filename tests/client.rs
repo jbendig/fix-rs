@@ -9,11 +9,15 @@
 // at your option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(attr_literals)]
 #![feature(const_fn)]
 
 #[macro_use]
 extern crate fix_rs;
+#[macro_use]
+extern crate fix_rs_macros;
 extern crate mio;
+extern crate phf;
 
 use mio::tcp::Shutdown;
 use std::io::Write;
@@ -29,13 +33,15 @@ use fix_rs::dictionary::field_types::other::{MsgDirection,SessionRejectReason};
 use fix_rs::dictionary::fields::{MsgTypeGrp,SenderCompID,TargetCompID,Text};
 use fix_rs::dictionary::messages::{Heartbeat,Logon,Logout,Reject,ResendRequest,SequenceReset,TestRequest};
 use fix_rs::field::Field;
+use fix_rs::field_tag::{self,FieldTag};
 use fix_rs::fix::ParseError;
 use fix_rs::fix_version::FIXVersion;
+use fix_rs::fixt;
 use fix_rs::fixt::client::{ClientEvent,ConnectionTerminatedReason};
 use fix_rs::fixt::tests::{AUTO_DISCONNECT_AFTER_INBOUND_RESEND_REQUEST_LOOP_COUNT,INBOUND_MESSAGES_BUFFER_LEN_MAX,INBOUND_BYTES_BUFFER_CAPACITY};
 use fix_rs::fixt::message::FIXTMessage;
-use fix_rs::message::{NOT_REQUIRED,REQUIRED,Message};
-use fix_rs::message_version::MessageVersion;
+use fix_rs::message::{self,NOT_REQUIRED,REQUIRED,Message};
+use fix_rs::message_version::{self,MessageVersion};
 
 #[test]
 fn test_recv_resend_request_invalid_end_seq_no() {
@@ -739,7 +745,7 @@ fn test_default_appl_ver_id() {
         //Make sure message is considered invalid.
         client_poll_event!(client,ClientEvent::MessageReceivedGarbled(msg_connection_id,parse_error) => {
             assert_eq!(msg_connection_id,connection_id);
-            assert!(if let ParseError::UnknownTag(ref tag) = parse_error { *tag == b"58" } else { false });
+            assert!(if let ParseError::UnknownTag(ref tag) = parse_error { *tag == FieldTag(58) } else { false });
         });
     }
 }

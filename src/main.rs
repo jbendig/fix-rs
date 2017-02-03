@@ -9,6 +9,8 @@
 // at your option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(proc_macro)]
+
 extern crate chrono;
 #[macro_use]
 extern crate fix_rs;

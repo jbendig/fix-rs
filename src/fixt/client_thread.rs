@@ -34,7 +34,7 @@ use field_type::FieldType;
 use fix::{Parser,ParseError};
 use fix_version::FIXVersion;
 use fixt::client::{ClientEvent,ConnectionTerminatedReason};
-use fixt::message::FIXTMessage;
+use fixt::message::{BuildFIXTMessage,FIXTMessage};
 use message_version::MessageVersion;
 use network_read_retry::NetworkReadRetry;
 
@@ -616,7 +616,7 @@ struct InternalThread {
     poll: Poll,
     tx: Sender<ClientEvent>,
     rx: Receiver<InternalClientToThreadEvent>,
-    message_dictionary: HashMap<&'static [u8],Box<FIXTMessage + Send>>,
+    message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>,
     sender_comp_id: Rc<<<SenderCompID as Field>::Type as FieldType>::Type>,
     target_comp_id: Rc<<<TargetCompID as Field>::Type as FieldType>::Type>,
     max_message_size: u64,
@@ -1337,10 +1337,10 @@ impl InternalThread {
     }
 
     fn on_network_parse_error(connection: &mut Connection,parse_error: ParseError,tx: &Sender<ClientEvent>)-> Result<(),ConnectionTerminatedReason> {
-        fn push_reject(connection: &mut Connection,ref_msg_type: &[u8],ref_tag_id: &[u8],session_reject_reason: SessionRejectReason,text: &[u8]) -> Result<(),ConnectionTerminatedReason> {
+        fn push_reject<T: Into<Vec<u8>>>(connection: &mut Connection,ref_msg_type: &[u8],ref_tag_id: T,session_reject_reason: SessionRejectReason,text: &[u8]) -> Result<(),ConnectionTerminatedReason> {
             let mut reject = Reject::new();
             reject.ref_msg_type = ref_msg_type.to_vec();
-            reject.ref_tag_id = ref_tag_id.to_vec();
+            reject.ref_tag_id = ref_tag_id.into();
             reject.ref_seq_num = connection.inbound_msg_seq_num;
             reject.session_reject_reason = Some(session_reject_reason);
             reject.text = text.to_vec();
@@ -1360,36 +1360,36 @@ impl InternalThread {
             _ => {
                 match parse_error {
                     ParseError::MissingRequiredTag(ref tag,_) => {
-                        try!(push_reject(connection,b"",&tag[..],SessionRejectReason::RequiredTagMissing,b"Required tag missing"));
+                        try!(push_reject(connection,b"",*tag,SessionRejectReason::RequiredTagMissing,b"Required tag missing"));
                     },
                     ParseError::UnexpectedTag(ref tag) => {
-                        try!(push_reject(connection,b"",&tag[..],SessionRejectReason::TagNotDefinedForThisMessageType,b"Tag not defined for this message type"));
+                        try!(push_reject(connection,b"",*tag,SessionRejectReason::TagNotDefinedForThisMessageType,b"Tag not defined for this message type"));
                     },
                     ParseError::UnknownTag(ref tag) => {
-                        try!(push_reject(connection,b"",&tag[..],SessionRejectReason::InvalidTagNumber,b"Invalid tag number"));
+                        try!(push_reject(connection,b"",*tag,SessionRejectReason::InvalidTagNumber,b"Invalid tag number"));
                     },
                     ParseError::NoValueAfterTag(ref tag) => {
-                        try!(push_reject(connection,b"",&tag[..],SessionRejectReason::TagSpecifiedWithoutAValue,b"Tag specified without a value"));
+                        try!(push_reject(connection,b"",*tag,SessionRejectReason::TagSpecifiedWithoutAValue,b"Tag specified without a value"));
                     },
                     ParseError::OutOfRangeTag(ref tag) => {
-                        try!(push_reject(connection,b"",&tag[..],SessionRejectReason::ValueIsIncorrectForThisTag,b"Value is incorrect (out of range) for this tag"));
+                        try!(push_reject(connection,b"",*tag,SessionRejectReason::ValueIsIncorrectForThisTag,b"Value is incorrect (out of range) for this tag"));
                     },
                     ParseError::WrongFormatTag(ref tag) => {
-                        try!(push_reject(connection,b"",&tag[..],SessionRejectReason::IncorrectDataFormatForValue,b"Incorrect data format for value"));
+                        try!(push_reject(connection,b"",*tag,SessionRejectReason::IncorrectDataFormatForValue,b"Incorrect data format for value"));
                     },
                     ParseError::SenderCompIDNotFourthTag => {
-                        try!(push_reject(connection,b"",SenderCompID::tag(),SessionRejectReason::TagSpecifiedOutOfRequiredOrder,b"SenderCompID must be the 4th tag"));
+                        try!(push_reject(connection,b"",SenderCompID::tag_bytes(),SessionRejectReason::TagSpecifiedOutOfRequiredOrder,b"SenderCompID must be the 4th tag"));
                     },
                     ParseError::TargetCompIDNotFifthTag => {
-                        try!(push_reject(connection,b"",TargetCompID::tag(),SessionRejectReason::TagSpecifiedOutOfRequiredOrder,b"TargetCompID must be the 5th tag"));
+                        try!(push_reject(connection,b"",TargetCompID::tag_bytes(),SessionRejectReason::TagSpecifiedOutOfRequiredOrder,b"TargetCompID must be the 5th tag"));
                     },
                     ParseError::ApplVerIDNotSixthTag => {
-                        try!(push_reject(connection,b"",ApplVerID::tag(),SessionRejectReason::TagSpecifiedOutOfRequiredOrder,b"ApplVerID must be the 6th tag if specified"));
+                        try!(push_reject(connection,b"",ApplVerID::tag_bytes(),SessionRejectReason::TagSpecifiedOutOfRequiredOrder,b"ApplVerID must be the 6th tag if specified"));
                     },
                     ParseError::MessageSizeTooBig => {
                         let mut error_text = b"Message size exceeds MaxMessageSize=".to_vec();
                         error_text.extend_from_slice(connection.parser.max_message_size().to_string().as_bytes());
-                        try!(push_reject(connection,b"",b"",SessionRejectReason::Other,&error_text[..]));
+                        try!(push_reject(connection,b"",Vec::new(),SessionRejectReason::Other,&error_text[..]));
                     },
                     /* TODO: These should probably be considered garbled instead of
                      * responding to.
@@ -1403,18 +1403,18 @@ impl InternalThread {
                      },
                      */
                     ParseError::DuplicateTag(ref tag) => {
-                        try!(push_reject(connection,b"",&tag[..],SessionRejectReason::TagAppearsMoreThanOnce,b"Tag appears more than once"));
+                        try!(push_reject(connection,b"",*tag,SessionRejectReason::TagAppearsMoreThanOnce,b"Tag appears more than once"));
                     },
                     ParseError::MissingConditionallyRequiredTag(ref tag,ref message) => {
                         if *tag == OrigSendingTime::tag() { //Session level conditionally required tag.
-                            try!(push_reject(connection,message.msg_type(),&tag[..],SessionRejectReason::RequiredTagMissing,b"Conditionally required tag missing"));
+                            try!(push_reject(connection,message.msg_type(),*tag,SessionRejectReason::RequiredTagMissing,b"Conditionally required tag missing"));
                         }
                         else {
                             let mut business_message_reject = BusinessMessageReject::new();
                             business_message_reject.ref_seq_num = connection.inbound_msg_seq_num;
                             business_message_reject.ref_msg_type = message.msg_type().to_vec();
                             business_message_reject.business_reject_reason = BusinessRejectReason::ConditionallyRequiredFieldMissing;
-                            business_message_reject.business_reject_ref_id = tag.to_vec();
+                            business_message_reject.business_reject_ref_id = tag.to_bytes();
                             business_message_reject.text = b"Conditionally required field missing".to_vec();
                             connection.outbound_messages.push(OutboundMessage::from(business_message_reject));
                         }
@@ -1422,7 +1422,7 @@ impl InternalThread {
                     ParseError::MissingFirstRepeatingGroupTagAfterNumberOfRepeatingGroupTag(ref tag) |
                     ParseError::NonRepeatingGroupTagInRepeatingGroup(ref tag) |
                     ParseError::RepeatingGroupTagWithNoRepeatingGroup(ref tag) => {
-                        try!(push_reject(connection,b"",&tag[..],SessionRejectReason::IncorrectNumInGroupCountForRepeatingGroup,b"Incorrect NumInGroup count for repeating group"));
+                        try!(push_reject(connection,b"",*tag,SessionRejectReason::IncorrectNumInGroupCountForRepeatingGroup,b"Incorrect NumInGroup count for repeating group"));
                     },
                     ParseError::MsgTypeUnknown(ref msg_type) => {
                         //If we're here, we know the MsgType is not user defined. So we just need
@@ -1462,7 +1462,7 @@ impl InternalThread {
 pub fn internal_client_thread(poll: Poll,
                               tx: Sender<ClientEvent>,
                               rx: Receiver<InternalClientToThreadEvent>,
-                              message_dictionary: HashMap<&'static [u8],Box<FIXTMessage + Send>>,
+                              message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>,
                               sender_comp_id: <<SenderCompID as Field>::Type as FieldType>::Type,
                               target_comp_id: <<TargetCompID as Field>::Type as FieldType>::Type,
                               max_message_size: u64) {

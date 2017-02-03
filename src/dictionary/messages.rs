@@ -10,38 +10,22 @@
 // except according to those terms.
 
 use std::any::Any;
-use std::collections::{HashMap,HashSet};
 
 use dictionary::fields::*;
 use field::Field;
+use field_tag::{self,FieldTag};
 use field_type::FieldType;
 use fix_version::FIXVersion;
+use fixt;
 use fixt::message::FIXTMessage;
-use message::{REQUIRED,NOT_REQUIRED,Message,Meta,SetValueError};
-use message_version::MessageVersion;
-use rule::Rule;
+use message::{self,REQUIRED,NOT_REQUIRED,Message,Meta,SetValueError};
+use message_version::{self,MessageVersion};
 
 pub struct NullMessage {
 }
 
 impl Message for NullMessage {
-    fn first_field(&self,_version: MessageVersion) -> &'static [u8] {
-        unimplemented!();
-    }
-
-    fn field_count(&self,_version: MessageVersion) -> usize {
-        unimplemented!();
-    }
-
-    fn fields(&self,_version: MessageVersion) -> HashMap<&'static [u8],Rule> {
-        unimplemented!();
-    }
-
-    fn required_fields(&self,_version: MessageVersion) -> HashSet<&'static [u8]> {
-        unimplemented!();
-    }
-
-    fn conditional_required_fields(&self,_version: MessageVersion) -> Vec<&'static [u8]> {
+    fn conditional_required_fields(&self,_version: MessageVersion) -> Vec<FieldTag> {
         unimplemented!();
     }
 
@@ -53,11 +37,11 @@ impl Message for NullMessage {
         unimplemented!();
     }
 
-    fn set_value(&mut self,_key: &[u8],_value: &[u8]) -> Result<(),SetValueError> {
+    fn set_value(&mut self,_key: FieldTag,_value: &[u8]) -> Result<(),SetValueError> {
         unimplemented!();
     }
 
-    fn set_groups(&mut self,_key: &[u8],_group: &[Box<Message>]) -> bool {
+    fn set_groups(&mut self,_key: FieldTag,_group: &[Box<Message>]) -> bool {
         unimplemented!();
     }
 
@@ -73,8 +57,8 @@ impl Message for NullMessage {
         unimplemented!();
     }
 
-    fn msg_type_header(&self) -> Vec<u8> {
-        Vec::new()
+    fn msg_type_header(&self) -> &'static [u8] {
+        b""
     }
 
     fn read_body(&self,_fix_version: FIXVersion,_message_version: MessageVersion,_buf: &mut Vec<u8>) -> usize {

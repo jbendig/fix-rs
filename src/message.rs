@@ -13,9 +13,33 @@ use std::any::Any;
 use std::collections::{HashMap,HashSet};
 use std::io::Write;
 
+use field_tag::FieldTag;
 use fix_version::FIXVersion;
+use hash::BuildFieldHasher;
 use message_version::MessageVersion;
 use rule::Rule;
+
+pub type FieldHashMap = HashMap<FieldTag,Rule,BuildFieldHasher>;
+pub type FieldHashSet = HashSet<FieldTag,BuildFieldHasher>;
+
+pub trait BuildMessage {
+    fn first_field(&self,version: MessageVersion) -> FieldTag;
+    fn field_count(&self,version: MessageVersion) -> usize;
+    fn fields(&mut self,version: MessageVersion) -> FieldHashMap;
+    fn required_fields(&self,version: MessageVersion) -> FieldHashSet;
+
+    fn new_into_box(&self) -> Box<BuildMessage + Send>;
+    fn build(&self) -> Box<Message + Send>;
+}
+
+pub trait MessageBuildable {
+    fn builder(&self) -> Box<BuildMessage + Send>;
+    fn builder_func(&self) -> fn() -> Box<BuildMessage + Send>;
+}
+
+pub trait MessageDetails {
+    fn msg_type() -> &'static [u8];
+}
 
 #[derive(Clone,PartialEq)]
 pub struct Meta {
@@ -24,29 +48,21 @@ pub struct Meta {
     pub checksum: u8,
 }
 
-pub trait MessageDetails {
-    fn msg_type() -> &'static [u8];
-}
-
 pub enum SetValueError {
     WrongFormat,
     OutOfRange,
 }
 
 pub trait Message {
-    fn first_field(&self,version: MessageVersion) -> &'static [u8];
-    fn field_count(&self,version: MessageVersion) -> usize;
-    fn fields(&self,version: MessageVersion) -> HashMap<&'static [u8],Rule>;
-    fn required_fields(&self,version: MessageVersion) -> HashSet<&'static [u8]>;
-    fn conditional_required_fields(&self,version: MessageVersion) -> Vec<&'static [u8]>;
+    fn conditional_required_fields(&self,version: MessageVersion) -> Vec<FieldTag>;
     fn meta(&self) -> &Option<Meta>;
     fn set_meta(&mut self,meta: Meta);
-    fn set_value(&mut self,key: &[u8],value: &[u8]) -> Result<(),SetValueError>;
-    fn set_groups(&mut self,key: &[u8],groups: &[Box<Message>]) -> bool;
+    fn set_value(&mut self,key: FieldTag,value: &[u8]) -> Result<(),SetValueError>;
+    fn set_groups(&mut self,key: FieldTag,groups: &[Box<Message>]) -> bool;
     fn as_any(&self) -> &Any;
     fn as_any_mut(&mut self) -> &mut Any;
-    fn new_into_box(&self) -> Box<Message + Send>; //TODO: Investigate having a builder type afterall....
-    fn msg_type_header(&self) -> Vec<u8>;
+    fn new_into_box(&self) -> Box<Message + Send>;
+    fn msg_type_header(&self) -> &'static [u8];
     fn read_body(&self,fix_version: FIXVersion,message_version: MessageVersion,buf: &mut Vec<u8>) -> usize;
     fn read(&self,fix_version: FIXVersion,message_version: MessageVersion,buf: &mut Vec<u8>) -> usize {
         //TODO: Try and avoid reallocations by providing a start offset and then inserting
@@ -69,7 +85,7 @@ pub trait Message {
         byte_count += buf.write(b"9=").unwrap();
         byte_count += buf.write(body_length_str.as_bytes()).unwrap();
         byte_count += buf.write(b"\x01").unwrap();
-        byte_count += buf.write(&message_type[..]).unwrap();
+        byte_count += buf.write(message_type).unwrap();
         byte_count += buf.write(body.as_slice()).unwrap();
 
         //Calculate checksum.
@@ -98,6 +114,18 @@ pub trait Message {
 
 pub const REQUIRED: bool = true;
 pub const NOT_REQUIRED: bool = false;
+
+#[derive(Clone)]
+pub struct BuildMessageInternalCache {
+    pub fields_fix40: Option<FieldHashMap>,
+    pub fields_fix41: Option<FieldHashMap>,
+    pub fields_fix42: Option<FieldHashMap>,
+    pub fields_fix43: Option<FieldHashMap>,
+    pub fields_fix44: Option<FieldHashMap>,
+    pub fields_fix50: Option<FieldHashMap>,
+    pub fields_fix50sp1: Option<FieldHashMap>,
+    pub fields_fix50sp2: Option<FieldHashMap>,
+}
 
 #[macro_export]
 macro_rules! symbol_to_message_version {
@@ -139,18 +167,67 @@ macro_rules! define_message {
     };
 
     ( $message_name:ident $( : $message_type:expr => )* { $( $field_required:expr, $field_name:ident : $field_type:ty [$( $version:tt )*] $(=> REQUIRED_WHEN $required_when_expr:expr)* ),* $(),* } ) => {
-        #[derive(Clone)]
+        #[derive(BuildMessage)]
         pub struct $message_name {
             pub meta: Option<$crate::message::Meta>,
             $( pub $field_name: <<$field_type as $crate::field::Field>::Type as $crate::field_type::FieldType>::Type, )*
+            $( #[message_type=$message_type] )*
+            _message_type_gen: ::std::marker::PhantomData<()>,
+        }
+
+        impl Clone for $message_name {
+            fn clone(&self) -> Self {
+                $message_name {
+                    meta: self.meta.clone(),
+                    $( $field_name: self.$field_name.clone(), )*
+                    _message_type_gen: ::std::marker::PhantomData,
+                }
+            }
         }
 
         impl $message_name {
-            pub fn new() -> Self {
+            pub fn new() -> $message_name {
                 $message_name {
                     meta: None,
                     $( $field_name: <<$field_type as $crate::field::Field>::Type as $crate::field_type::FieldType>::default_value(), )*
+                    _message_type_gen: ::std::marker::PhantomData,
                 }
+            }
+
+            #[allow(unreachable_code)]
+            fn first_field(version: $crate::message_version::MessageVersion) -> $crate::field_tag::FieldTag {
+                $( if match_message_version!(version,$( $version)*) {
+                    return <$field_type as $crate::field::Field>::tag();
+                } )*
+
+                $crate::field_tag::FieldTag::empty()
+            }
+
+            fn field_count(version: $crate::message_version::MessageVersion) -> usize {
+                let mut result = 0;
+                $( if match_message_version!(version,$( $version )*) {
+                    let _ = $field_required; result += 1;
+                } )*
+
+                result
+            }
+
+            fn fields(version: $crate::message_version::MessageVersion) -> $crate::message::FieldHashMap {
+                let mut fields = ::std::collections::HashMap::with_capacity_and_hasher($message_name::field_count(version) * 1,$crate::hash::BuildFieldHasher);
+                $( if match_message_version!(version,$( $version )*) {
+                    fields.insert(<$field_type as $crate::field::Field>::tag(),<$field_type as $crate::field::Field>::rule());
+                } )*
+
+                fields
+            }
+
+            fn required_fields(version: $crate::message_version::MessageVersion) -> $crate::message::FieldHashSet {
+                let mut result = ::std::collections::HashSet::with_hasher($crate::hash::BuildFieldHasher);
+                $( if match_message_version!(version,$( $version )*) && $field_required {
+                    result.insert(<$field_type as $crate::field::Field>::tag());
+                } )*
+
+                result
             }
         }
 
@@ -170,44 +247,8 @@ macro_rules! define_message {
         }
 
         impl $crate::message::Message for $message_name {
-            #[allow(unreachable_code)]
-            fn first_field(&self,version: $crate::message_version::MessageVersion) -> &'static [u8] {
-                $( if match_message_version!(version,$( $version)*) {
-                    return <$field_type as $crate::field::Field>::tag();
-                } )*
-
-                b""
-            }
-
-            fn field_count(&self,version: $crate::message_version::MessageVersion) -> usize {
-                let mut result = 0;
-                $( if match_message_version!(version,$( $version )*) {
-                    let _ = $field_required; result += 1;
-                } )*
-
-                result
-            }
-
-            fn fields(&self,version: $crate::message_version::MessageVersion) -> ::std::collections::HashMap<&'static [u8],$crate::rule::Rule> {
-                let mut result = ::std::collections::HashMap::with_capacity(self.field_count(version) * 2);
-                $( if match_message_version!(version,$( $version )*) {
-                    result.insert(<$field_type as $crate::field::Field>::tag(),<$field_type as $crate::field::Field>::rule());
-                } )*
-
-                result
-            }
-
-            fn required_fields(&self,version: $crate::message_version::MessageVersion) -> ::std::collections::HashSet<&'static [u8]> {
-                let mut result = ::std::collections::HashSet::new();
-                $( if match_message_version!(version,$( $version )*) && $field_required {
-                    result.insert(<$field_type as $crate::field::Field>::tag());
-                } )*
-
-                result
-            }
-
             #[allow(unused_mut,unused_variables)]
-            fn conditional_required_fields(&self,version: $crate::message_version::MessageVersion) -> Vec<&'static [u8]> {
+            fn conditional_required_fields(&self,version: $crate::message_version::MessageVersion) -> Vec<$crate::field_tag::FieldTag> {
                 let mut result = Vec::new();
                 $( $(
                 assert!(!$field_required); //Required fields are always required. Do not add conditional.
@@ -227,7 +268,7 @@ macro_rules! define_message {
                 self.meta = Some(meta);
             }
 
-            fn set_value(&mut self,key: &[u8],value: &[u8]) -> Result<(),$crate::message::SetValueError> {
+            fn set_value(&mut self,key: $crate::field_tag::FieldTag,value: &[u8]) -> Result<(),$crate::message::SetValueError> {
                 use $crate::field::Field;
                 use $crate::field_type::FieldType;
 
@@ -240,7 +281,7 @@ macro_rules! define_message {
                 }
             }
 
-            fn set_groups(&mut self,key: &[u8],groups: &[Box<$crate::message::Message>]) -> bool {
+            fn set_groups(&mut self,key: $crate::field_tag::FieldTag,groups: &[Box<$crate::message::Message>]) -> bool {
                 use $crate::field::Field;
                 use $crate::field_type::FieldType;
 
@@ -265,20 +306,8 @@ macro_rules! define_message {
                 Box::new($message_name::new())
             }
 
-            fn msg_type_header(&self) -> Vec<u8> {
-                //TODO: It would be nice if this returned a &'static [u8] instead but this isn't
-                //possible without Procedural Macros 1.1.
-                //See: https://github.com/rust-lang/rfcs/pull/566.
-
-                //TODO: See if we can get the buffer construction to compile into a single
-                //constant.
-                let mut buffer = b"35=".to_vec(); 
-                buffer.extend_from_slice(
-                    <$message_name as $crate::message::MessageDetails>::msg_type()
-                );
-                buffer.push(b'\x01');
-
-                buffer
+            fn msg_type_header(&self) -> &'static [u8] {
+                $message_name::msg_type_header()
             }
 
             fn read_body(&self,fix_version: $crate::fix_version::FIXVersion,message_version: $crate::message_version::MessageVersion,buf: &mut Vec<u8>) -> usize {

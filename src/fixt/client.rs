@@ -21,7 +21,7 @@ use std::thread;
 use std::time::{Duration,Instant};
 
 use fixt::client_thread::{CONNECTION_COUNT_MAX,BASE_CONNECTION_TOKEN,INTERNAL_CLIENT_EVENT_TOKEN,InternalClientToThreadEvent,internal_client_thread};
-use fixt::message::FIXTMessage;
+use fixt::message::{BuildFIXTMessage,FIXTMessage};
 use fix::ParseError;
 use fix_version::FIXVersion;
 use message_version::MessageVersion;
@@ -120,7 +120,7 @@ pub struct Client {
 }
 
 impl Client {
-    pub fn new(message_dictionary: HashMap<&'static [u8],Box<FIXTMessage + Send>>,
+    pub fn new(message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>,
                sender_comp_id: &[u8],
                target_comp_id: &[u8],
                max_message_size: u64) -> Result<Client,io::Error> {

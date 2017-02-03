@@ -9,11 +9,14 @@
 // at your option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(attr_literals)]
 #![allow(unknown_lints)]
 
 extern crate chrono;
 #[macro_use]
 extern crate fix_rs;
+#[macro_use]
+extern crate fix_rs_macros;
 
 use chrono::offset::utc::UTC;
 use chrono::TimeZone;
@@ -24,12 +27,14 @@ use fix_rs::dictionary::field_types::other::{EncryptMethod,RateSource,RateSource
 use fix_rs::dictionary::fields::{EncryptMethod as EncryptMethodField,HeartBtInt,MsgSeqNum,SendingTime,SenderCompID,TargetCompID,NoMsgTypeGrp,RawData,RawDataLength,NoRateSources,Symbol,NoOrders,TestReqID,Text,OrigSendingTime};
 use fix_rs::dictionary::messages::Heartbeat;
 use fix_rs::field::Field;
+use fix_rs::field_tag::{self,FieldTag};
 use fix_rs::field_type::FieldType;
 use fix_rs::fix::{Parser,ParseError};
 use fix_rs::fix_version::FIXVersion;
-use fix_rs::fixt::message::FIXTMessage;
-use fix_rs::message::{MessageDetails,REQUIRED,NOT_REQUIRED};
-use fix_rs::message_version::MessageVersion;
+use fix_rs::fixt;
+use fix_rs::fixt::message::{BuildFIXTMessage,FIXTMessage,FIXTMessageBuildable};
+use fix_rs::message::{self,MessageDetails,REQUIRED,NOT_REQUIRED};
+use fix_rs::message_version::{self,MessageVersion};
 
 const PARSE_MESSAGE_BY_STREAM: bool = true;
 const MAX_MESSAGE_SIZE: u64 = 4096;
@@ -98,9 +103,10 @@ fn print_message<T: FIXTMessage>(fix_version: FIXVersion,message_version: Messag
     println!("{:?}",String::from_utf8_lossy(&buffer[..]))
 }
 
-fn parse_message_with_ver<T: FIXTMessage + MessageDetails + Default + Any + Clone + PartialEq + Send>(fix_version: FIXVersion,message_version: MessageVersion,message: &[u8]) -> Result<T,ParseError> {
-    let mut message_dictionary: HashMap<&'static [u8],Box<FIXTMessage + Send>> = HashMap::new();
-    message_dictionary.insert(<T as MessageDetails>::msg_type(),Box::new(<T as Default>::default()));
+fn parse_message_with_ver<T: FIXTMessage + FIXTMessageBuildable + MessageDetails + Default + Any + Clone + PartialEq + Send>(fix_version: FIXVersion,message_version: MessageVersion,message: &[u8]) -> Result<T,ParseError> {
+    let mut message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>> = HashMap::new();
+    let builder: Box<BuildFIXTMessage + Send> = <T as Default>::default().builder();
+    message_dictionary.insert(<T as MessageDetails>::msg_type(),builder);
 
     let mut parser = Parser::new(message_dictionary,MAX_MESSAGE_SIZE);
 
@@ -156,7 +162,7 @@ fn parse_message_with_ver<T: FIXTMessage + MessageDetails + Default + Any + Clon
     Ok(casted_message)
 }
 
-fn parse_message<T: FIXTMessage + MessageDetails + Default + Any + Clone + PartialEq + Send>(message: &[u8]) -> Result<T,ParseError> {
+fn parse_message<T: FIXTMessage + FIXTMessageBuildable + MessageDetails + Default + Any + Clone + PartialEq + Send>(message: &[u8]) -> Result<T,ParseError> {
     parse_message_with_ver::<T>(FIXVersion::FIX_4_2,MessageVersion::FIX42,message)
 }
 
@@ -267,7 +273,7 @@ fn sender_comp_id_fourth_tag_test() {
         let missing_sender_comp_id_tag_message = b"8=FIX.4.0\x019=42\x0135=0\x0156=CLIENT\x0134=10\x0152=20170105-01:01:01\x0110=055\x01";
         let result = parse_message::<Heartbeat>(missing_sender_comp_id_tag_message);
         match result.err().unwrap() {
-            fix_rs::fix::ParseError::MissingRequiredTag(tag,_) => { assert_eq!(tag,b"49"); },
+            fix_rs::fix::ParseError::MissingRequiredTag(tag,_) => { assert_eq!(tag,FieldTag(49)); },
             _ => assert!(false),
         }
     }
@@ -306,7 +312,7 @@ fn target_comp_id_fifth_tag_test() {
         let missing_target_comp_id_tag_message = b"8=FIX.4.0\x019=42\x0135=0\x0156=CLIENT\x0134=10\x0152=20170105-01:01:01\x0110=055\x01";
         let result = parse_message::<Heartbeat>(missing_target_comp_id_tag_message);
         match result.err().unwrap() {
-            fix_rs::fix::ParseError::MissingRequiredTag(tag,_) => { assert_eq!(tag,b"49"); },
+            fix_rs::fix::ParseError::MissingRequiredTag(tag,_) => { assert_eq!(tag,FieldTag(49)); },
             _ => assert!(false),
         }
     }
@@ -386,7 +392,7 @@ fn checksum_tag_test() {
     let result = parse_message::<LogonTest>(empty_checksum_tag_message);
     assert!(result.is_err());
     match result.err().unwrap() {
-        fix_rs::fix::ParseError::NoValueAfterTag(tag) => { assert_eq!(tag,b"10"); },
+        fix_rs::fix::ParseError::NoValueAfterTag(tag) => { assert_eq!(tag,FieldTag(10)); },
         _ => assert!(false),
     }
 
@@ -468,6 +474,22 @@ fn length_tag_test() {
         }
     }
 
+    impl BuildFIXTMessage for BuildLengthTagTestMessage {
+        fn new_into_box(&self) -> Box<fixt::message::BuildFIXTMessage + Send> {
+            Box::new(BuildLengthTagTestMessage::new())
+        }
+
+        fn build(&self) -> Box<fixt::message::FIXTMessage + Send> {
+            Box::new(LengthTagTestMessage::new())
+        }
+    }
+
+    impl FIXTMessageBuildable for LengthTagTestMessage {
+        fn builder(&self) -> Box<fixt::message::BuildFIXTMessage + Send> {
+            Box::new(BuildLengthTagTestMessage::new())
+        }
+    }
+
     let valid_length_tag_message = b"8=FIX.4.2\x019=28\x0135=L\x0195=13\x0196=This\x01is=atest\x0110=130\x01";
     let message = parse_message::<LengthTagTestMessage>(valid_length_tag_message).unwrap();
     assert_eq!(message.meta.clone().unwrap().begin_string,FIXVersion::FIX_4_2);
@@ -479,7 +501,7 @@ fn length_tag_test() {
     let result = parse_message::<LengthTagTestMessage>(missing_length_tag_message);
     assert!(result.is_err());
     match result.err().unwrap() {
-        fix_rs::fix::ParseError::MissingPrecedingLengthTag(value_tag) => assert_eq!(value_tag,b"96"),
+        fix_rs::fix::ParseError::MissingPrecedingLengthTag(value_tag) => assert_eq!(value_tag,FieldTag(96)),
         _ => assert!(false),
     }
 
@@ -487,7 +509,7 @@ fn length_tag_test() {
     let result = parse_message::<LengthTagTestMessage>(late_length_tag_message);
     assert!(result.is_err());
     match result.err().unwrap() {
-        fix_rs::fix::ParseError::MissingPrecedingLengthTag(value_tag) => assert_eq!(value_tag,b"96"),
+        fix_rs::fix::ParseError::MissingPrecedingLengthTag(value_tag) => assert_eq!(value_tag,FieldTag(96)),
         _ => assert!(false),
     }
 
@@ -495,7 +517,7 @@ fn length_tag_test() {
     let result = parse_message::<LengthTagTestMessage>(early_length_tag_message);
     assert!(result.is_err());
     match result.err().unwrap() {
-        fix_rs::fix::ParseError::MissingFollowingLengthTag(length_tag) => assert_eq!(length_tag,b"95"),
+        fix_rs::fix::ParseError::MissingFollowingLengthTag(length_tag) => assert_eq!(length_tag,FieldTag(95)),
         _ => assert!(false),
     }
 }
@@ -548,6 +570,22 @@ fn repeating_groups_test() {
                                      _sender_comp_id: <<SenderCompID as Field>::Type as FieldType>::Type,
                                      _target_comp_id: <<TargetCompID as Field>::Type as FieldType>::Type) {
             unimplemented!();
+        }
+    }
+
+    impl BuildFIXTMessage for BuildRepeatingGroupsTestMessage {
+        fn new_into_box(&self) -> Box<fixt::message::BuildFIXTMessage + Send> {
+            Box::new(BuildRepeatingGroupsTestMessage::new())
+        }
+
+        fn build(&self) -> Box<fixt::message::FIXTMessage + Send> {
+            Box::new(RepeatingGroupsTestMessage::new())
+        }
+    }
+
+    impl FIXTMessageBuildable for RepeatingGroupsTestMessage {
+        fn builder(&self) -> Box<fixt::message::BuildFIXTMessage + Send> {
+            Box::new(BuildRepeatingGroupsTestMessage::new())
         }
     }
 
@@ -611,7 +649,7 @@ fn repeating_groups_test() {
     let result = parse_message::<RepeatingGroupsTestMessage>(missing_one_repeating_group_message);
     assert!(result.is_err());
     match result.err().unwrap() {
-        fix_rs::fix::ParseError::NonRepeatingGroupTagInRepeatingGroup(tag) => assert_eq!(tag,b"55"),
+        fix_rs::fix::ParseError::NonRepeatingGroupTagInRepeatingGroup(tag) => assert_eq!(tag,FieldTag(55)),
         _ => assert!(false),
     }
 
@@ -619,7 +657,7 @@ fn repeating_groups_test() {
     let result = parse_message::<RepeatingGroupsTestMessage>(extra_one_repeating_group_message);
     assert!(result.is_err());
     match result.err().unwrap() {
-        fix_rs::fix::ParseError::RepeatingGroupTagWithNoRepeatingGroup(tag) => assert_eq!(tag,b"1446"),
+        fix_rs::fix::ParseError::RepeatingGroupTagWithNoRepeatingGroup(tag) => assert_eq!(tag,FieldTag(1446)),
         _ => assert!(false),
     }
 
@@ -627,7 +665,7 @@ fn repeating_groups_test() {
     let result = parse_message::<RepeatingGroupsTestMessage>(non_repeating_group_tag_in_repeating_group_message);
     assert!(result.is_err());
     match result.err().unwrap() {
-        fix_rs::fix::ParseError::NonRepeatingGroupTagInRepeatingGroup(tag) => assert_eq!(tag,b"55"),
+        fix_rs::fix::ParseError::NonRepeatingGroupTagInRepeatingGroup(tag) => assert_eq!(tag,FieldTag(55)),
         _ => assert!(false),
     }
 
@@ -635,7 +673,7 @@ fn repeating_groups_test() {
     let result = parse_message::<RepeatingGroupsTestMessage>(wrong_first_tag_in_repeating_group_message);
     assert!(result.is_err());
     match result.err().unwrap() {
-        fix_rs::fix::ParseError::MissingFirstRepeatingGroupTagAfterNumberOfRepeatingGroupTag(number_of_tag) => assert_eq!(number_of_tag,b"1445"),
+        fix_rs::fix::ParseError::MissingFirstRepeatingGroupTagAfterNumberOfRepeatingGroupTag(number_of_tag) => assert_eq!(number_of_tag,FieldTag(1445)),
         _ => assert!(false),
     }
 
@@ -643,7 +681,7 @@ fn repeating_groups_test() {
     let result = parse_message::<RepeatingGroupsTestMessage>(wrong_first_tag_in_second_repeating_group_message);
     assert!(result.is_err());
     match result.err().unwrap() {
-        fix_rs::fix::ParseError::DuplicateTag(tag) => assert_eq!(tag,b"1447"),
+        fix_rs::fix::ParseError::DuplicateTag(tag) => assert_eq!(tag,FieldTag(1447)),
         _ => assert!(false),
     }
 
@@ -651,7 +689,7 @@ fn repeating_groups_test() {
     let result = parse_message::<RepeatingGroupsTestMessage>(missing_required_tag_in_repeating_group_message);
     assert!(result.is_err());
     match result.err().unwrap() {
-        fix_rs::fix::ParseError::MissingRequiredTag(tag,_) => assert_eq!(tag,b"1447"),
+        fix_rs::fix::ParseError::MissingRequiredTag(tag,_) => assert_eq!(tag,FieldTag(1447)),
         _ => assert!(false),
     }
 
@@ -659,7 +697,7 @@ fn repeating_groups_test() {
     let result = parse_message::<RepeatingGroupsTestMessage>(missing_required_tag_in_first_repeating_group_message);
     assert!(result.is_err());
     match result.err().unwrap() {
-        fix_rs::fix::ParseError::MissingRequiredTag(tag,_) => assert_eq!(tag,b"1447"),
+        fix_rs::fix::ParseError::MissingRequiredTag(tag,_) => assert_eq!(tag,FieldTag(1447)),
         _ => assert!(false),
     }
 }
@@ -711,6 +749,22 @@ fn nested_repeating_groups_test() {
                                      _sender_comp_id: <<SenderCompID as Field>::Type as FieldType>::Type,
                                      _target_comp_id: <<TargetCompID as Field>::Type as FieldType>::Type) {
             unimplemented!();
+        }
+    }
+
+    impl BuildFIXTMessage for BuildNestedRepeatingGroupsTestMessage {
+        fn new_into_box(&self) -> Box<fixt::message::BuildFIXTMessage + Send> {
+            Box::new(BuildNestedRepeatingGroupsTestMessage::new())
+        }
+
+        fn build(&self) -> Box<fixt::message::FIXTMessage + Send> {
+            Box::new(NestedRepeatingGroupsTestMessage::new())
+        }
+    }
+
+    impl FIXTMessageBuildable for NestedRepeatingGroupsTestMessage {
+        fn builder(&self) -> Box<fixt::message::BuildFIXTMessage + Send> {
+            Box::new(BuildNestedRepeatingGroupsTestMessage::new())
         }
     }
 
@@ -826,7 +880,7 @@ fn no_value_after_tag_test() {
 
     let result = parse_message::<LogonTest>(message);
     match result.err().unwrap() {
-        fix_rs::fix::ParseError::NoValueAfterTag(tag) => assert_eq!(tag,b"34"),
+        fix_rs::fix::ParseError::NoValueAfterTag(tag) => assert_eq!(tag,FieldTag(34)),
         _ => assert!(false),
     }
 }

@@ -71,10 +71,11 @@ macro_rules! define_enum_field_type_impl {
     ( 1=> $base_type:ident { $( $base_type_field:path => $base_type_value:expr ),* $(),* } ) => {
        impl $base_type {
             fn new(bytes: &[u8]) -> Option<$base_type> {
-                match bytes {
-                    $( $base_type_value => Some($base_type_field), )*
-                    _ => None,
-                }
+                static MAPPING: ::phf::Map<&'static [u8],$base_type> = phf_map! {
+                    $( $base_type_value => $base_type_field, )*
+                };
+
+                MAPPING.get(bytes).cloned()
             }
 
             fn to_bytes(&self) -> &'static [u8] {
@@ -405,10 +406,11 @@ macro_rules! define_enum_field_type_with_reserved {
     ( BYTES, $base_type:ident, $required_field_type:ident, $not_required_field_type:ident { $( $base_type_field:path => $base_type_value:expr ),* $(),* } $base_type_reserved_field:path ) => {
         impl $base_type {
             fn new(value: &[u8]) -> Option<$base_type> {
-                Some(match value {
+                static MAPPING: ::phf::Map<&'static [u8],$base_type> = phf_map! {
                     $( $base_type_value => $base_type_field, )*
-                    _ => $base_type_reserved_field(value.to_vec()),
-                })
+                };
+
+                MAPPING.get(value).cloned()
             }
 
             fn as_bytes<'a>(&'a self) -> &'a [u8] {

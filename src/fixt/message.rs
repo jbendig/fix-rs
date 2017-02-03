@@ -15,8 +15,17 @@ use dictionary::fields::{MsgSeqNum,OrigSendingTime,SenderCompID,SendingTime,Targ
 use field::Field;
 use field_type::FieldType;
 use fix_version::FIXVersion;
-use message::Message;
+use message::{BuildMessage,Message};
 use message_version::MessageVersion;
+
+pub trait BuildFIXTMessage: BuildMessage {
+    fn new_into_box(&self) -> Box<BuildFIXTMessage + Send>;
+    fn build(&self) -> Box<FIXTMessage + Send>;
+}
+
+pub trait FIXTMessageBuildable {
+    fn builder(&self) -> Box<BuildFIXTMessage + Send>;
+}
 
 pub trait FIXTMessage: Message {
     fn new_into_box(&self) -> Box<FIXTMessage + Send>;

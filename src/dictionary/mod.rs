@@ -15,14 +15,19 @@ pub mod messages;
 
 use std::collections::{HashMap,HashSet};
 
-use fixt::message::FIXTMessage;
+use fixt::message::BuildFIXTMessage;
 
 #[macro_export]
 macro_rules! define_dictionary {
     ( $( $msg:ident ),* $(),* ) => {
-        fn build_dictionary() -> std::collections::HashMap<&'static [u8],Box<$crate::fixt::message::FIXTMessage + Send>> {
-            let mut message_dictionary: std::collections::HashMap<&'static [u8],Box<$crate::fixt::message::FIXTMessage + Send>> = std::collections::HashMap::new();
-            $( message_dictionary.insert(<$msg as $crate::message::MessageDetails>::msg_type(),Box::new(<$msg as Default>::default())); )*
+        fn build_dictionary() -> std::collections::HashMap<&'static [u8],Box<$crate::fixt::message::BuildFIXTMessage + Send>> {
+            let mut message_dictionary: std::collections::HashMap<&'static [u8],Box<$crate::fixt::message::BuildFIXTMessage + Send>> = std::collections::HashMap::new();
+
+            use $crate::fixt::message::FIXTMessageBuildable;
+            $(
+            let builder: Box<$crate::fixt::message::BuildFIXTMessage + Send> = <$msg as Default>::default().builder();
+            message_dictionary.insert(<$msg as $crate::message::MessageDetails>::msg_type(),builder);
+            )*
 
             message_dictionary
         }
@@ -48,17 +53,17 @@ macro_rules! define_dictionary {
 }
 
 pub trait CloneDictionary {
-    fn clone(&self) -> HashMap<&'static [u8],Box<FIXTMessage + Send>>;
+    fn clone(&self) -> HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>;
 }
 
-impl CloneDictionary for HashMap<&'static [u8],Box<FIXTMessage + Send>> {
-    fn clone(&self) -> HashMap<&'static [u8],Box<FIXTMessage + Send>> {
+impl CloneDictionary for HashMap<&'static [u8],Box<BuildFIXTMessage + Send>> {
+    fn clone(&self) -> HashMap<&'static [u8],Box<BuildFIXTMessage + Send>> {
         //TODO: This function wastes a lot of time and memory. Probably better to change Parser
         //so it isn't needed.
 
-        let mut result = HashMap::<&'static [u8],Box<FIXTMessage + Send>>::new();
+        let mut result = HashMap::<&'static [u8],Box<BuildFIXTMessage + Send>>::new();
         for (key,value) in self {
-            result.insert(key,FIXTMessage::new_into_box(&**value));
+            result.insert(key,BuildFIXTMessage::new_into_box(&**value));
         }
 
         result
