@@ -33,7 +33,7 @@ use field::Field;
 use field_type::FieldType;
 use fix::{Parser,ParseError};
 use fix_version::FIXVersion;
-use fixt::client::{ClientEvent,ConnectionTerminatedReason};
+use fixt::client::{ClientEvent,Connection,ConnectionTerminatedReason};
 use fixt::message::{BuildFIXTMessage,FIXTMessage};
 use message_version::MessageVersion;
 use network_read_retry::NetworkReadRetry;
@@ -272,7 +272,7 @@ pub enum InternalClientToThreadEvent {
 }
 
 enum ConnectionEventError {
-    TerminateConnection(Connection,ConnectionTerminatedReason),
+    TerminateConnection(InternalConnection,ConnectionTerminatedReason),
     Shutdown,
 }
 
@@ -286,7 +286,7 @@ struct LastSeenResendRequest {
     count: u64,
 }
 
-struct Connection {
+struct InternalConnection {
     fix_version: FIXVersion,
     default_message_version: MessageVersion,
     socket: TcpStream,
@@ -312,7 +312,7 @@ struct Connection {
     target_comp_id: Rc<<<TargetCompID as Field>::Type as FieldType>::Type>,
 }
 
-impl Connection {
+impl InternalConnection {
     fn write(&mut self,timer: &mut Timer<(TimeoutType,Token)>,network_read_retry: &mut NetworkReadRetry) -> Result<(),ConnectionTerminatedReason> {
         //Send data until no more messages are available or until the socket returns WouldBlock.
         let mut sent_data = false;
@@ -412,7 +412,7 @@ impl Connection {
     }
 
     fn read(&mut self,timer: &mut Timer<(TimeoutType,Token)>) -> Result<(Vec<ConnectionReadMessage>),::std::io::Error> {
-        fn parse_bytes(connection: &mut Connection,messages: &mut Vec<ConnectionReadMessage>) -> bool {
+        fn parse_bytes(connection: &mut InternalConnection,messages: &mut Vec<ConnectionReadMessage>) -> bool {
             while !connection.inbound_buffer.is_empty() {
                 let (bytes_parsed,result) = connection.parser.parse(connection.inbound_buffer.bytes());
 
@@ -602,6 +602,10 @@ impl Connection {
         //Immediately try to read from the socket in case there is any data waiting.
         network_read_retry.queue(self.token);
     }
+
+    fn as_connection(&self) -> Connection {
+        Connection(self.token.0)
+    }
 }
 
 macro_rules! try_write_connection_or_terminate {
@@ -620,7 +624,7 @@ struct InternalThread {
     sender_comp_id: Rc<<<SenderCompID as Field>::Type as FieldType>::Type>,
     target_comp_id: Rc<<<TargetCompID as Field>::Type as FieldType>::Type>,
     max_message_size: u64,
-    connections: HashMap<Token,Connection>,
+    connections: HashMap<Token,InternalConnection>,
     timer: Timer<(TimeoutType,Token)>,
     network_read_retry: NetworkReadRetry,
 }
@@ -638,7 +642,7 @@ impl InternalThread {
                 let socket = match TcpStream::connect(&address) {
                     Ok(socket) => socket,
                     Err(e) => {
-                        self.tx.send(ClientEvent::ConnectionFailed(token.0,e)).unwrap();
+                        self.tx.send(ClientEvent::ConnectionFailed(Connection(token.0),e)).unwrap();
                         return Ok(())
                     },
                 };
@@ -652,7 +656,7 @@ impl InternalThread {
                     parser.set_default_message_type_version(msg_type,fix_version.max_message_version());
                 }
 
-                let connection = Connection {
+                let connection = InternalConnection {
                     fix_version: fix_version,
                     default_message_version: default_message_version,
                     socket: socket,
@@ -683,7 +687,7 @@ impl InternalThread {
 
                 //Have poll let us know when we can can read or write.
                 if let Err(e) = self.poll.register(&connection.socket,connection.token,Ready::all(),PollOpt::edge()) {
-                    self.tx.send(ClientEvent::ConnectionFailed(connection.token.0,e)).unwrap();
+                    self.tx.send(ClientEvent::ConnectionFailed(connection.as_connection(),e)).unwrap();
                     return Ok(())
                 }
 
@@ -760,10 +764,10 @@ impl InternalThread {
                         //filled. The overhead in maintaining a list of sent TestReqIds does not
                         //seem worth the effort. It would only be useful for debugging reasons,
                         //right?
-                        //TODO: This might belong in the Connection::write() function so we don't
-                        //disconnect before the TestRequest is actually sent. On the other hand, if
-                        //this doesn't go out in a reasonable amount of time, we're backlogged and
-                        //might be having negative consequences on the network.
+                        //TODO: This might belong in the InternalConnection::write() function so we
+                        //don't disconnect before the TestRequest is actually sent. On the other
+                        //hand, if this doesn't go out in a reasonable amount of time, we're
+                        //backlogged and might be having negative consequences on the network.
                         connection_entry.get_mut().inbound_testrequest_timeout = Some(
                             self.timer.set_timeout(
                                 connection_entry.get_mut().inbound_testrequest_timeout_duration.unwrap(),
@@ -861,7 +865,7 @@ impl InternalThread {
                 if !connection_entry.get().is_connected {
                     //Let user know that the socket's connect() call succeeded.
                     connection_entry.get_mut().is_connected = true;
-                    self.tx.send(ClientEvent::ConnectionSucceeded(connection_entry.get().token.0)).unwrap();
+                    self.tx.send(ClientEvent::ConnectionSucceeded(connection_entry.get().as_connection())).unwrap();
                 }
             }
 
@@ -884,11 +888,11 @@ impl InternalThread {
         Ok(())
     }
 
-    fn on_network_message(connection: &mut Connection,mut message: Box<FIXTMessage + Send>,tx: &Sender<ClientEvent>,timer: &mut Timer<(TimeoutType,Token)>) -> Result<(),ConnectionTerminatedReason>  {
+    fn on_network_message(connection: &mut InternalConnection,mut message: Box<FIXTMessage + Send>,tx: &Sender<ClientEvent>,timer: &mut Timer<(TimeoutType,Token)>) -> Result<(),ConnectionTerminatedReason>  {
         //Perform book keeping needed to maintain the FIX connection and then pass off the message
         //to the client.
 
-        fn if_on_resend_request(connection: &mut Connection,message: Box<FIXTMessage + Send>,msg_seq_num: MsgSeqNumType,tx: &Sender<ClientEvent>,timer: &mut Timer<(TimeoutType,Token)>) -> Option<Box<FIXTMessage + Send>> {
+        fn if_on_resend_request(connection: &mut InternalConnection,message: Box<FIXTMessage + Send>,msg_seq_num: MsgSeqNumType,tx: &Sender<ClientEvent>,timer: &mut Timer<(TimeoutType,Token)>) -> Option<Box<FIXTMessage + Send>> {
             let mut rejected = false;
 
             if let Some(resend_request) = message.as_any().downcast_ref::<ResendRequest>() {
@@ -965,7 +969,7 @@ impl InternalThread {
 
             //Appease the borrow checker by fully handling reject much later than where occurred.
             if rejected {
-                tx.send(ClientEvent::MessageRejected(connection.token.0,message)).unwrap();
+                tx.send(ClientEvent::MessageRejected(connection.as_connection(),message)).unwrap();
                 None
             }
             else {
@@ -973,17 +977,17 @@ impl InternalThread {
             }
         }
 
-        fn reject_for_sending_time_accuracy(connection: &mut Connection,message: Box<FIXTMessage + Send>,msg_seq_num: MsgSeqNumType,tx: &Sender<ClientEvent>) {
+        fn reject_for_sending_time_accuracy(connection: &mut InternalConnection,message: Box<FIXTMessage + Send>,msg_seq_num: MsgSeqNumType,tx: &Sender<ClientEvent>) {
             let mut reject = Reject::new();
             reject.ref_seq_num = msg_seq_num;
             reject.session_reject_reason = Some(SessionRejectReason::SendingTimeAccuracyProblem);
             reject.text = b"SendingTime accuracy problem".to_vec();
             connection.outbound_messages.push(OutboundMessage::from(reject));
 
-            tx.send(ClientEvent::MessageRejected(connection.token.0,message)).unwrap();
+            tx.send(ClientEvent::MessageRejected(connection.as_connection(),message)).unwrap();
         }
 
-        fn on_greater_than_expected_msg_seq_num(connection: &mut Connection,mut message: Box<FIXTMessage + Send>,msg_seq_num: MsgSeqNumType,tx: &Sender<ClientEvent>,timer: &mut Timer<(TimeoutType,Token)>) -> Option<Box<FIXTMessage + Send>> {
+        fn on_greater_than_expected_msg_seq_num(connection: &mut InternalConnection,mut message: Box<FIXTMessage + Send>,msg_seq_num: MsgSeqNumType,tx: &Sender<ClientEvent>,timer: &mut Timer<(TimeoutType,Token)>) -> Option<Box<FIXTMessage + Send>> {
             //FIXT v1.1, page 13: We should reply to ResendRequest first when MsgSeqNum is higher
             //than expected. Afterwards, we should send our own ResendRequest.
             message = match if_on_resend_request(connection,message,msg_seq_num,tx,timer) {
@@ -1068,14 +1072,14 @@ impl InternalThread {
             Some(message)
         }
 
-        fn on_less_than_expected_msg_seq_num(connection: &mut Connection,message: Box<FIXTMessage + Send>,msg_seq_num: MsgSeqNumType,tx: &Sender<ClientEvent>,timer: &mut Timer<(TimeoutType,Token)>) {
+        fn on_less_than_expected_msg_seq_num(connection: &mut InternalConnection,message: Box<FIXTMessage + Send>,msg_seq_num: MsgSeqNumType,tx: &Sender<ClientEvent>,timer: &mut Timer<(TimeoutType,Token)>) {
             //Messages with MsgSeqNum lower than expected are never processed as normal. They are
             //either duplicates (as indicated) or an unrecoverable error where one side fell
             //out of sync.
             if message.is_poss_dup() {
                 if message.orig_sending_time() <= message.sending_time() {
                     //Duplicate message that otherwise seems correct.
-                    tx.send(ClientEvent::MessageReceivedDuplicate(connection.token.0,message)).unwrap();
+                    tx.send(ClientEvent::MessageReceivedDuplicate(connection.as_connection(),message)).unwrap();
                 }
                 else {
                     //Reject message even though it's a duplicate. Currently, we probably don't
@@ -1093,7 +1097,7 @@ impl InternalThread {
             }
         }
 
-        fn on_expected_msg_seq_num(connection: &mut Connection,mut message: Box<FIXTMessage + Send>,msg_seq_num: MsgSeqNumType,tx: &Sender<ClientEvent>,timer: &mut Timer<(TimeoutType,Token)>) -> Result<Option<Box<FIXTMessage + Send>>,ConnectionTerminatedReason> {
+        fn on_expected_msg_seq_num(connection: &mut InternalConnection,mut message: Box<FIXTMessage + Send>,msg_seq_num: MsgSeqNumType,tx: &Sender<ClientEvent>,timer: &mut Timer<(TimeoutType,Token)>) -> Result<Option<Box<FIXTMessage + Send>>,ConnectionTerminatedReason> {
             //Start by incrementing expected inbound MsgSeqNum since the message is at least
             //formatted correctly and matches the expected MsgSeqNum.
             try!(connection.increment_inbound_msg_seq_num());
@@ -1122,7 +1126,7 @@ impl InternalThread {
                         reject.text.extend_from_slice(sequence_reset.new_seq_no.to_string().as_bytes());
                         connection.outbound_messages.push(OutboundMessage::from(reject));
 
-                        tx.send(ClientEvent::MessageRejected(connection.token.0,Box::new(mem::replace(sequence_reset,SequenceReset::new())))).unwrap();
+                        tx.send(ClientEvent::MessageRejected(connection.as_connection(),Box::new(mem::replace(sequence_reset,SequenceReset::new())))).unwrap();
                     }
                 }
                 else {
@@ -1192,7 +1196,7 @@ impl InternalThread {
             reject.text = b"CompID problem".to_vec();
             connection.outbound_messages.insert(0,OutboundMessage::from(reject));
 
-            tx.send(ClientEvent::MessageRejected(connection.token.0,message)).unwrap();
+            tx.send(ClientEvent::MessageRejected(connection.as_connection(),message)).unwrap();
 
             return Ok(());
         }
@@ -1205,7 +1209,7 @@ impl InternalThread {
             reject.text = b"CompID problem".to_vec();
             connection.outbound_messages.insert(0,OutboundMessage::from(reject));
 
-            tx.send(ClientEvent::MessageRejected(connection.token.0,message)).unwrap();
+            tx.send(ClientEvent::MessageRejected(connection.as_connection(),message)).unwrap();
 
             return Ok(());
         }
@@ -1248,7 +1252,7 @@ impl InternalThread {
 
                 //TODO: Need to take MaxMessageSize into account.
                 //TODO: Optionally support filtering message types (NoMsgTypes).
-                tx.send(ClientEvent::SessionEstablished(connection.token.0)).unwrap();
+                tx.send(ClientEvent::SessionEstablished(connection.as_connection())).unwrap();
             }
             else {
                 connection.initiate_logout(timer,LoggingOutType::Error(ConnectionTerminatedReason::LogonNotFirstMessageError),b"First message not a logon");
@@ -1271,7 +1275,7 @@ impl InternalThread {
                     connection.clear_inbound_resend_request_msg_seq_num(timer);
                 }
                 else if sequence_reset.new_seq_no == connection.inbound_msg_seq_num {
-                    tx.send(ClientEvent::SequenceResetResetHasNoEffect(connection.token.0)).unwrap();
+                    tx.send(ClientEvent::SequenceResetResetHasNoEffect(connection.as_connection())).unwrap();
                 }
                 else {//if sequence_reset.new_seq_no < connection.inbound_msg_seq_num
                     let mut reject = Reject::new();
@@ -1281,7 +1285,7 @@ impl InternalThread {
                     reject.text.extend_from_slice(sequence_reset.new_seq_no.to_string().as_bytes());
                     connection.outbound_messages.push(OutboundMessage::from(reject));
 
-                    tx.send(ClientEvent::SequenceResetResetInThePast(connection.token.0)).unwrap();
+                    tx.send(ClientEvent::SequenceResetResetInThePast(connection.as_connection())).unwrap();
                 }
 
                 true
@@ -1331,13 +1335,13 @@ impl InternalThread {
             connection.outbound_messages.push(OutboundMessage::from(heartbeat));
         }
 
-        tx.send(ClientEvent::MessageReceived(connection.token.0,message)).unwrap();
+        tx.send(ClientEvent::MessageReceived(connection.as_connection(),message)).unwrap();
 
         Ok(())
     }
 
-    fn on_network_parse_error(connection: &mut Connection,parse_error: ParseError,tx: &Sender<ClientEvent>)-> Result<(),ConnectionTerminatedReason> {
-        fn push_reject<T: Into<Vec<u8>>>(connection: &mut Connection,ref_msg_type: &[u8],ref_tag_id: T,session_reject_reason: SessionRejectReason,text: &[u8]) -> Result<(),ConnectionTerminatedReason> {
+    fn on_network_parse_error(connection: &mut InternalConnection,parse_error: ParseError,tx: &Sender<ClientEvent>)-> Result<(),ConnectionTerminatedReason> {
+        fn push_reject<T: Into<Vec<u8>>>(connection: &mut InternalConnection,ref_msg_type: &[u8],ref_tag_id: T,session_reject_reason: SessionRejectReason,text: &[u8]) -> Result<(),ConnectionTerminatedReason> {
             let mut reject = Reject::new();
             reject.ref_msg_type = ref_msg_type.to_vec();
             reject.ref_tag_id = ref_tag_id.into();
@@ -1448,7 +1452,7 @@ impl InternalThread {
                 try!(connection.increment_inbound_msg_seq_num());
 
                 //Tell user about the garbled message just in case they care.
-                tx.send(ClientEvent::MessageReceivedGarbled(connection.token.0,parse_error)).unwrap();
+                tx.send(ClientEvent::MessageReceivedGarbled(connection.as_connection(),parse_error)).unwrap();
             },
         };
 
@@ -1483,7 +1487,7 @@ pub fn internal_client_thread(poll: Poll,
             .build(),
         network_read_retry: NetworkReadRetry::new(),
     };
-    let mut terminated_connections: Vec<(Connection,ConnectionTerminatedReason)> = Vec::new();
+    let mut terminated_connections: Vec<(InternalConnection,ConnectionTerminatedReason)> = Vec::new();
 
     //Have poll let us know when we need to send a heartbeat, testrequest, or respond to some other
     //timeout.
@@ -1562,7 +1566,7 @@ pub fn internal_client_thread(poll: Poll,
             //block is incredibly ugly but required to appease the borrow checker.
             let e = if let ConnectionTerminatedReason::SocketReadError(err) = e {
                 if !connection.is_connected {
-                    internal_thread.tx.send(ClientEvent::ConnectionFailed(connection.token.0,err)).unwrap();
+                    internal_thread.tx.send(ClientEvent::ConnectionFailed(connection.as_connection(),err)).unwrap();
                     return true;
                 }
 
@@ -1570,7 +1574,7 @@ pub fn internal_client_thread(poll: Poll,
             } else { e };
 
             //Notify user that connection was terminated.
-            internal_thread.tx.send(ClientEvent::ConnectionTerminated(connection.token.0,e)).unwrap();
+            internal_thread.tx.send(ClientEvent::ConnectionTerminated(connection.as_connection(),e)).unwrap();
 
             true
         });
