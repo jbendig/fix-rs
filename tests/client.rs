@@ -28,7 +28,7 @@ use std::sync::atomic::{AtomicBool,Ordering};
 
 #[macro_use]
 mod common;
-use common::{SERVER_SENDER_COMP_ID,SERVER_TARGET_COMP_ID,TestServer,new_logon_message};
+use common::{SERVER_SENDER_COMP_ID,SERVER_TARGET_COMP_ID,TestStream,new_logon_message};
 use fix_rs::dictionary::field_types::other::{MsgDirection,SessionRejectReason};
 use fix_rs::dictionary::fields::{MsgTypeGrp,SenderCompID,TargetCompID,Text};
 use fix_rs::dictionary::messages::{Heartbeat,Logon,Logout,Reject,ResendRequest,SequenceReset,TestRequest};
@@ -52,7 +52,7 @@ fn test_recv_resend_request_invalid_end_seq_no() {
     );
 
     //Connect and Logon.
-    let (mut test_server,_client,_) = TestServer::setup_and_logon(build_dictionary());
+    let (mut test_server,_client,_) = TestStream::setup_test_server_and_logon(build_dictionary());
 
     //Send ResendRequest to client with EndSeqNo < BeginSeqNo.
     let mut message = new_fixt_message!(ResendRequest);
@@ -75,7 +75,7 @@ fn test_send_logout_before_logon() {
         Logout,
     );
 
-    let (mut test_server,mut client,connection) = TestServer::setup(build_dictionary());
+    let (mut test_server,mut client,connection) = TestStream::setup_test_server(build_dictionary());
 
     //Send Logout immediately.
     let mut message = new_fixt_message!(Logout);
@@ -105,7 +105,7 @@ fn test_recv_logout_with_high_msg_seq_num() {
     );
 
     //Connect and Logon.
-    let (mut test_server,mut client,connection) = TestServer::setup_and_logon(build_dictionary());
+    let (mut test_server,mut client,connection) = TestStream::setup_test_server_and_logon(build_dictionary());
 
     //Send Logout with a high MsgSeqNum
     let mut message = new_fixt_message!(Logout);
@@ -147,7 +147,7 @@ fn test_recv_logout_with_high_msg_seq_num_and_no_reply() {
     );
 
     //Connect and Logon.
-    let (mut test_server,mut client,connection) = TestServer::setup_and_logon(build_dictionary());
+    let (mut test_server,mut client,connection) = TestStream::setup_test_server_and_logon(build_dictionary());
 
     //Send Logout with a high MsgSeqNum
     let mut message = new_fixt_message!(Logout);
@@ -186,7 +186,7 @@ fn test_recv_logout_send_logout_recv_resend_request() {
     );
 
     //Connect and Logon.
-    let (mut test_server,mut client,connection) = TestServer::setup_and_logon(build_dictionary());
+    let (mut test_server,mut client,connection) = TestStream::setup_test_server_and_logon(build_dictionary());
 
     //Send Logout to client.
     let mut message = new_fixt_message!(Logout);
@@ -243,7 +243,7 @@ fn test_send_logout_and_recv_resend_request() {
     );
 
     //Connect and Logon.
-    let (mut test_server,mut client,connection) = TestServer::setup_and_logon(build_dictionary());
+    let (mut test_server,mut client,connection) = TestStream::setup_test_server_and_logon(build_dictionary());
 
     //Wait around for a Heartbeat and TestRequest. Ignore these so we can send a valid
     //ResendRequest below.
@@ -291,7 +291,7 @@ fn test_send_logout_and_recv_logout_with_high_msg_seq_num() {
     );
 
     //Connect and Logon.
-    let (mut test_server,mut client,connection) = TestServer::setup_and_logon(build_dictionary());
+    let (mut test_server,mut client,connection) = TestStream::setup_test_server_and_logon(build_dictionary());
 
     //Begin Logout.
     client.logout(connection);
@@ -342,7 +342,7 @@ fn test_send_logout_and_recv_logout_with_high_msg_seq_num_and_no_reply() {
     );
 
     //Connect and Logon.
-    let (mut test_server,mut client,connection) = TestServer::setup_and_logon(build_dictionary());
+    let (mut test_server,mut client,connection) = TestStream::setup_test_server_and_logon(build_dictionary());
 
     //Begin Logout.
     client.logout(connection);
@@ -381,7 +381,7 @@ fn test_wrong_sender_comp_id_in_logon_response() {
     );
 
     //Connect and attempt logon.
-    let (mut test_server,mut client,connection) = TestServer::setup(build_dictionary());
+    let (mut test_server,mut client,connection) = TestStream::setup_test_server(build_dictionary());
 
     let message = new_logon_message();
     client.send_message(connection,message);
@@ -425,7 +425,7 @@ fn test_wrong_target_comp_id_in_logon_response() {
     );
 
     //Connect and attempt logon.
-    let (mut test_server,mut client,connection) = TestServer::setup(build_dictionary());
+    let (mut test_server,mut client,connection) = TestStream::setup_test_server(build_dictionary());
 
     let message = new_logon_message();
     client.send_message(connection,message);
@@ -475,7 +475,7 @@ fn test_overflowing_inbound_messages_buffer_does_resume() {
     );
 
     //Connect and logon.
-    let (mut test_server,mut client,connection) = TestServer::setup_and_logon(build_dictionary());
+    let (mut test_server,mut client,connection) = TestStream::setup_test_server_and_logon(build_dictionary());
 
     //Send INBOUND_MESSAGES_BUFFER_LEN_MAX + 1 TestRequests (hopefully) merged into a single TCP
     //frame.
@@ -517,7 +517,7 @@ fn test_sender_comp_id() {
     //FIXT.1.1: Make sure SenderCompID has to be the fourth field.
     {
         //Connect and logon.
-        let (mut test_server,mut client,connection) = TestServer::setup_and_logon_with_ver(FIXVersion::FIXT_1_1,MessageVersion::FIX50,build_dictionary());
+        let (mut test_server,mut client,connection) = TestStream::setup_test_server_and_logon_with_ver(FIXVersion::FIXT_1_1,MessageVersion::FIX50,build_dictionary());
 
         //Accept when SenderCompID is the fourth tag.
         let target_comp_id_fifth_tag_message = b"8=FIXT.1.1\x019=48\x0135=9999\x0149=TX\x0156=TEST\x0134=2\x0152=20170105-01:01:01\x0110=236\x01";
@@ -562,7 +562,7 @@ fn test_sender_comp_id() {
     //FIX.4.0: Make sure SenderCompID does not have to be the fourth field.
     {
         //Connect and logon.
-        let (mut test_server,mut client,connection) = TestServer::setup_and_logon_with_ver(FIXVersion::FIX_4_0,MessageVersion::FIX40,build_dictionary());
+        let (mut test_server,mut client,connection) = TestStream::setup_test_server_and_logon_with_ver(FIXVersion::FIX_4_0,MessageVersion::FIX40,build_dictionary());
 
         //Accept when SenderCompID is the fourth tag.
         let target_comp_id_fifth_tag_message = b"8=FIX.4.0\x019=48\x0135=9999\x0149=TX\x0156=TEST\x0134=2\x0152=20170105-01:01:01\x0110=154\x01";
@@ -613,7 +613,7 @@ fn test_target_comp_id() {
     //FIXT.1.1: Make sure TargetCompID has to be the fifth field.
     {
         //Connect and logon.
-        let (mut test_server,mut client,connection) = TestServer::setup_and_logon_with_ver(FIXVersion::FIXT_1_1,MessageVersion::FIX50,build_dictionary());
+        let (mut test_server,mut client,connection) = TestStream::setup_test_server_and_logon_with_ver(FIXVersion::FIXT_1_1,MessageVersion::FIX50,build_dictionary());
 
         //Accept when TargetCompID is the fifth tag.
         let target_comp_id_fifth_tag_message = b"8=FIXT.1.1\x019=48\x0135=9999\x0149=TX\x0156=TEST\x0134=2\x0152=20170105-01:01:01\x0110=236\x01";
@@ -658,7 +658,7 @@ fn test_target_comp_id() {
     //FIX.4.0: Make sure TargetCompID does not have to be the fifth field.
     {
         //Connect and logon.
-        let (mut test_server,mut client,connection) = TestServer::setup_and_logon_with_ver(FIXVersion::FIX_4_0,MessageVersion::FIX40,build_dictionary());
+        let (mut test_server,mut client,connection) = TestStream::setup_test_server_and_logon_with_ver(FIXVersion::FIX_4_0,MessageVersion::FIX40,build_dictionary());
 
         //Accept when TargetCompID is the fifth tag.
         let target_comp_id_fifth_tag_message = b"8=FIX.4.0\x019=48\x0135=9999\x0149=TX\x0156=TEST\x0134=2\x0152=20170105-01:01:01\x0110=154\x01";
@@ -710,7 +710,7 @@ fn test_default_appl_ver_id() {
     );
 
     //Connect and logon.
-    let (mut test_server,mut client,connection) = TestServer::setup_and_logon_with_ver(FIXVersion::FIXT_1_1,MessageVersion::FIX40,build_dictionary());
+    let (mut test_server,mut client,connection) = TestStream::setup_test_server_and_logon_with_ver(FIXVersion::FIXT_1_1,MessageVersion::FIX40,build_dictionary());
 
     //Make sure DefaultApplVerID is respected for sent messages.
     {
@@ -766,7 +766,7 @@ fn test_appl_ver_id() {
     //appropriate Reject message and notification.
     {
         //Connect and logon.
-        let (mut test_server,mut client,connection) = TestServer::setup_and_logon(build_dictionary());
+        let (mut test_server,mut client,connection) = TestStream::setup_test_server_and_logon(build_dictionary());
 
         //Send TestMessage with ApplVerID field as the seventh tag.
         let appl_ver_id_seventh_tag_message = b"8=FIXT.1.1\x019=44\x0135=9999\x0149=SERVER\x0156=CLIENT\x0134=2\x011128=9\x0110=000\x01";
@@ -788,7 +788,7 @@ fn test_appl_ver_id() {
     //Make sure ApplVerID overrides the default message version set in the initial Logon message.
     {
         //Connect and logon.
-        let (mut test_server,mut client,connection) = TestServer::setup_and_logon(build_dictionary());
+        let (mut test_server,mut client,connection) = TestStream::setup_test_server_and_logon(build_dictionary());
 
         //Send TestMessage with ApplVerID < FIX50 and without text field.
         let mut message = new_fixt_message!(TestMessage);
@@ -833,7 +833,7 @@ fn test_message_type_default_application_version() {
     );
 
     //Connect.
-    let (mut test_server,mut client,connection) = TestServer::setup(build_dictionary());
+    let (mut test_server,mut client,connection) = TestStream::setup_test_server(build_dictionary());
 
     //Logon.
     let mut logon_message = new_logon_message();
@@ -902,7 +902,7 @@ fn test_respond_to_test_request_immediately_after_logon() {
     );
 
     //Connect to server.
-    let (mut test_server,mut client,connection) = TestServer::setup(build_dictionary());
+    let (mut test_server,mut client,connection) = TestStream::setup_test_server(build_dictionary());
 
     //Have client send Logon.
     client.send_message_box(connection,Box::new(new_logon_message()));
@@ -955,7 +955,7 @@ fn test_respect_default_appl_ver_id_in_test_request_immediately_after_logon() {
     );
 
     //Connect to server.
-    let (mut test_server,mut client,connection) = TestServer::setup(build_dictionary());
+    let (mut test_server,mut client,connection) = TestStream::setup_test_server(build_dictionary());
 
     //Have client send Logon.
     let mut logon_message = new_logon_message();
@@ -1007,7 +1007,7 @@ fn test_logout_and_terminate_wrong_versioned_test_request_immediately_after_logo
     );
 
     //Connect to server.
-    let (mut test_server,mut client,connection) = TestServer::setup(build_dictionary());
+    let (mut test_server,mut client,connection) = TestStream::setup_test_server(build_dictionary());
 
     //Have client send Logon.
     client.send_message_box(connection,Box::new(new_logon_message()));
@@ -1080,7 +1080,7 @@ fn test_max_message_size() {
     //Make sure exceeding the MaxMessageSize in messages after Logon results in a Reject message.
     {
         //Connect to server.
-        let (mut test_server,mut client,connection) = TestServer::setup(build_dictionary());
+        let (mut test_server,mut client,connection) = TestStream::setup_test_server(build_dictionary());
 
         //Have client send Logon.
         let mut message = new_logon_message();
@@ -1123,7 +1123,7 @@ fn test_max_message_size() {
     //disconnecting.
     {
         //Connect to server.
-        let (mut test_server,mut client,connection) = TestServer::setup(build_dictionary());
+        let (mut test_server,mut client,connection) = TestStream::setup_test_server(build_dictionary());
 
         //Have client send Logon.
         let mut message = new_logon_message();
@@ -1173,7 +1173,7 @@ fn test_block_read_when_write_blocks() {
     //until it can write again.
     {
         //Connect and Logon.
-        let (mut test_server,client,_) = TestServer::setup_and_logon(build_dictionary());
+        let (mut test_server,client,_) = TestStream::setup_test_server_and_logon(build_dictionary());
 
         //Run a background thread to drain client events until they stop. The stopping indicates the
         //client has stopped accepting new messages.
@@ -1250,7 +1250,7 @@ fn test_block_read_when_write_blocks() {
     //dropped.
     {
         //Connect and Logon.
-        let (mut test_server,mut client,_) = TestServer::setup_and_logon(build_dictionary());
+        let (mut test_server,mut client,_) = TestStream::setup_test_server_and_logon(build_dictionary());
 
         //Flood client with TestRequest messages until Client drops the connection.
         let mut outbound_msg_seq_num = 2;
@@ -1295,7 +1295,7 @@ fn test_inbound_resend_loop_detection() {
     );
 
     //Connect and logon.
-    let (mut test_server,mut client,connection) = TestServer::setup_and_logon(build_dictionary());
+    let (mut test_server,mut client,connection) = TestStream::setup_test_server_and_logon(build_dictionary());
 
     //Have server send TestRequest so Client responds with a Heartbeat.
     let mut message = new_fixt_message!(TestRequest);

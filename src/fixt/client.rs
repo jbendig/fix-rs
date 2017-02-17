@@ -11,20 +11,24 @@
 
 use mio::{Events,Poll,PollOpt,Ready,Token};
 use mio::channel::{channel,Receiver,Sender};
-use std::collections::{HashMap,HashSet};
+use std::collections::HashMap;
+use mio::tcp::TcpListener;
 use std::fmt;
 use std::io;
 use std::mem;
-use std::net::ToSocketAddrs;
+use std::net::{SocketAddr,ToSocketAddrs};
+use std::sync::{Arc,Mutex};
 use std::sync::mpsc::TryRecvError;
 use std::thread;
 use std::time::{Duration,Instant};
 
+use dictionary::messages::Logon;
 use fixt::client_thread::{CONNECTION_COUNT_MAX,BASE_CONNECTION_TOKEN,INTERNAL_CLIENT_EVENT_TOKEN,InternalClientToThreadEvent,internal_client_thread};
-use fixt::message::{BuildFIXTMessage,FIXTMessage};
+use fixt::message::{BuildFIXTMessage,FIXTMessage,debug_format_fixt_message};
 use fix::ParseError;
 use fix_version::FIXVersion;
 use message_version::MessageVersion;
+use token_generator::TokenGenerator;
 
 const CLIENT_EVENT_TOKEN: Token = Token(0);
 
@@ -32,6 +36,15 @@ const CLIENT_EVENT_TOKEN: Token = Token(0);
 pub struct Connection(pub usize);
 
 impl fmt::Display for Connection {
+    fn fmt(&self,f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f,"{}",self.0)
+    }
+}
+
+#[derive(Clone,Copy,Debug,Eq,Hash,PartialEq)]
+pub struct Listener(pub usize);
+
+impl fmt::Display for Listener {
     fn fmt(&self,f: &mut fmt::Formatter) -> fmt::Result {
         write!(f,"{}",self.0)
     }
@@ -45,7 +58,9 @@ pub enum ConnectionTerminatedReason {
     InboundResendRequestLoopError,
     LogonHeartBtIntNegativeError,
     LogonParseError(ParseError),
+    LogonNeverReceivedError,
     LogonNotFirstMessageError,
+    LogonRejectedError,
     LogoutNoHangUpError,
     LogoutNoResponseError,
     OutboundMsgSeqNumMaxExceededError,
@@ -72,7 +87,9 @@ impl fmt::Debug for ConnectionTerminatedReason {
             ConnectionTerminatedReason::InboundResendRequestLoopError => write!(f,"Received too many ResendRequests with the same BeginSeqNo."),
             ConnectionTerminatedReason::LogonHeartBtIntNegativeError => write!(f,"Response to logon included negative HeartBtInt."),
             ConnectionTerminatedReason::LogonParseError(_) => write!(f,"Could not parse logon response."), //Did you connect to a server not running a FIX engine?
+            ConnectionTerminatedReason::LogonNeverReceivedError => write!(f,"Never received logon from new connection."),
             ConnectionTerminatedReason::LogonNotFirstMessageError => write!(f,"Server responded to logon with a non-logon message."),
+            ConnectionTerminatedReason::LogonRejectedError => write!(f,"Server rejected logon for arbitrary reason."),
             ConnectionTerminatedReason::LogoutNoHangUpError => write!(f,"Server requested logout but did not close socket after response."),
             ConnectionTerminatedReason::LogoutNoResponseError => write!(f,"Client requested logout but server did not respond within a reasonable amount of time."),
             ConnectionTerminatedReason::OutboundMsgSeqNumMaxExceededError => write!(f,"Expected outbound MsgSeqNum exceeded maximum allowed."),
@@ -91,7 +108,11 @@ pub enum ClientEvent {
     ConnectionFailed(Connection,io::Error), //Could not setup connection.
     ConnectionSucceeded(Connection), //Connection completed and ready to begin logon.
     ConnectionTerminated(Connection,ConnectionTerminatedReason), //Connection ended for ConnectionTerminatedReason reason.
+    ConnectionDropped(Listener,SocketAddr), //Connection was dropped by listener because of a lock of resources.
+    ConnectionAccepted(Listener,Connection,SocketAddr), //Listener accepted a new connection and is awaiting a Logon message.
+    ConnectionLoggingOn(Listener,Connection,Box<Logon>),
     SessionEstablished(Connection), //Connection completed logon process successfully.
+    ListenerFailed(Listener,io::Error), //Could not accept a connection with listener.
     MessageReceived(Connection,Box<FIXTMessage + Send>), //New valid message was received.
     MessageReceivedGarbled(Connection,ParseError), //New message could not be parsed correctly. (If not garbled (FIXT 1.1, page 40), a Reject will be issued first)
     MessageReceivedDuplicate(Connection,Box<FIXTMessage + Send>), //Message with MsgSeqNum already seen was received.
@@ -107,7 +128,13 @@ impl fmt::Debug for ClientEvent {
             ClientEvent::ConnectionFailed(connection,ref error) => write!(f,"ClientEvent::ConnectionFailed({:?},{:?})",connection,error),
             ClientEvent::ConnectionSucceeded(connection) => write!(f,"ClientEvent::ConnectionSucceeded({:?})",connection),
             ClientEvent::ConnectionTerminated(connection,ref reason) => write!(f,"ClientEvent::ConnectionTerminated({:?},{:?})",connection,reason),
+            ClientEvent::ConnectionDropped(connection,addr) => write!(f,"ClientEvent::ConnectionDropped({:?},{:?})",connection,addr),
+            ClientEvent::ConnectionAccepted(listener,connection,addr) => write!(f,"ClientEvent::ConnectionAccepted({:?},{:?},{:?})",listener,connection,addr),
+            ClientEvent::ConnectionLoggingOn(listener,connection,ref message) => write!(f,"ClientEvent::ConnectionLoggingOn({:?},{:?},",listener,connection)
+                                                                                 .and_then(|_| debug_format_fixt_message(&**message as &FIXTMessage,f))
+                                                                                 .and_then(|_| write!(f,")")),
             ClientEvent::SessionEstablished(connection) => write!(f,"ClientEvent::SessionEstablished({:?})",connection),
+            ClientEvent::ListenerFailed(listener,ref error) => write!(f,"ClientEvent::ListenerFailed({:?},{:?})",listener,error),
             ClientEvent::MessageReceived(connection,ref message) => write!(f,"ClientEvent::MessageReceived({:?},{:?})",connection,message),
             ClientEvent::MessageReceivedGarbled(connection,ref parse_error) => write!(f,"ClientEvent::MessageReceivedGarbled({:?},{:?})",connection,parse_error),
             ClientEvent::MessageReceivedDuplicate(connection,ref message) => write!(f,"ClientEvent::MessageReceivedDuplicate({:?},{:?})",connection,message),
@@ -119,9 +146,17 @@ impl fmt::Debug for ClientEvent {
     }
 }
 
+
+fn to_socket_addr<A: ToSocketAddrs>(address: A) -> Option<SocketAddr> {
+    //Use first socket address. This more or less emulates TcpStream::connect.
+    match address.to_socket_addrs() {
+        Ok(mut address_iter) => address_iter.next(),
+        Err(_) => None,
+    }
+}
+
 pub struct Client {
-    connection_id_seed: usize,
-    active_connections: HashSet<Connection>,
+    token_generator: Arc<Mutex<TokenGenerator>>,
     tx: Sender<InternalClientToThreadEvent>,
     rx: Receiver<ClientEvent>,
     poll: Poll,
@@ -130,8 +165,6 @@ pub struct Client {
 
 impl Client {
     pub fn new(message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>,
-               sender_comp_id: &[u8],
-               target_comp_id: &[u8],
                max_message_size: u64) -> Result<Client,io::Error> {
         let client_poll = try!(Poll::new());
         let (thread_to_client_tx,thread_to_client_rx) = channel::<ClientEvent>();
@@ -141,31 +174,28 @@ impl Client {
         let (client_to_thread_tx,client_to_thread_rx) = channel::<InternalClientToThreadEvent>();
         try!(poll.register(&client_to_thread_rx,INTERNAL_CLIENT_EVENT_TOKEN,Ready::readable(),PollOpt::level()));
 
-        let sender_comp_id = sender_comp_id.to_vec();
-        let target_comp_id = target_comp_id.to_vec();
+        let token_generator = Arc::new(Mutex::new(TokenGenerator::new(BASE_CONNECTION_TOKEN.0,Some(CONNECTION_COUNT_MAX - BASE_CONNECTION_TOKEN.0))));
 
         Ok(Client {
-            connection_id_seed: BASE_CONNECTION_TOKEN.0,
-            active_connections: HashSet::new(),
+            token_generator: token_generator.clone(),
             tx: client_to_thread_tx,
             rx: thread_to_client_rx,
             poll: client_poll,
             thread_handle: Some(thread::spawn(move || {
-                internal_client_thread(poll,thread_to_client_tx,client_to_thread_rx,message_dictionary,sender_comp_id,target_comp_id,max_message_size);
+                internal_client_thread(poll,token_generator,thread_to_client_tx,client_to_thread_rx,message_dictionary,max_message_size);
             })),
         })
     }
 
-    pub fn add_connection<A: ToSocketAddrs>(&mut self,fix_version: FIXVersion,mut default_message_version: MessageVersion,address: A) -> Option<Connection> {
-        //Use first socket address. This more or less emulates TcpStream::connect.
-        let address = match address.to_socket_addrs() {
-            Ok(mut address_iter) => {
-                match address_iter.next() {
-                    Some(address) => address,
-                    None => return None,
-                }
-            },
-            Err(_) => return None,
+    pub fn add_connection<A: ToSocketAddrs>(&mut self,
+                                            fix_version: FIXVersion,
+                                            mut default_message_version: MessageVersion,
+                                            sender_comp_id: &[u8],
+                                            target_comp_id: &[u8],
+                                            address: A) -> Option<Connection> {
+        let address = match to_socket_addr(address) {
+            Some(address) => address,
+            None => return None,
         };
 
         //Force older FIX versions that don't support message versioning to use their respective
@@ -180,15 +210,34 @@ impl Client {
         };
 
         //Create unique id to refer to connection by.
-        let connection = match self.generate_connection() {
-            Some(connection) => connection,
+        let token = match self.token_generator.lock().unwrap().create() {
+            Some(token) => token,
             None => return None,
         };
 
         //Tell thread to setup this connection by connecting a socket and logging on.
-        self.tx.send(InternalClientToThreadEvent::NewConnection(Token(connection.0),fix_version,default_message_version,address)).unwrap();
+        self.tx.send(InternalClientToThreadEvent::NewConnection(token.clone(),fix_version,default_message_version,sender_comp_id.to_vec(),target_comp_id.to_vec(),address)).unwrap();
 
+        let connection = Connection(token.0);
         Some(connection)
+    }
+
+    pub fn add_listener<A: ToSocketAddrs>(&mut self,sender_comp_id: &[u8],address: A) -> Result<Option<Listener>,io::Error> {
+        let address = match to_socket_addr(address) {
+            Some(address) => address,
+            None => return Ok(None),
+        };
+        let listener = try!(TcpListener::bind(&address));
+
+        let token = match self.token_generator.lock().unwrap().create() {
+            Some(token) => token,
+            None => return Ok(None),
+        };
+
+        self.tx.send(InternalClientToThreadEvent::NewListener(token.clone(),sender_comp_id.to_vec(),listener)).unwrap();
+
+        let listener = Listener(token.0);
+        Ok(Some(listener))
     }
 
     pub fn send_message<T: 'static + FIXTMessage + Send>(&mut self,connection: Connection,message: T) {
@@ -204,6 +253,14 @@ impl Client {
         self.tx.send(InternalClientToThreadEvent::SendMessage(Token(connection.0),message_version.into(),message)).unwrap();
     }
 
+    pub fn approve_new_connection<IMSN: Into<Option<u64>>>(&mut self,connection: Connection,message: Box<Logon>,inbound_msg_seq_num: IMSN) {
+        self.tx.send(InternalClientToThreadEvent::ApproveNewConnection(connection,message,inbound_msg_seq_num.into().unwrap_or(2))).unwrap();
+    }
+
+    pub fn reject_new_connection(&mut self,connection: Connection,reason: Option<Vec<u8>>) {
+        self.tx.send(InternalClientToThreadEvent::RejectNewConnection(connection,reason)).unwrap();
+    }
+
     pub fn logout(&mut self,connection: Connection) {
         self.tx.send(InternalClientToThreadEvent::Logout(Token(connection.0))).unwrap();
     }
@@ -214,7 +271,7 @@ impl Client {
             match *event {
                 ClientEvent::ConnectionFailed(connection,_) |
                 ClientEvent::ConnectionTerminated(connection,_) => {
-                    client.active_connections.remove(&connection);
+                    client.token_generator.lock().unwrap().remove(Token(connection.0));
                 },
                 _ => {},
             }
@@ -247,26 +304,6 @@ impl Client {
         }
 
         None
-    }
-
-    fn generate_connection(&mut self) -> Option<Connection> {
-        //Check that we don't already have all possible connections created. This should only be
-        //possible if a whole bunch of connections are created and poll() is never called. A
-        //majority of these connections very likely failed because of the limited number of socket
-        //ports.
-        if self.active_connections.len() == (CONNECTION_COUNT_MAX - BASE_CONNECTION_TOKEN.0) {
-            return None;
-        }
-
-        loop {
-            let connection_id = self.connection_id_seed;
-            self.connection_id_seed = self.connection_id_seed.overflowing_add(1).0;
-
-            let connection = Connection(connection_id);
-            if !self.active_connections.contains(&connection) && connection_id >= BASE_CONNECTION_TOKEN.0 {
-                return Some(connection);
-            }
-        }
     }
 }
 

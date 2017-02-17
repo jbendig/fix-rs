@@ -318,6 +318,10 @@ impl Parser {
         self.default_message_version = message_version;
     }
 
+    pub fn clear_default_message_type_versions(&mut self) {
+        self.default_message_type_version.clear();
+    }
+
     pub fn set_default_message_type_version(&mut self,tag: &[u8],message_version: MessageVersion) {
         //Set the default version for a specific message type. If the version was already set,
         //there will be no change.

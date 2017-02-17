@@ -28,15 +28,15 @@ use fix_rs::dictionary::field_types::other::EncryptMethod;
 use fix_rs::dictionary::messages::Logon;
 use fix_rs::fix::Parser;
 use fix_rs::fix_version::FIXVersion;
-use fix_rs::fixt::client::{Client,ClientEvent,Connection};
+use fix_rs::fixt::client::{Client,ClientEvent,Connection,Listener};
 use fix_rs::fixt::message::{BuildFIXTMessage,FIXTMessage};
 use fix_rs::message_version::MessageVersion;
 
 const SOCKET_BASE_PORT: usize = 7000;
 static SOCKET_PORT: AtomicUsize = AtomicUsize::new(SOCKET_BASE_PORT);
 
-const CLIENT_TARGET_COMP_ID: &'static [u8] = b"TX"; //Test Exchange
-const CLIENT_SENDER_COMP_ID: &'static [u8] = b"TEST";
+pub const CLIENT_TARGET_COMP_ID: &'static [u8] = b"TX"; //Test Exchange
+pub const CLIENT_SENDER_COMP_ID: &'static [u8] = b"TEST";
 pub const SERVER_TARGET_COMP_ID: &'static [u8] = CLIENT_SENDER_COMP_ID;
 pub const SERVER_SENDER_COMP_ID: &'static [u8] = CLIENT_TARGET_COMP_ID;
 
@@ -56,6 +56,16 @@ macro_rules! client_poll_event {
 }
 
 #[macro_export]
+macro_rules! client_poll_no_event {
+    ( $client:ident ) => {{
+        let result = $client.poll(Some(Duration::from_secs(5)));
+        if let Some(result) = result {
+            panic!("Client has an event: {:?}",result)
+        }
+    }};
+}
+
+#[macro_export]
 macro_rules! client_poll_message {
     ( $client:ident, $connection:ident, $message_type:ty ) => {
         client_poll_event!($client,ClientEvent::MessageReceived(msg_connection,response_message) => {
@@ -68,22 +78,35 @@ macro_rules! client_poll_message {
 
 #[macro_export]
 macro_rules! new_fixt_message {
-    ( $message_type:ident ) => {{
+    ( FROM_SERVER $message_type:ident ) => {{
         let mut message = $message_type::new();
         message.setup_fixt_session_header(
             Some(1),
-            //Set to from-server by default because if the message is sent by the client, it will
-            //overwrite these.
             $crate::common::SERVER_SENDER_COMP_ID.to_vec(),
             $crate::common::SERVER_TARGET_COMP_ID.to_vec()
         );
 
         message
     }};
+
+    ( FROM_CLIENT $message_type:ident ) => {{
+        let mut message = $message_type::new();
+        message.setup_fixt_session_header(
+            Some(1),
+            $crate::common::CLIENT_SENDER_COMP_ID.to_vec(),
+            $crate::common::CLIENT_TARGET_COMP_ID.to_vec()
+        );
+
+        message
+    }};
+
+    ( $message_type:ident ) => {{
+        new_fixt_message!(FROM_SERVER $message_type)
+    }};
 }
 
 pub fn new_logon_message() -> Logon {
-    let mut message = new_fixt_message!(Logon);
+    let mut message = new_fixt_message!(FROM_SERVER Logon);
     message.encrypt_method = EncryptMethod::None;
     message.heart_bt_int = 5;
     message.default_appl_ver_id = MessageVersion::FIX50SP2;
@@ -156,8 +179,7 @@ pub fn send_message(stream: &mut TcpStream,fix_version: FIXVersion,message_versi
     let _ = send_message_with_timeout(stream,fix_version,message_version,message,None);
 }
 
-pub struct TestServer {
-    _listener: TcpListener,
+pub struct TestStream {
     fix_version: FIXVersion,
     message_version: MessageVersion,
     pub stream: TcpStream,
@@ -165,15 +187,35 @@ pub struct TestServer {
     parser: Parser,
 }
 
-impl TestServer {
-    pub fn setup_with_ver(fix_version: FIXVersion,message_version: MessageVersion,message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>) -> (TestServer,Client,Connection) {
+impl TestStream {
+    fn new(fix_version: FIXVersion,message_version: MessageVersion,stream: TcpStream,message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>) -> TestStream {
+        //Setup a single Poll to watch the TCPStream. This way we can check for disconnects in
+        //is_stream_closed(). Unfortunately, as of mio 0.6.1, Linux implementation emulates OS X
+        //and Windows where a stream can only be registered with one Poll for the life of the
+        //socket. See: https://github.com/carllerche/mio/issues/327
+        let poll = Poll::new().unwrap();
+        poll.register(&stream,Token(0),Ready::all(),PollOpt::edge()).unwrap();
+
+        let mut parser = Parser::new(message_dictionary,MAX_MESSAGE_SIZE);
+        parser.set_default_message_version(message_version);
+
+        TestStream {
+            fix_version: fix_version,
+            message_version: message_version,
+            stream: stream,
+            poll: poll,
+            parser: parser
+        }
+    }
+
+    pub fn setup_test_server_with_ver(fix_version: FIXVersion,message_version: MessageVersion,message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>) -> (TestStream,Client,Connection) {
         //Setup server listener socket.
         let addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127,0,0,1),SOCKET_PORT.fetch_add(1,Ordering::SeqCst) as u16));
         let listener = TcpListener::bind(&addr).unwrap();
 
         //Setup client and connect to socket.
-        let mut client = Client::new(message_dictionary.clone(),CLIENT_SENDER_COMP_ID,CLIENT_TARGET_COMP_ID,MAX_MESSAGE_SIZE).unwrap();
-        let connection = client.add_connection(fix_version,message_version,addr).unwrap();
+        let mut client = Client::new(message_dictionary.clone(),MAX_MESSAGE_SIZE).unwrap();
+        let connection = client.add_connection(fix_version,message_version,CLIENT_SENDER_COMP_ID,CLIENT_TARGET_COMP_ID,addr).unwrap();
 
         //Try to accept connection from client. Fails on timeout or socket error.
         let stream = accept_with_timeout(&listener,Duration::from_secs(5)).expect("Could not accept connection");
@@ -182,30 +224,19 @@ impl TestServer {
         let event = client.poll(Duration::from_secs(5)).expect("Could not connect");
         assert!(if let ClientEvent::ConnectionSucceeded(success_connection) = event { success_connection == connection } else { false });
 
-        //Setup a single Poll to watch the TCPStream. This way we can check for disconnects in
-        //is_stream_closed(). Unfortunately, as of mio 0.6.1, Linux implementation emulates OS X
-        //and Windows where a stream can only be registered with one Poll for the life of the
-        //socket. See: https://github.com/carllerche/mio/issues/327
-        let poll = Poll::new().unwrap();
-        poll.register(&stream,Token(0),Ready::all(),PollOpt::edge()).unwrap();
-
-        (TestServer {
-            _listener: listener,
-            fix_version: fix_version,
-            message_version: message_version,
-            stream: stream,
-            poll: poll,
-            parser: Parser::new(message_dictionary,MAX_MESSAGE_SIZE),
-        },client,connection)
+        (TestStream::new(fix_version,message_version,stream,message_dictionary),
+         client,
+         connection)
     }
 
-    pub fn setup(message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>) -> (TestServer,Client,Connection) {
-        Self::setup_with_ver(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,message_dictionary)
+    pub fn setup_test_server(message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>) -> (TestStream,Client,Connection) {
+        Self::setup_test_server_with_ver(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,message_dictionary)
     }
 
-    pub fn setup_and_logon_with_ver(fix_version: FIXVersion,message_version: MessageVersion,message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>) -> (TestServer,Client,Connection) {
+    pub fn setup_test_server_and_logon_with_ver(fix_version: FIXVersion,message_version: MessageVersion,message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>) -> (TestStream,Client,Connection) {
         //Connect.
-        let (mut test_server,mut client,connection) = TestServer::setup_with_ver(fix_version,message_version,message_dictionary);
+        let (mut test_server,mut client,connection) = Self::setup_test_server_with_ver(fix_version,message_version,message_dictionary);
+        test_server.parser.set_default_message_version(MessageVersion::FIX50);
 
         //Logon.
         let mut logon_message = new_logon_message();
@@ -230,8 +261,75 @@ impl TestServer {
         (test_server,client,connection)
     }
 
-    pub fn setup_and_logon(message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>) -> (TestServer,Client,Connection) {
-        Self::setup_and_logon_with_ver(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,message_dictionary)
+    pub fn setup_test_server_and_logon(message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>) -> (TestStream,Client,Connection) {
+        Self::setup_test_server_and_logon_with_ver(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,message_dictionary)
+    }
+
+    pub fn setup_test_client_with_ver(fix_version: FIXVersion,message_version: MessageVersion,message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>) -> (TestStream,Client,Listener,Connection) {
+        //Setup client and listener.
+        let addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127,0,0,1),SOCKET_PORT.fetch_add(1,Ordering::SeqCst) as u16));
+        let mut client = Client::new(message_dictionary.clone(),MAX_MESSAGE_SIZE).unwrap();
+        let listener = client.add_listener(SERVER_SENDER_COMP_ID,&addr).unwrap().unwrap();
+
+        //Setup a client socket and connect to server.
+        let stream = TcpStream::connect(&addr).unwrap();
+
+        //Confirm client was able to connect.
+        let event = client.poll(Duration::from_secs(5)).expect("Could not accept");
+        let connection = match event {
+            ClientEvent::ConnectionAccepted(success_listener,accepted_connection,_) => {
+                assert_eq!(success_listener,listener);
+                accepted_connection
+            },
+            _ => panic!("Unexpected event")
+        };
+
+        (TestStream::new(fix_version,message_version,stream,message_dictionary),
+         client,
+         listener,
+         connection)
+    }
+
+    pub fn setup_test_client(message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>) -> (TestStream,Client,Listener,Connection) {
+        Self::setup_test_client_with_ver(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,message_dictionary)
+    }
+
+    pub fn setup_test_client_and_logon_with_ver(fix_version: FIXVersion,message_version: MessageVersion,message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>) -> (TestStream,Client,Listener,Connection) {
+        //Connect.
+        let (mut test_client,mut engine,listener,connection) = Self::setup_test_client_with_ver(fix_version,message_version,message_dictionary);
+        test_client.parser.set_default_message_version(MessageVersion::FIX50);
+
+        //Logon.
+        let mut logon_message = new_logon_message();
+        logon_message.sender_comp_id = CLIENT_SENDER_COMP_ID.to_vec();
+        logon_message.target_comp_id = CLIENT_TARGET_COMP_ID.to_vec();
+        logon_message.default_appl_ver_id = message_version;
+        test_client.send_message_with_ver(fix_version,fix_version.max_message_version(),logon_message);
+
+        client_poll_event!(engine,ClientEvent::ConnectionLoggingOn(some_listener,some_connection,logon_message) => {
+            assert_eq!(some_listener,listener);
+            assert_eq!(some_connection,connection);
+            assert_eq!(logon_message.msg_seq_num,1);
+
+            let mut response_message = new_fixt_message!(Logon);
+            response_message.encrypt_method = logon_message.encrypt_method.clone();
+            response_message.heart_bt_int = logon_message.heart_bt_int;
+            response_message.default_appl_ver_id = logon_message.default_appl_ver_id;
+            engine.approve_new_connection(connection,Box::new(response_message),None);
+        });
+
+        let message = test_client.recv_message::<Logon>();
+        assert_eq!(message.msg_seq_num,1);
+
+        //After logon, just like the engine, setup the default message version that future messages
+        //should adhere to.
+        test_client.parser.set_default_message_version(message_version);
+
+        (test_client,engine,listener,connection)
+    }
+
+    pub fn setup_test_client_and_logon(message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>) -> (TestStream,Client,Listener,Connection) {
+        Self::setup_test_client_and_logon_with_ver(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,message_dictionary)
     }
 
     pub fn is_stream_closed(&self,timeout: Duration) -> bool {
@@ -272,13 +370,17 @@ impl TestServer {
                 continue;
             };
 
-            let (bytes_parsed,result) = self.parser.parse(&buffer[0..bytes_read]);
-            if result.is_err() {
-                println!("try_recv_fixt_message: Parse error"); //TODO: Use Result instead of Option.
-                println!("\t{}",result.err().unwrap());
-                return None;
+            let mut total_bytes_parsed = 0;
+            while total_bytes_parsed < bytes_read {
+                let (bytes_parsed,result) = self.parser.parse(&buffer[total_bytes_parsed..bytes_read]);
+                if result.is_err() {
+                    println!("try_recv_fixt_message: Parse error"); //TODO: Use Result instead of Option.
+                    println!("\t{}",result.err().unwrap());
+                    return None;
+                }
+
+                total_bytes_parsed += bytes_parsed;
             }
-            assert_eq!(bytes_parsed,bytes_read);
 
             if !self.parser.messages.is_empty() {
                 return Some(self.parser.messages.remove(0));

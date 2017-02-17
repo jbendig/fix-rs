@@ -41,6 +41,7 @@ pub mod message;
 pub mod message_version;
 mod network_read_retry;
 pub mod rule;
+mod token_generator;
 
 //Dictionary is put last because it needs the above macros.
 #[macro_use]

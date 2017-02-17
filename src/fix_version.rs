@@ -45,5 +45,20 @@ impl FIXVersion {
             FIXVersion::FIXT_1_1 => MessageVersion::FIX50SP2,
         }
     }
+
+    pub fn max_version() -> FIXVersion {
+        FIXVersion::FIXT_1_1
+    }
+
+    pub fn all() -> Vec<FIXVersion> {
+        vec![
+            FIXVersion::FIX_4_0,
+            FIXVersion::FIX_4_1,
+            FIXVersion::FIX_4_2,
+            FIXVersion::FIX_4_3,
+            FIXVersion::FIX_4_4,
+            FIXVersion::FIXT_1_1,
+        ]
+    }
 }
 

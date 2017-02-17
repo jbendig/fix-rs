@@ -34,17 +34,17 @@ fn main() {
     );
 
     //Create a Client which is used for initiating FIX connections.
-    let sender_comp_id = b"Client"; //SenderCompID sent in every FIX message.
-    let target_comp_id = b"Exchange"; //TargetCompID sent in every FIX message.
     let max_message_size = 4096; //The maximum message size allowed to be received in bytes.
-    let mut client = Client::new(build_dictionary(),sender_comp_id,target_comp_id,max_message_size).unwrap();
+    let mut client = Client::new(build_dictionary(),max_message_size).unwrap();
 
     //Initiate a connection to a FIX engine. The connection_id is used to interact with this
     //connection.
     let fix_version = FIXVersion::FIXT_1_1; //Communicate with protocol version FIXT.1.1.
     let message_version = MessageVersion::FIX50SP2; //Default to FIX 5.0. SP2 for outgoing messages.
+    let sender_comp_id = b"Client"; //SenderCompID sent in every FIX message.
+    let target_comp_id = b"Exchange"; //TargetCompID sent in every FIX message.
     let addr = "127.0.0.1:7001"; //IP and port to connect to.
-    let connection_id = client.add_connection(fix_version,message_version,addr).unwrap();
+    let connection_id = client.add_connection(fix_version,message_version,sender_comp_id,target_comp_id,addr).unwrap();
 
     //Poll client for new events. Events include new messages, connection status updates, errors,
     //etc.
@@ -125,6 +125,11 @@ fn main() {
                 println!("Could not setup Client.");
                 break;
             },
+            //The following events are not used for client connections.
+            ClientEvent::ConnectionDropped(_,_) |
+            ClientEvent::ConnectionAccepted(_,_,_) |
+            ClientEvent::ConnectionLoggingOn(_,_,_) |
+            ClientEvent::ListenerFailed(_,_) => {}
         }
     }
 }

@@ -103,6 +103,6 @@ fn main() {
         }
     }
 
-    let client = Client::new(build_dictionary(),b"TEST_C",b"TEST_S",4096);
+    let client = Client::new(build_dictionary(),4096);
 }
 

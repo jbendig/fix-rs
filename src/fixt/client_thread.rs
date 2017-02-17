@@ -11,16 +11,17 @@
 
 use mio::{Event,Events,Poll,PollOpt,Ready,Token};
 use mio::channel::{Receiver,Sender};
-use mio::tcp::{Shutdown,TcpStream};
+use mio::tcp::{Shutdown,TcpListener,TcpStream};
 use mio::timer::{Timeout,Timer};
 use mio::timer::Builder as TimerBuilder;
 use std::cmp;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
-use std::io;
+use std::fmt;
+use std::io::{self,Write};
 use std::mem;
 use std::net::SocketAddr;
-use std::rc::Rc;
+use std::sync::{Arc,Mutex};
 use std::time::Duration;
 
 use byte_buffer::ByteBuffer;
@@ -33,10 +34,11 @@ use field::Field;
 use field_type::FieldType;
 use fix::{Parser,ParseError};
 use fix_version::FIXVersion;
-use fixt::client::{ClientEvent,Connection,ConnectionTerminatedReason};
+use fixt::client::{ClientEvent,Connection,ConnectionTerminatedReason,Listener};
 use fixt::message::{BuildFIXTMessage,FIXTMessage};
 use message_version::MessageVersion;
 use network_read_retry::NetworkReadRetry;
+use token_generator::TokenGenerator;
 
 //TODO: Make sure Logon message is sent automatically instead of waiting on caller. Althought, we
 //might have to support this for testing purposes.
@@ -53,6 +55,7 @@ const AUTO_DISCONNECT_AFTER_INITIATING_LOGOUT_SECS: u64 = 10;
 const AUTO_CONTINUE_AFTER_LOGOUT_RESEND_REQUEST_SECS: u64 = 10;
 const AUTO_DISCONNECT_AFTER_WRITE_BLOCKS_SECS: u64 = 10;
 pub const AUTO_DISCONNECT_AFTER_INBOUND_RESEND_REQUEST_LOOP_COUNT: u64 = 5;
+pub const AUTO_DISCONNECT_AFTER_NO_LOGON_RECEIVED_SECONDS: u64 = 10;
 const EVENT_POLL_CAPACITY: usize = 1024;
 pub const INBOUND_MESSAGES_BUFFER_LEN_MAX: usize = 10;
 pub const INBOUND_BYTES_BUFFER_CAPACITY: usize = 2048;
@@ -81,14 +84,34 @@ enum LoggingOutType {
 }
 
 enum ConnectionStatus {
-    LoggingOn,
+    SendingLogon,
+    ReceivingLogon(Listener,Timeout),
+    ApprovingLogon,
     Established,
     LoggingOut(LoggingOutType),
 }
 
 impl ConnectionStatus {
-    fn is_logging_on(&self) -> bool {
-        if let ConnectionStatus::LoggingOn = *self {
+    fn is_sending_logon(&self) -> bool {
+        if let ConnectionStatus::SendingLogon = *self {
+            true
+        }
+        else {
+            false
+        }
+    }
+
+    fn is_receiving_logon(&self) -> bool {
+        if let ConnectionStatus::ReceivingLogon(_,_) = *self {
+            true
+        }
+        else {
+            false
+        }
+    }
+
+    fn is_approving_logon(&self) -> bool {
+        if let ConnectionStatus::ApprovingLogon = *self {
             true
         }
         else {
@@ -187,6 +210,7 @@ enum TimeoutType {
     InboundTestRequest,
     InboundBlocked,
     ContinueLogout,
+    NoLogon,
     Logout,
     HangUp,
 }
@@ -263,12 +287,32 @@ fn reset_inbound_timeout(timer: &mut Timer<(TimeoutType,Token)>,inbound_timeout:
     );
 }
 
-#[derive(Debug)]
+fn administrative_msg_types() -> Vec<&'static [u8]> {
+    vec![Logon::msg_type(),
+         Logout::msg_type(),
+         Reject::msg_type(),
+         ResendRequest::msg_type(),
+         SequenceReset::msg_type(),
+         TestRequest::msg_type(),
+         Heartbeat::msg_type()]
+}
+
 pub enum InternalClientToThreadEvent {
-    NewConnection(Token,FIXVersion,MessageVersion,SocketAddr),
+    NewConnection(Token,FIXVersion,MessageVersion,<<SenderCompID as Field>::Type as FieldType>::Type,<<TargetCompID as Field>::Type as FieldType>::Type,SocketAddr),
+    NewListener(Token,<<SenderCompID as Field>::Type as FieldType>::Type,TcpListener),
     SendMessage(Token,Option<MessageVersion>,Box<FIXTMessage + Send>),
+    ApproveNewConnection(Connection,Box<Logon>,u64),
+    RejectNewConnection(Connection,Option<Vec<u8>>),
     Logout(Token),
     Shutdown,
+}
+
+impl fmt::Debug for InternalClientToThreadEvent {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        //TODO: Actually implement this if its ever used. Write now this exists so some unwrap()
+        //calls that can never fail will compile.
+        write!(f,"")
+    }
 }
 
 enum ConnectionEventError {
@@ -308,11 +352,57 @@ struct InternalConnection {
     parser: Parser,
     is_connected: bool, //TODO: Might belong better as part of ConnectionStatus if the state machine design works well.
     status: ConnectionStatus,
-    sender_comp_id: Rc<<<SenderCompID as Field>::Type as FieldType>::Type>,
-    target_comp_id: Rc<<<TargetCompID as Field>::Type as FieldType>::Type>,
+    sender_comp_id: <<SenderCompID as Field>::Type as FieldType>::Type,
+    target_comp_id: <<TargetCompID as Field>::Type as FieldType>::Type,
 }
 
 impl InternalConnection {
+    fn new(message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>,
+           max_message_size: u64,
+           fix_version: FIXVersion,
+           default_message_version: MessageVersion,
+           socket: TcpStream,
+           token: Token,
+           sender_comp_id: <<SenderCompID as Field>::Type as FieldType>::Type,
+           target_comp_id: <<TargetCompID as Field>::Type as FieldType>::Type) -> InternalConnection {
+        //Force all administrative messages to use the newest message version for the
+        //specified FIX version. This way they can't be overridden during Logon and it
+        //makes sure the Logon message supports all of the fields we support.
+        let mut parser = Parser::new(message_dictionary,max_message_size);
+        for msg_type in administrative_msg_types() {
+            parser.set_default_message_type_version(msg_type,fix_version.max_message_version());
+        }
+
+        InternalConnection {
+            fix_version: fix_version,
+            default_message_version: default_message_version,
+            socket: socket,
+            token: token,
+            outbound_messages: Vec::new(),
+            outbound_buffer: ByteBuffer::new(),
+            outbound_msg_seq_num: 1, //Starts at 1. FIXT v1.1, page 5.
+            outbound_heartbeat_timeout: None,
+            outbound_heartbeat_timeout_duration: None,
+            inbound_buffer: ByteBuffer::with_capacity(INBOUND_BYTES_BUFFER_CAPACITY),
+            inbound_msg_seq_num: 1, //Starts at 1 as well.
+            inbound_testrequest_timeout: None,
+            inbound_testrequest_timeout_duration: None,
+            inbound_resend_request_msg_seq_num: None,
+            inbound_last_seen_resend_request: LastSeenResendRequest {
+                begin_seq_no: 0,
+                count: 0,
+            },
+            inbound_blocked: false,
+            inbound_blocked_timeout: None,
+            logout_timeout: None,
+            parser: parser,
+            is_connected: false,
+            status: ConnectionStatus::SendingLogon,
+            sender_comp_id: sender_comp_id,
+            target_comp_id: target_comp_id,
+        }
+    }
+
     fn write(&mut self,timer: &mut Timer<(TimeoutType,Token)>,network_read_retry: &mut NetworkReadRetry) -> Result<(),ConnectionTerminatedReason> {
         //Send data until no more messages are available or until the socket returns WouldBlock.
         let mut sent_data = false;
@@ -359,8 +449,8 @@ impl InternalConnection {
                         try!(self.increment_outbound_msg_seq_num());
                         result
                     } else { None },
-                    (*self.sender_comp_id).clone(),
-                    (*self.target_comp_id).clone()
+                    self.sender_comp_id.clone(),
+                    self.target_comp_id.clone()
                 );
                 let fix_version = self.fix_version;
                 let message_version = if let Some(message_version) = message.message_version { message_version } else { self.default_message_version };
@@ -435,7 +525,7 @@ impl InternalConnection {
                 //Stop reading temporarily after receiving the first message (that should be a
                 //Logon or else we'll disconnect). This gives us a chance to use the Logon response
                 //to setup message versioning defaults for the parser.
-                else if connection.status.is_logging_on() {
+                else if connection.status.is_sending_logon() || connection.status.is_receiving_logon() {
                     assert!(messages.len() <= 1);
                     return false;
                 }
@@ -616,15 +706,27 @@ macro_rules! try_write_connection_or_terminate {
     }
 }
 
+struct InternalListener {
+    socket: TcpListener,
+    token: Token,
+    sender_comp_id: <<SenderCompID as Field>::Type as FieldType>::Type,
+}
+
+impl InternalListener {
+    fn as_listener(&self) -> Listener {
+        Listener(self.token.0)
+    }
+}
+
 struct InternalThread {
     poll: Poll,
+    token_generator: Arc<Mutex<TokenGenerator>>,
     tx: Sender<ClientEvent>,
     rx: Receiver<InternalClientToThreadEvent>,
     message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>,
-    sender_comp_id: Rc<<<SenderCompID as Field>::Type as FieldType>::Type>,
-    target_comp_id: Rc<<<TargetCompID as Field>::Type as FieldType>::Type>,
     max_message_size: u64,
     connections: HashMap<Token,InternalConnection>,
+    listeners: HashMap<Token,InternalListener>,
     timer: Timer<(TimeoutType,Token)>,
     network_read_retry: NetworkReadRetry,
 }
@@ -638,7 +740,7 @@ impl InternalThread {
 
         match client_event {
             //Client wants to setup a new connection.
-            InternalClientToThreadEvent::NewConnection(token,fix_version,default_message_version,address) => {
+            InternalClientToThreadEvent::NewConnection(token,fix_version,default_message_version,sender_comp_id,target_comp_id,address) => {
                 let socket = match TcpStream::connect(&address) {
                     Ok(socket) => socket,
                     Err(e) => {
@@ -647,43 +749,14 @@ impl InternalThread {
                     },
                 };
 
-                //Force all administrative messages to use the newest message version for the
-                //specified FIX version. This way they can't be overridden during Logon and it
-                //makes sure the Logon message supports all of the fields we support.
-                let mut parser = Parser::new(self.message_dictionary.clone(),self.max_message_size);
-                let administrative_msg_types = vec![Logon::msg_type(),Logout::msg_type(),Reject::msg_type(),ResendRequest::msg_type(),SequenceReset::msg_type(),TestRequest::msg_type(),Heartbeat::msg_type()];
-                for msg_type in administrative_msg_types {
-                    parser.set_default_message_type_version(msg_type,fix_version.max_message_version());
-                }
-
-                let connection = InternalConnection {
-                    fix_version: fix_version,
-                    default_message_version: default_message_version,
-                    socket: socket,
-                    token: token,
-                    outbound_messages: Vec::new(),
-                    outbound_buffer: ByteBuffer::new(),
-                    outbound_msg_seq_num: 1, //Starts at 1. FIXT v1.1, page 5.
-                    outbound_heartbeat_timeout: None,
-                    outbound_heartbeat_timeout_duration: None,
-                    inbound_buffer: ByteBuffer::with_capacity(INBOUND_BYTES_BUFFER_CAPACITY),
-                    inbound_msg_seq_num: 1, //Starts at 1 as well.
-                    inbound_testrequest_timeout: None,
-                    inbound_testrequest_timeout_duration: None,
-                    inbound_resend_request_msg_seq_num: None,
-                    inbound_last_seen_resend_request: LastSeenResendRequest {
-                        begin_seq_no: 0,
-                        count: 0,
-                    },
-                    inbound_blocked: false,
-                    inbound_blocked_timeout: None,
-                    logout_timeout: None,
-                    parser: parser,
-                    is_connected: false,
-                    status: ConnectionStatus::LoggingOn,
-                    sender_comp_id: self.sender_comp_id.clone(),
-                    target_comp_id: self.target_comp_id.clone(),
-                };
+                let connection = InternalConnection::new(self.message_dictionary.clone(),
+                                                         self.max_message_size,
+                                                         fix_version,
+                                                         default_message_version,
+                                                         socket,
+                                                         token,
+                                                         sender_comp_id,
+                                                         target_comp_id);
 
                 //Have poll let us know when we can can read or write.
                 if let Err(e) = self.poll.register(&connection.socket,connection.token,Ready::all(),PollOpt::edge()) {
@@ -692,6 +765,21 @@ impl InternalThread {
                 }
 
                 self.connections.insert(token,connection);
+            },
+            //Client wants to setup a listener to accept new connections.
+            InternalClientToThreadEvent::NewListener(token,sender_comp_id,socket) => {
+                let listener = InternalListener {
+                    socket: socket,
+                    token: token,
+                    sender_comp_id: sender_comp_id,
+                };
+
+                if let Err(e) = self.poll.register(&listener.socket,listener.token,Ready::readable(),PollOpt::edge()) {
+                    self.tx.send(ClientEvent::ListenerFailed(listener.as_listener(),e)).unwrap();
+                    return Ok(())
+                }
+
+                self.listeners.insert(token,listener);
             },
             //Client wants to send a message over a connection.
             InternalClientToThreadEvent::SendMessage(token,message_version,message) => {
@@ -706,11 +794,95 @@ impl InternalThread {
                     //TODO: Maybe submit this to a logging system or something?
                 }
             },
+            //Client wants to approve logon of a connection that was accepted by a listener.
+            InternalClientToThreadEvent::ApproveNewConnection(connection,message,inbound_msg_seq_num) => {
+                if let Entry::Occupied(mut connection_entry) = self.connections.entry(Token(connection.0)) {
+                    {
+                        let connection = connection_entry.get_mut();
+                        if !connection.status.is_approving_logon() {
+                            //Silently ignore approval of connections that are not awaiting
+                            //approval.
+                            //TODO: Maybe submit this to a logging system or something?
+                            return Ok(());
+                        }
+
+                        connection.status = ConnectionStatus::Established;
+
+                        //Setup the version messages should be serialized against by default when
+                        //being sent. Only FIXT 1.1 makes this adjustable and it MUST be set by the
+                        //response Logon message in the DefaultApplVerID field.
+                        connection.default_message_version = if let FIXVersion::FIXT_1_1 = connection.fix_version {
+                            message.default_appl_ver_id
+                        }
+                        else {
+                            connection.fix_version.max_message_version()
+                        };
+
+                        //Send the Logon response. It's always sent using the latest message version
+                        //for the selected FIX version. This is probably what is always wanted unless a
+                        //version is outright not supported. In which case, the connection should have
+                        //been rejected, right?
+                        let mut outbound_message = OutboundMessage::from_box(message);
+                        outbound_message.message_version = Some(connection.fix_version.max_message_version());
+                        assert!(connection.outbound_messages.is_empty());
+                        connection.outbound_messages.push(outbound_message);
+
+                        if inbound_msg_seq_num < connection.inbound_msg_seq_num {
+                            connection.inbound_msg_seq_num = inbound_msg_seq_num;
+
+                            //Fetch the messages the server says were sent but we never
+                            //received using a ResendRequest.
+                            let mut resend_request = ResendRequest::new();
+                            resend_request.begin_seq_no = inbound_msg_seq_num;
+                            resend_request.end_seq_no = 0;
+                            connection.outbound_messages.push(OutboundMessage::from(resend_request));
+                        }
+                        else if inbound_msg_seq_num > connection.inbound_msg_seq_num {
+                            //TODO: Investigate exact handling of this. Maybe SequenceReset?
+                        }
+
+                        //Start the heartbeat timers to send messages periodically to make sure the
+                        //connection is still active.
+                        reset_outbound_timeout(&mut self.timer,&mut connection.outbound_heartbeat_timeout,&connection.outbound_heartbeat_timeout_duration,&connection.token);
+                        reset_inbound_timeout(&mut self.timer,&mut connection.inbound_testrequest_timeout,&connection.inbound_testrequest_timeout_duration,&connection.token);
+                    }
+
+                    try_write_connection_or_terminate!(connection_entry,self);
+                }
+                else {
+                    //Silently ignore message for an invalid connection.
+                    //TODO: Maybe submit this to a logging system or something?
+                }
+            },
+            //Client wants to reject logon of a connection that was accepted by a listener.
+            InternalClientToThreadEvent::RejectNewConnection(connection,reason) => {
+                //This should only be used for new connections but there is no check for now so
+                //user of the engine has a way to arbitrarily disconnect over an error instead of
+                //logging out cleanly.
+
+                if let Entry::Occupied(mut connection_entry) = self.connections.entry(Token(connection.0)) {
+                    //When a reason is supplied, send a Logout message with the reason as an
+                    //explanation. Otherwise, disconnect immediately.
+                    if let Some(reason) = reason {
+                        connection_entry.get_mut().initiate_logout(&mut self.timer,LoggingOutType::Error(ConnectionTerminatedReason::LogonRejectedError),&reason[..]);
+                        try_write_connection_or_terminate!(connection_entry,self);
+                    }
+                    else {
+                        return Err(ConnectionEventError::TerminateConnection(connection_entry.remove(),ConnectionTerminatedReason::LogonRejectedError));
+                    }
+                }
+                else {
+                    //Silently ignore for an invalid connection.
+                    //TODO: Maybe submit this to a logging system or something?
+                }
+            },
             //Client wants to begin the clean logout process on a connection.
             InternalClientToThreadEvent::Logout(token) => {
                 if let Entry::Occupied(mut connection_entry) = self.connections.entry(token) {
                     match connection_entry.get_mut().status {
-                        ConnectionStatus::LoggingOn => {
+                        ConnectionStatus::SendingLogon |
+                        ConnectionStatus::ReceivingLogon(_,_) |
+                        ConnectionStatus::ApprovingLogon => {
                             //Just disconnect since connection hasn't had a chance to logon.
                             return Err(ConnectionEventError::TerminateConnection(connection_entry.remove(),ConnectionTerminatedReason::ClientRequested));
                         },
@@ -787,6 +959,12 @@ impl InternalThread {
                     }
                     TimeoutType::ContinueLogout if connection_entry.get().status.is_logging_out_with_resending_request_initiated_by_server() => {
                         connection_entry.get_mut().respond_to_logout();
+                    },
+                    TimeoutType::NoLogon => {
+                        assert!(connection_entry.get().status.is_receiving_logon());
+                        connection_entry.get_mut().shutdown();
+                        println!("Shutting down connection after no initial Logon received before timeout");
+                        return Err(ConnectionEventError::TerminateConnection(connection_entry.remove(),ConnectionTerminatedReason::LogonNeverReceivedError));
                     },
                     TimeoutType::Logout => {
                         connection_entry.get_mut().shutdown();
@@ -878,9 +1056,60 @@ impl InternalThread {
                     return Err(ConnectionEventError::TerminateConnection(connection_entry.remove(),ConnectionTerminatedReason::ServerRequested));
                 }
                 else {
-                    //Coax a ConnectionTerminatedReason::SocketWriteError to simplify error
-                    //handling.
-                    try_write_connection_or_terminate!(connection_entry,self);
+                    //Coax a socket write to fail in order to get an error code that we can pass
+                    //along.
+                    let result = connection_entry.get_mut().socket.write(b"\x00");
+                    if let Err(e) = result {
+                        return Err(ConnectionEventError::TerminateConnection(connection_entry.remove(),ConnectionTerminatedReason::SocketWriteError(e)));
+                    }
+                }
+            }
+        }
+
+        if let Entry::Occupied(mut listener_entry) = self.listeners.entry(event.token()) {
+            if event.kind().is_readable() {
+                match listener_entry.get_mut().socket.accept() {
+                    Ok((socket,addr)) => {
+                        let token = match self.token_generator.lock().unwrap().create() {
+                            Some(token) => token,
+                            None => {
+                                let _ = socket.shutdown(Shutdown::Both);
+                                self.tx.send(ClientEvent::ConnectionDropped(listener_entry.get().as_listener(),addr)).unwrap();
+                                return Ok(());
+                            },
+                        };
+
+                        //Let client know about the connection and have a chance to reject it
+                        //before it even sends a Logon message.
+                        self.tx.send(ClientEvent::ConnectionAccepted(listener_entry.get().as_listener(),Connection(token.0),addr.clone())).unwrap();
+
+                        let fix_version = FIXVersion::max_version(); //Accept the latest message version at first. This works out because Logon is forwards version compatible.
+                        let mut connection = InternalConnection::new(self.message_dictionary.clone(),
+                                                                     self.max_message_size,
+                                                                     fix_version, //Overwritten to whatever connection uses in first Logon message.
+                                                                     MessageVersion::FIX50SP2, //Overwritten when connection is approved using the response message's default_appl_ver_id.
+                                                                     socket,
+                                                                     token,
+                                                                     listener_entry.get().sender_comp_id.clone(),
+                                                                     Vec::new());
+                        connection.is_connected = true; //Accepted connections don't have to wait for connect().
+                        let timeout = self.timer.set_timeout(
+                            Duration::from_secs(AUTO_DISCONNECT_AFTER_NO_LOGON_RECEIVED_SECONDS),
+                            (TimeoutType::NoLogon,token)).unwrap();
+                        connection.status = ConnectionStatus::ReceivingLogon(listener_entry.get().as_listener(),timeout);
+
+                        //Have poll let us know when we can can read or write.
+                        if let Err(_) = self.poll.register(&connection.socket,connection.token,Ready::all(),PollOpt::edge()) {
+                            let _ = connection.socket.shutdown(Shutdown::Both);
+                            self.tx.send(ClientEvent::ConnectionDropped(listener_entry.get().as_listener(),addr)).unwrap();
+                            return Ok(())
+                        }
+
+                        self.connections.insert(token,connection);
+                    },
+                    Err(err) => {
+                        self.tx.send(ClientEvent::ListenerFailed(listener_entry.get().as_listener(),err)).unwrap();
+                    },
                 }
             }
         }
@@ -1159,8 +1388,9 @@ impl InternalThread {
         }
 
         //Start by making sure the message is using the expected FIX version. Otherwise, we should
-        //logout and disconnect immediately.
-        {
+        //logout and disconnect immediately. This test is skipped for newly accepted connections
+        //because the expected FIX version has not been decided yet.
+        if !connection.status.is_receiving_logon() {
             let ref received_fix_version = message.meta().as_ref().expect("Meta should be set by parser").begin_string;
             let expected_fix_version = connection.fix_version;
             if *received_fix_version != expected_fix_version {
@@ -1187,7 +1417,9 @@ impl InternalThread {
 
         //Every message must have SenderCompID and TargetCompID set to the expected values or else
         //the message must be rejected and we should logout. See FIXT 1.1, page 52.
-        if *message.sender_comp_id() != *connection.target_comp_id {
+        //The first check is skipped when listener spawned connection is still receiving a Logon
+        //message because it doesn't know who is connecting yet.
+        if *message.sender_comp_id() != connection.target_comp_id && !connection.status.is_receiving_logon() {
             connection.initiate_logout(timer,LoggingOutType::Error(ConnectionTerminatedReason::SenderCompIDWrongError),b"SenderCompID is wrong");
 
             let mut reject = Reject::new();
@@ -1200,18 +1432,26 @@ impl InternalThread {
 
             return Ok(());
         }
-        else if *message.target_comp_id() != *connection.sender_comp_id {
-            connection.initiate_logout(timer,LoggingOutType::Error(ConnectionTerminatedReason::TargetCompIDWrongError),b"TargetCompID is wrong");
+        else if *message.target_comp_id() != connection.sender_comp_id {
+            if connection.status.is_receiving_logon() {
+                //Since connection hasn't even logged out, just disconnect immediately.
+                connection.shutdown();
+                return Err(ConnectionTerminatedReason::TargetCompIDWrongError);
+            }
+            else {
+                //Reject message and then logout.
+                connection.initiate_logout(timer,LoggingOutType::Error(ConnectionTerminatedReason::TargetCompIDWrongError),b"TargetCompID is wrong");
 
-            let mut reject = Reject::new();
-            reject.ref_seq_num = connection.inbound_msg_seq_num;
-            reject.session_reject_reason = Some(SessionRejectReason::CompIDProblem);
-            reject.text = b"CompID problem".to_vec();
-            connection.outbound_messages.insert(0,OutboundMessage::from(reject));
+                let mut reject = Reject::new();
+                reject.ref_seq_num = connection.inbound_msg_seq_num;
+                reject.session_reject_reason = Some(SessionRejectReason::CompIDProblem);
+                reject.text = b"CompID problem".to_vec();
+                connection.outbound_messages.insert(0,OutboundMessage::from(reject));
 
-            tx.send(ClientEvent::MessageRejected(connection.as_connection(),message)).unwrap();
+                tx.send(ClientEvent::MessageRejected(connection.as_connection(),message)).unwrap();
 
-            return Ok(());
+                return Ok(());
+            }
         }
 
         //When the connection first starts, it sends a Logon message to the server. The server then
@@ -1219,7 +1459,7 @@ impl InternalThread {
         //disconnecting. In this case, if a  Logon is received, we setup timers to send periodic
         //messages in case there is no activity. We then notify the client that the session is
         //established and other messages can now be sent or received.
-        let just_logged_on = if connection.status.is_logging_on() {
+        let just_logged_on = if connection.status.is_sending_logon() {
             if let Some(message) = message.as_any().downcast_ref::<Logon>() {
                 connection.status = ConnectionStatus::Established;
 
@@ -1260,6 +1500,63 @@ impl InternalThread {
             }
 
             true
+        }
+        else if connection.status.is_receiving_logon() {
+            //Switch from ReceivingLogon to ApprovingLogon. Have to be careful to cancel the
+            //timeout.
+            let old_status = mem::replace(&mut connection.status,ConnectionStatus::ApprovingLogon);
+            let (listener,no_logon_timeout) = if let ConnectionStatus::ReceivingLogon(listener,timeout) = old_status { (listener,timeout) } else { unreachable!() };
+            timer.cancel_timeout(&no_logon_timeout);
+
+            if let Some(message) = message.as_any().downcast_ref::<Logon>() {
+                //Setup defaults for connection that could not be setup before receiving the Logon.
+                //It'll be up to the user of the library to reject if they don't want to support
+                //these to the full extent of the library (e.g. an older FIX version).
+                connection.fix_version = message.meta.as_ref().expect("Meta should be set by parser").begin_string;
+                connection.parser.set_default_message_version(message.default_appl_ver_id);
+                connection.inbound_msg_seq_num = message.msg_seq_num + 1;
+                connection.target_comp_id = message.sender_comp_id.clone();
+
+                if message.heart_bt_int > 0 {
+                    connection.outbound_heartbeat_timeout_duration = Some(
+                        Duration::from_secs(message.heart_bt_int as u64)
+                    );
+                    connection.inbound_testrequest_timeout_duration = Some(
+                        Duration::from_millis(message.heart_bt_int as u64 * 1000 + NO_INBOUND_TIMEOUT_PADDING_MS),
+                    );
+                }
+                else if message.heart_bt_int < 0 {
+                    connection.initiate_logout(timer,LoggingOutType::Error(ConnectionTerminatedReason::LogonHeartBtIntNegativeError),b"HeartBtInt cannot be negative");
+                    return Ok(());
+                }
+
+                //Make parser use the max supported message version for the selected FIX protocol
+                //by default. This must be done before the part below so defaults in the Logon
+                //message can't maliciously overwrite them.
+                connection.parser.clear_default_message_type_versions();
+                for msg_type in administrative_msg_types() {
+                    connection.parser.set_default_message_type_version(msg_type,connection.fix_version.max_message_version());
+                }
+
+                //Make parser use the Message Type Default Application Version if specified.
+                for msg_type in &message.no_msg_types {
+                    if msg_type.default_ver_indicator && msg_type.msg_direction == MsgDirection::Send && msg_type.ref_appl_ver_id.is_some() {
+                        connection.parser.set_default_message_type_version(&msg_type.ref_msg_type[..],msg_type.ref_appl_ver_id.unwrap());
+                    }
+                }
+
+                //Block reading of new messages until connection has been approved. This will be
+                //automatically unblocked when the Logon response is sent.
+                connection.begin_blocking_inbound(timer);
+
+                tx.send(ClientEvent::ConnectionLoggingOn(listener,connection.as_connection(),Box::new(message.clone()))).unwrap();
+
+                return Ok(());
+            }
+            else {
+                connection.initiate_logout(timer,LoggingOutType::Error(ConnectionTerminatedReason::LogonNotFirstMessageError),b"First message not a logon");
+                return Ok(());
+            }
         }
         else {
             false
@@ -1356,7 +1653,7 @@ impl InternalThread {
         match connection.status {
             //There's no room for errors when attempting to logon. If the network data cannot be
             //parsed, just disconnect immediately.
-            ConnectionStatus::LoggingOn => {
+            ConnectionStatus::SendingLogon => {
                 connection.shutdown();
                 return Err(ConnectionTerminatedReason::LogonParseError(parse_error));
             },
@@ -1461,11 +1758,10 @@ impl InternalThread {
 }
 
 pub fn internal_client_thread(poll: Poll,
+                              token_generator: Arc<Mutex<TokenGenerator>>,
                               tx: Sender<ClientEvent>,
                               rx: Receiver<InternalClientToThreadEvent>,
                               message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>,
-                              sender_comp_id: <<SenderCompID as Field>::Type as FieldType>::Type,
-                              target_comp_id: <<TargetCompID as Field>::Type as FieldType>::Type,
                               max_message_size: u64) {
     //TODO: There should probably be a mechanism to log every possible message, even those we
     //handle automatically. One method might be to have a layer above this that handles the
@@ -1473,13 +1769,13 @@ pub fn internal_client_thread(poll: Poll,
 
     let mut internal_thread = InternalThread {
         poll: poll,
+        token_generator: token_generator,
         tx: tx,
         rx: rx,
         message_dictionary: message_dictionary,
-        sender_comp_id: Rc::new(sender_comp_id),
-        target_comp_id: Rc::new(target_comp_id),
         max_message_size: max_message_size,
         connections: HashMap::new(),
+        listeners: HashMap::new(),
         timer: TimerBuilder::default()
             .tick_duration(Duration::from_millis(TIMER_TICK_MS))
             .num_slots(TIMER_TIMEOUTS_PER_TICK_MAX)
@@ -1557,6 +1853,9 @@ pub fn internal_client_thread(poll: Poll,
                 internal_thread.timer.cancel_timeout(timeout);
             }
             if let Some(ref timeout) = connection.logout_timeout {
+                internal_thread.timer.cancel_timeout(timeout);
+            }
+            if let ConnectionStatus::ReceivingLogon(_,ref timeout) = connection.status {
                 internal_thread.timer.cancel_timeout(timeout);
             }
 
