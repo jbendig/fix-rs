@@ -1166,6 +1166,8 @@ fn test_block_read_when_write_blocks() {
     define_dictionary!(
         Logon,
         Heartbeat,
+        Reject,
+        ResendRequest,
         TestRequest,
     );
 
@@ -1242,7 +1244,11 @@ fn test_block_read_when_write_blocks() {
         message.test_req_id = b"final".to_vec();
         test_server.send_message(message);
 
-        let message = test_server.recv_message::<Heartbeat>();
+        let message = test_server.recv_fixt_message();
+        let message = match message_to_enum(&*message) {
+            MessageEnum::Heartbeat(message) => message,
+            _ => test_server.recv_message::<Heartbeat>(),
+        };
         assert_eq!(message.test_req_id,b"final");
     }
 
