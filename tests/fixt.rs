@@ -43,7 +43,7 @@ use fix_rs::fix::ParseError;
 use fix_rs::field_tag::{self,FieldTag};
 use fix_rs::fix_version::FIXVersion;
 use fix_rs::fixt;
-use fix_rs::fixt::client::{Client,ClientEvent,Connection,ConnectionTerminatedReason,Listener};
+use fix_rs::fixt::engine::{Engine,EngineEvent,Connection,ConnectionTerminatedReason,Listener};
 use fix_rs::fixt::message::{BuildFIXTMessage,FIXTMessage};
 use fix_rs::message::{self,NOT_REQUIRED,REQUIRED,MessageDetails};
 use fix_rs::message_version::{self,MessageVersion};
@@ -63,7 +63,7 @@ fn test_1B() {
         SequenceReset,
     );
 
-    fn do_logon<F>(server_response_func: F) -> (TestStream,Client,Connection,Logon)
+    fn do_logon<F>(server_response_func: F) -> (TestStream,Engine,Connection,Logon)
         where F: Fn(&mut TestStream,Logon) {
         let (mut test_server,mut client,connection) = TestStream::setup_test_server(build_dictionary());
 
@@ -88,13 +88,13 @@ fn test_1B() {
             test_server.send_message(response_message);
         });
 
-        client_poll_event!(client,ClientEvent::SessionEstablished(session_connection) => {
+        engine_poll_event!(client,EngineEvent::SessionEstablished(session_connection) => {
             assert_eq!(session_connection,connection);
         });
 
         //Make sure message received is identical to the one sent. Sending time is tested
-        //separately because Client changes this field before it's sent.
-        let mut message = client_poll_message!(client,connection,Logon);
+        //separately because Engine changes this field before it's sent.
+        let mut message = engine_poll_message!(client,connection,Logon);
         assert!((logon_message.sending_time - message.sending_time).num_milliseconds() < 50);
         message.sending_time = logon_message.sending_time;
         assert_eq!(message.sender_comp_id,SERVER_SENDER_COMP_ID);
@@ -119,7 +119,7 @@ fn test_1B() {
             test_server.send_message(response_message);
         });
 
-        client_poll_event!(client,ClientEvent::SessionEstablished(session_connection) => {
+        engine_poll_event!(client,EngineEvent::SessionEstablished(session_connection) => {
             assert_eq!(session_connection,connection);
         });
 
@@ -136,7 +136,7 @@ fn test_1B() {
         test_server.send_message(message);
 
         //Confirm client received Logon message.
-        let _ = client_poll_message!(client,connection,Logon);
+        let _ = engine_poll_message!(client,connection,Logon);
     }
 
     //d. Handle receiving an invalid Logon.
@@ -160,7 +160,7 @@ fn test_1B() {
         assert!(test_server.is_stream_closed(Duration::from_secs(5)));
 
         //Confirm client notified that it disconnected.
-        client_poll_event!(client,ClientEvent::ConnectionTerminated(terminated_connection,reason) => {
+        engine_poll_event!(client,EngineEvent::ConnectionTerminated(terminated_connection,reason) => {
             assert_eq!(terminated_connection,connection);
             assert!(if let ConnectionTerminatedReason::LogonHeartBtIntNegativeError = reason { true } else { false });
         });
@@ -192,7 +192,7 @@ fn test_1B() {
         assert!(test_server.is_stream_closed(Duration::from_secs(5)));
 
         //Confirm client notified that it disconnected.
-        client_poll_event!(client,ClientEvent::ConnectionTerminated(terminated_connection,reason) => {
+        engine_poll_event!(client,EngineEvent::ConnectionTerminated(terminated_connection,reason) => {
             assert_eq!(terminated_connection,connection);
             assert!(if let ConnectionTerminatedReason::LogonNotFirstMessageError = reason { true } else { false });
         });
@@ -208,9 +208,9 @@ fn test_1S() {
         SequenceReset,
     );
 
-    fn do_logon<F1,F2>(logon_message_setup_func: F1,server_response_func: F2) -> (TestStream,Client,Listener,Connection,Logon)
+    fn do_logon<F1,F2>(logon_message_setup_func: F1,server_response_func: F2) -> (TestStream,Engine,Listener,Connection,Logon)
         where F1: Fn(&mut Logon),
-              F2: Fn(&mut Client,Connection,Box<Logon>) {
+              F2: Fn(&mut Engine,Connection,Box<Logon>) {
         let (mut test_client,mut engine,listener,connection) = TestStream::setup_test_client(build_dictionary());
 
         let mut logon_message = new_logon_message();
@@ -219,7 +219,7 @@ fn test_1S() {
         logon_message_setup_func(&mut logon_message);
         test_client.send_message(logon_message.clone());
 
-        client_poll_event!(engine,ClientEvent::ConnectionLoggingOn(some_listener,some_connection,logon_message) => {
+        engine_poll_event!(engine,EngineEvent::ConnectionLoggingOn(some_listener,some_connection,logon_message) => {
             assert_eq!(some_listener,listener);
             assert_eq!(some_connection,connection);
 
@@ -306,7 +306,7 @@ fn test_1S() {
         assert!(test_client.is_stream_closed(Duration::from_secs(5)));
 
         //Confirm listener notified that it disconnected..
-        client_poll_event!(engine,ClientEvent::ConnectionTerminated(terminated_connection,reason) => {
+        engine_poll_event!(engine,EngineEvent::ConnectionTerminated(terminated_connection,reason) => {
             assert_eq!(terminated_connection,connection);
             assert!(if let ConnectionTerminatedReason::LogonRejectedError = reason { true } else { false });
         });
@@ -330,7 +330,7 @@ fn test_1S() {
         assert!(test_client.is_stream_closed(Duration::from_secs(5)));
 
         //Confirm listener notified that it disconnected.
-        client_poll_event!(engine,ClientEvent::ConnectionTerminated(terminated_connection,reason) => {
+        engine_poll_event!(engine,EngineEvent::ConnectionTerminated(terminated_connection,reason) => {
             assert_eq!(terminated_connection,connection);
             assert!(if let ConnectionTerminatedReason::LogonNotFirstMessageError = reason { true } else { false });
         });
@@ -403,7 +403,7 @@ fn test_2B() {
         hb_message.msg_seq_num = 2;
         hb_message.test_req_id = message.test_req_id;
         test_server.send_message(hb_message);
-        let message = client_poll_message!(client,connection,Heartbeat);
+        let message = engine_poll_message!(client,connection,Heartbeat);
         assert_eq!(message.msg_seq_num,2);
 
         let message = new_fixt_message!(Logout);
@@ -414,7 +414,7 @@ fn test_2B() {
         let mut message = new_fixt_message!(Logout);
         message.msg_seq_num = 3;
         test_server.send_message(message);
-        let message = client_poll_message!(client,connection,Logout);
+        let message = engine_poll_message!(client,connection,Logout);
         assert_eq!(message.msg_seq_num,3);
     }
 
@@ -461,7 +461,7 @@ fn test_2B() {
         assert!(test_server.is_stream_closed(Duration::from_secs(5)));
 
         //Confirm client notified that it disconnected.
-        client_poll_event!(client,ClientEvent::ConnectionTerminated(terminated_connection,reason) => {
+        engine_poll_event!(client,EngineEvent::ConnectionTerminated(terminated_connection,reason) => {
             assert_eq!(terminated_connection,connection);
             assert!(if let ConnectionTerminatedReason::InboundMsgSeqNumLowerThanExpectedError = reason { true } else { false });
         });
@@ -479,7 +479,7 @@ fn test_2B() {
         let bytes_written = test_server.stream.write(garbled_test_request).unwrap();
         assert_eq!(bytes_written,garbled_test_request.len());
 
-        client_poll_event!(client,ClientEvent::MessageReceivedGarbled(gm_connection,_) => {
+        engine_poll_event!(client,EngineEvent::MessageReceivedGarbled(gm_connection,_) => {
             assert_eq!(connection,gm_connection);
         });
 
@@ -489,7 +489,7 @@ fn test_2B() {
         message.test_req_id = b"1".to_vec();
         test_server.send_message(message);
 
-        let message = client_poll_message!(client,connection,TestRequest);
+        let message = engine_poll_message!(client,connection,TestRequest);
         assert_eq!(message.msg_seq_num,3);
     }
 
@@ -525,7 +525,7 @@ fn test_2B() {
         message.msg_seq_num = 2;
         test_server.send_message(message);
 
-        let message = client_poll_message!(client,connection,SequenceReset);
+        let message = engine_poll_message!(client,connection,SequenceReset);
         assert_eq!(message.gap_fill_flag,true);
         assert_eq!(message.new_seq_no,9);
         assert_eq!(message.msg_seq_num,2);
@@ -541,7 +541,7 @@ fn test_2B() {
         orig_sending_time_setup_fn(&mut message);
         test_server.send_message(message);
 
-        let message = client_poll_message!(client,connection,TestRequest);
+        let message = engine_poll_message!(client,connection,TestRequest);
         assert_eq!(message.msg_seq_num,2);
         assert_eq!(message.test_req_id,b"2".to_vec());
         assert_eq!(message.poss_dup_flag,true);
@@ -549,7 +549,7 @@ fn test_2B() {
         //Send the same TestRequest but now MsgSeqNum has already been received. The message should
         //be ignored.
         test_server.send_message(message);
-        client_poll_event!(client,ClientEvent::MessageReceivedDuplicate(msg_connection,duplicate_message) => {
+        engine_poll_event!(client,EngineEvent::MessageReceivedDuplicate(msg_connection,duplicate_message) => {
             assert_eq!(msg_connection,connection);
 
             let message = duplicate_message.as_any().downcast_ref::<TestRequest>().expect("Not expected message type").clone();
@@ -561,8 +561,8 @@ fn test_2B() {
     }
 
     //f. Similar to (e.) above except OrigSendingTime is greater than SendingTime and MsgSeqNum is
-    //as expected. Client should send a Reject but otherwise increment inbound MsgSeqNum as normal.
-    //Client should also report the error.
+    //as expected. Engine should send a Reject but otherwise increment inbound MsgSeqNum as normal.
+    //Engine should also report the error.
     {
         //Connect and logon.
         let (mut test_server,mut client,connection) = TestStream::setup_test_server_and_logon(build_dictionary());
@@ -581,7 +581,7 @@ fn test_2B() {
         assert_eq!(message.session_reject_reason.unwrap(),SessionRejectReason::SendingTimeAccuracyProblem);
         assert_eq!(message.text,b"SendingTime accuracy problem".to_vec());
 
-        client_poll_event!(client,ClientEvent::MessageRejected(msg_connection,rejected_message) => {
+        engine_poll_event!(client,EngineEvent::MessageRejected(msg_connection,rejected_message) => {
             assert_eq!(msg_connection,connection);
 
             let message = rejected_message.as_any().downcast_ref::<TestRequest>().expect("Not expected message type").clone();
@@ -591,7 +591,7 @@ fn test_2B() {
         });
     }
 
-    //g. Similar to (f.) except OrigSendingTime is not specified. Client should respond with a
+    //g. Similar to (f.) except OrigSendingTime is not specified. Engine should respond with a
     //Reject and increment the inbound MsgSeqNum just like when any required field is missing.
     {
         //Connect and logon.
@@ -610,7 +610,7 @@ fn test_2B() {
         assert_eq!(message.session_reject_reason.unwrap(),SessionRejectReason::RequiredTagMissing);
         assert_eq!(message.text,b"Conditionally required tag missing".to_vec());
 
-        client_poll_event!(client,ClientEvent::MessageReceivedGarbled(msg_connection,parse_error) => {
+        engine_poll_event!(client,EngineEvent::MessageReceivedGarbled(msg_connection,parse_error) => {
             assert_eq!(msg_connection,connection);
 
             match parse_error {
@@ -630,7 +630,7 @@ fn test_2B() {
     //h. BeginStr should match specified value. This test is basically performed in most other
     //tests so it's skipped here.
 
-    //i. If BeginStr does not match the specified value, Client should respond with a Logout
+    //i. If BeginStr does not match the specified value, Engine should respond with a Logout
     //referencing the incorrect BeginStr value, disconnect, and issue an error.
     {
         //Connect and logon.
@@ -642,11 +642,11 @@ fn test_2B() {
         message.test_req_id = b"2".to_vec();
         send_message(&mut test_server.stream,FIXVersion::FIX_4_2,MessageVersion::FIX42,Box::new(message));
 
-        //Client should send Logout and then disconnect.
+        //Engine should send Logout and then disconnect.
         let message = test_server.recv_message::<Logout>();
         assert_eq!(message.text,b"BeginStr is wrong, expected 'FIXT.1.1' but received 'FIX.4.2'".to_vec());
 
-        client_poll_event!(client,ClientEvent::ConnectionTerminated(terminated_connection,reason) => {
+        engine_poll_event!(client,EngineEvent::ConnectionTerminated(terminated_connection,reason) => {
             assert_eq!(terminated_connection,connection);
             assert!(
                 if let ConnectionTerminatedReason::BeginStrWrongError{received,expected} = reason {
@@ -661,7 +661,7 @@ fn test_2B() {
         });
     }
 
-    //j. and k. SenderCompID and TargetCompID should match specified values. Otherwise, Client
+    //j. and k. SenderCompID and TargetCompID should match specified values. Otherwise, Engine
     //should respond with a Reject and then Logout.
     {
         //SenderCompID and TargetCompID correct followed by SenderCompID being wrong.
@@ -677,7 +677,7 @@ fn test_2B() {
             message.target_comp_id = SERVER_TARGET_COMP_ID.to_vec();
             test_server.send_message(message);
 
-            let message = client_poll_message!(client,connection,TestRequest);
+            let message = engine_poll_message!(client,connection,TestRequest);
             assert_eq!(message.sender_comp_id,SERVER_SENDER_COMP_ID);
             assert_eq!(message.target_comp_id,SERVER_TARGET_COMP_ID);
             let _ = test_server.recv_message::<Heartbeat>();
@@ -690,7 +690,7 @@ fn test_2B() {
             message.target_comp_id = SERVER_SENDER_COMP_ID.to_vec();
             test_server.send_message(message);
 
-            //Client should send Reject, Logout, and then disconnect.
+            //Engine should send Reject, Logout, and then disconnect.
             let message = test_server.recv_message::<Reject>();
             assert_eq!(message.msg_seq_num,3);
             assert_eq!(message.ref_seq_num,3);
@@ -700,13 +700,13 @@ fn test_2B() {
             let message = test_server.recv_message::<Logout>();
             assert_eq!(message.text,b"SenderCompID is wrong".to_vec());
 
-            client_poll_event!(client,ClientEvent::MessageRejected(msg_connection,rejected_message) => {
+            engine_poll_event!(client,EngineEvent::MessageRejected(msg_connection,rejected_message) => {
                 assert_eq!(msg_connection,connection);
 
                 let _ = rejected_message.as_any().downcast_ref::<TestRequest>().expect("Not expected message type").clone();
             });
 
-            client_poll_event!(client,ClientEvent::ConnectionTerminated(terminated_connection,reason) => {
+            engine_poll_event!(client,EngineEvent::ConnectionTerminated(terminated_connection,reason) => {
                 assert_eq!(terminated_connection,connection);
                 assert!(if let ConnectionTerminatedReason::SenderCompIDWrongError = reason { true } else { false });
             });
@@ -725,7 +725,7 @@ fn test_2B() {
             message.target_comp_id = b"unknown".to_vec();
             test_server.send_message(message);
 
-            //Client should send Reject, Logout, and then disconnect.
+            //Engine should send Reject, Logout, and then disconnect.
             let message = test_server.recv_message::<Reject>();
             assert_eq!(message.msg_seq_num,2);
             assert_eq!(message.ref_seq_num,2);
@@ -735,13 +735,13 @@ fn test_2B() {
             let message = test_server.recv_message::<Logout>();
             assert_eq!(message.text,b"TargetCompID is wrong".to_vec());
 
-            client_poll_event!(client,ClientEvent::MessageRejected(msg_connection,rejected_message) => {
+            engine_poll_event!(client,EngineEvent::MessageRejected(msg_connection,rejected_message) => {
                 assert_eq!(msg_connection,connection);
 
                 let _ = rejected_message.as_any().downcast_ref::<TestRequest>().expect("Not expected message type").clone();
             });
 
-            client_poll_event!(client,ClientEvent::ConnectionTerminated(terminated_connection,reason) => {
+            engine_poll_event!(client,EngineEvent::ConnectionTerminated(terminated_connection,reason) => {
                 assert_eq!(terminated_connection,connection);
                 assert!(if let ConnectionTerminatedReason::TargetCompIDWrongError = reason { true } else { false });
             });
@@ -751,7 +751,7 @@ fn test_2B() {
     //p. MsgType should match those defined in spec or as part of a user defined list. This test is
     //basically performed in most other tests so it's skipped here.
 
-    //q. If MsgType is not defined in the spec or as part of a user defined list, Client should
+    //q. If MsgType is not defined in the spec or as part of a user defined list, Engine should
     //respond with a Reject, increment the inbound expected MsgSeqNum, and issue a warning.
     {
         define_dictionary!(
@@ -775,30 +775,30 @@ fn test_2B() {
         message.msg_seq_num = 2;
         test_server.send_message(message);
 
-        //Confirm Client responds with an appropriate Reject.
+        //Confirm Engine responds with an appropriate Reject.
         let message = test_server.recv_message::<Reject>();
         assert_eq!(message.msg_seq_num,2);
         assert_eq!(message.ref_msg_type,invalid_msg_type);
         assert_eq!(message.session_reject_reason.unwrap(),SessionRejectReason::InvalidMsgType);
         assert_eq!(message.text,b"Invalid MsgType".to_vec());
 
-        //Confirm Client issued warning.
-        client_poll_event!(client,ClientEvent::MessageReceivedGarbled(msg_connection,parse_error) => {
+        //Confirm Engine issued warning.
+        engine_poll_event!(client,EngineEvent::MessageReceivedGarbled(msg_connection,parse_error) => {
             assert_eq!(msg_connection,connection);
             assert!(if let ParseError::MsgTypeUnknown(_) = parse_error { true } else { false });
         });
 
-        //Confirm Client incremented expected inbound MsgSeqNum.
+        //Confirm Engine incremented expected inbound MsgSeqNum.
         let mut message = new_fixt_message!(TestRequest);
         message.msg_seq_num = 3;
         message.test_req_id = b"test_id".to_vec();
         test_server.send_message(message);
 
-        let message = client_poll_message!(client,connection,TestRequest);
+        let message = engine_poll_message!(client,connection,TestRequest);
         assert_eq!(message.msg_seq_num,3);
     }
 
-    //r. If MsgType is part of spec but unsupported, Client should respond with a
+    //r. If MsgType is part of spec but unsupported, Engine should respond with a
     //BusinessMessageReject, increment the inbound expected MsgSeqNum, and issue a warning.
     //TODO: Send Reject (< FIX 4.2) or Business Message Reject (>= FIX 4.2)
     {
@@ -826,26 +826,26 @@ fn test_2B() {
         message.msg_seq_num = 2;
         test_server.send_message(message);
 
-        //Confirm Client responds with an appropriate BusinessMessageReject.
+        //Confirm Engine responds with an appropriate BusinessMessageReject.
         let message = test_server.recv_message::<BusinessMessageReject>();
         assert_eq!(message.msg_seq_num,2);
         assert_eq!(message.ref_msg_type,unsupported_msg_type);
         assert_eq!(message.business_reject_reason,BusinessRejectReason::UnsupportedMessageType);
         assert_eq!(message.text,b"Unsupported Message Type".to_vec());
 
-        //Confirm Client issued warning.
-        client_poll_event!(client,ClientEvent::MessageReceivedGarbled(msg_connection,parse_error) => {
+        //Confirm Engine issued warning.
+        engine_poll_event!(client,EngineEvent::MessageReceivedGarbled(msg_connection,parse_error) => {
             assert_eq!(msg_connection,connection);
             assert!(if let ParseError::MsgTypeUnknown(_) = parse_error { true } else { false });
         });
 
-        //Confirm Client incremented expected inbound MsgSeqNum.
+        //Confirm Engine incremented expected inbound MsgSeqNum.
         let mut message = new_fixt_message!(TestRequest);
         message.msg_seq_num = 3;
         message.test_req_id = b"test_id".to_vec();
         test_server.send_message(message);
 
-        let message = client_poll_message!(client,connection,TestRequest);
+        let message = engine_poll_message!(client,connection,TestRequest);
         assert_eq!(message.msg_seq_num,3);
     }
 
@@ -892,7 +892,7 @@ fn test_4B() {
         //Sleep for half the Heartbeat session.
         thread::sleep(Duration::from_millis(2500));
 
-        //Send message to reset Client's output heartbeat.
+        //Send message to reset Engine's output heartbeat.
         let mut message = new_fixt_message!(TestRequest);
         message.test_req_id = b"1".to_vec();
         client.send_message(connection,message);
@@ -944,8 +944,8 @@ fn test_5B() {
     hb_message.msg_seq_num = 2;
     test_server.send_message(hb_message);
 
-    //Client should accept heartbeat message as normal.
-    let message = client_poll_message!(client,connection,Heartbeat);
+    //Engine should accept heartbeat message as normal.
+    let message = engine_poll_message!(client,connection,Heartbeat);
     assert_eq!(message.msg_seq_num,2);
     assert_eq!(message.test_req_id,b"".to_vec());
 }
@@ -968,11 +968,11 @@ fn test_6B() {
         //Sleep until TestRequest is triggered.
         thread::sleep(Duration::from_millis(6000)); //1.2 * HeartBeatInt as stated.
 
-        //Ignore HeartBeat because Client didn't send anything for HeartBeatInt seconds.
+        //Ignore HeartBeat because Engine didn't send anything for HeartBeatInt seconds.
         let message = test_server.recv_message::<Heartbeat>();
         assert_eq!(message.msg_seq_num,2);
 
-        //Confirm Client sent TestRequest.
+        //Confirm Engine sent TestRequest.
         let message = test_server.recv_message::<TestRequest>();
         assert_eq!(message.msg_seq_num,3);
         let test_req_id = message.test_req_id;
@@ -983,7 +983,7 @@ fn test_6B() {
         hb_message.test_req_id = test_req_id.clone();
         test_server.send_message(hb_message);
 
-        let message = client_poll_message!(client,connection,Heartbeat);
+        let message = engine_poll_message!(client,connection,Heartbeat);
         assert_eq!(message.msg_seq_num,2);
         assert_eq!(message.test_req_id,test_req_id);
     }
@@ -997,10 +997,10 @@ fn test_6B() {
         //Sleep until TestRequest is triggered.
         thread::sleep(Duration::from_millis(6000)); //1.2 * HeartBeatInt as stated.
 
-        //Ignore HeartBeat because Client didn't send anything for HeartBeatInt seconds.
+        //Ignore HeartBeat because Engine didn't send anything for HeartBeatInt seconds.
         let _ = test_server.recv_message::<Heartbeat>();
 
-        //Confirm Client sent TestRequest.
+        //Confirm Engine sent TestRequest.
         let message = test_server.recv_message::<TestRequest>();
         assert_eq!(message.msg_seq_num,3);
 
@@ -1008,7 +1008,7 @@ fn test_6B() {
         thread::sleep(Duration::from_millis(6000)); //1.2 * HeartBeatInt as stated.
 
         //Confirm client notified that it disconnected.
-        client_poll_event!(client,ClientEvent::ConnectionTerminated(terminated_connection,reason) => {
+        engine_poll_event!(client,EngineEvent::ConnectionTerminated(terminated_connection,reason) => {
             assert_eq!(terminated_connection,connection);
             assert!(if let ConnectionTerminatedReason::TestRequestNotRespondedError = reason { true } else { false });
         });
@@ -1017,7 +1017,7 @@ fn test_6B() {
 
 #[test]
 fn test_7B() {
-    //Client should handle Reject messages just like any other message. Specifically, The inbound
+    //Engine should handle Reject messages just like any other message. Specifically, The inbound
     //MsgSeqNum should be incremented.
 
     define_dictionary!(
@@ -1036,7 +1036,7 @@ fn test_7B() {
     test_server.send_message(message);
 
     //Confirm client received Reject.
-    let message = client_poll_message!(client,connection,Reject);
+    let message = engine_poll_message!(client,connection,Reject);
     assert_eq!(message.msg_seq_num,2);
     assert_eq!(message.ref_seq_num,2);
 
@@ -1046,13 +1046,13 @@ fn test_7B() {
     message.test_req_id = b"test_id".to_vec();
     test_server.send_message(message);
 
-    let message = client_poll_message!(client,connection,TestRequest);
+    let message = engine_poll_message!(client,connection,TestRequest);
     assert_eq!(message.msg_seq_num,3);
 }
 
 #[test]
 fn test_8B() {
-    //Wait for Client to send two non-Logon administrative messages. Send a ResendRequest to client
+    //Wait for Engine to send two non-Logon administrative messages. Send a ResendRequest to client
     //and expect it to respond with a SequenceReset-GapFill.
     //TODO: Need to handle ResendRequest on non-administrative messages too.
 
@@ -1104,7 +1104,7 @@ fn test_10B() {
     );
 
     //a. Send SequenceReset-GapFill to client with NewSeqNo > MsgSeqNum > expected inbound sequence
-    //number. Client should respond wth ResendRequest for between expected inbound sequence number
+    //number. Engine should respond wth ResendRequest for between expected inbound sequence number
     //received MsgSeqNum.
     {
         //Connect.
@@ -1124,7 +1124,7 @@ fn test_10B() {
         assert!(message.end_seq_no == 9 || message.end_seq_no == 0);
     }
 
-    //b. Same as above except MsgSeqNum == expected inbound sequence number. Client should change
+    //b. Same as above except MsgSeqNum == expected inbound sequence number. Engine should change
     //the next expected inbound sequence number to NewSeqNo.
     {
         //Connect and Logon.
@@ -1138,7 +1138,7 @@ fn test_10B() {
         test_server.send_message(message);
 
         //Confirm client is not buffering the SequenceReset.
-        let message = client_poll_message!(client,connection,SequenceReset);
+        let message = engine_poll_message!(client,connection,SequenceReset);
         assert_eq!(message.msg_seq_num,2);
         assert_eq!(message.gap_fill_flag,true);
         assert_eq!(message.new_seq_no,15);
@@ -1149,7 +1149,7 @@ fn test_10B() {
         message.test_req_id = b"test_id".to_vec();
         test_server.send_message(message);
 
-        let message = client_poll_message!(client,connection,TestRequest);
+        let message = engine_poll_message!(client,connection,TestRequest);
         assert_eq!(message.msg_seq_num,15);
         assert_eq!(message.test_req_id,b"test_id".to_vec());
     }
@@ -1170,7 +1170,7 @@ fn test_10B() {
         test_server.send_message(message);
 
         //Confirm client ignored the message.
-        client_poll_event!(client,ClientEvent::MessageReceivedDuplicate(msg_connection,duplicate_message) => {
+        engine_poll_event!(client,EngineEvent::MessageReceivedDuplicate(msg_connection,duplicate_message) => {
             assert_eq!(msg_connection,connection);
 
             let message = duplicate_message.as_any().downcast_ref::<SequenceReset>().expect("Not expected message type").clone();
@@ -1186,7 +1186,7 @@ fn test_10B() {
         message.test_req_id = b"test_id".to_vec();
         test_server.send_message(message);
 
-        let message = client_poll_message!(client,connection,TestRequest);
+        let message = engine_poll_message!(client,connection,TestRequest);
         assert_eq!(message.msg_seq_num,2);
         assert_eq!(message.test_req_id,b"test_id".to_vec());
     }
@@ -1215,14 +1215,14 @@ fn test_10B() {
         assert!(test_server.is_stream_closed(Duration::from_secs(5)));
 
         //Confirm client notified that it disconnected.
-        client_poll_event!(client,ClientEvent::ConnectionTerminated(terminated_connection,reason) => {
+        engine_poll_event!(client,EngineEvent::ConnectionTerminated(terminated_connection,reason) => {
             assert_eq!(terminated_connection,connection);
             assert!(if let ConnectionTerminatedReason::InboundMsgSeqNumLowerThanExpectedError = reason { true } else { false });
         });
     }
 
     //e. Send SequenceReset-GapFill to client with NewSeqNo <= MsgSeqNum == expected inbound
-    //sequence number. Client should respond with Reject containing an appropriate message.
+    //sequence number. Engine should respond with Reject containing an appropriate message.
     for new_seq_no in 1..3 {
         //Connect and Logon.
         let (mut test_server,mut client,connection) = TestStream::setup_test_server_and_logon(build_dictionary());
@@ -1244,7 +1244,7 @@ fn test_10B() {
         assert_eq!(message.text,expected_error_text);
         assert_eq!(message.session_reject_reason.unwrap(),SessionRejectReason::ValueIsIncorrectForThisTag);
 
-        client_poll_event!(client,ClientEvent::MessageRejected(msg_connection,rejected_message) => {
+        engine_poll_event!(client,EngineEvent::MessageRejected(msg_connection,rejected_message) => {
             assert_eq!(msg_connection,connection);
 
             let message = rejected_message.as_any().downcast_ref::<SequenceReset>().expect("Not expected message type").clone();
@@ -1269,8 +1269,8 @@ fn test_11B() {
     //Try a few msg_seq_nums to make sure they are ignored.
     let msg_seq_nums: Vec<u64> = vec![1,2,800,2000000];
 
-    //a. Client receives SequenceReset-Reset message with NewSeqNo > inbound expected sequence
-    //number. Client should ignore MsgSeqNum of received message and set inbound expected sequence
+    //a. Engine receives SequenceReset-Reset message with NewSeqNo > inbound expected sequence
+    //number. Engine should ignore MsgSeqNum of received message and set inbound expected sequence
     //number to NewSeqNo.
     for msg_seq_num in msg_seq_nums.clone() {
         //Connect and Logon.
@@ -1282,7 +1282,7 @@ fn test_11B() {
         message.new_seq_no = 99999;
         test_server.send_message(message);
 
-        let message = client_poll_message!(client,connection,SequenceReset);
+        let message = engine_poll_message!(client,connection,SequenceReset);
         assert_eq!(message.msg_seq_num,msg_seq_num);
         assert_eq!(message.gap_fill_flag,false);
         assert_eq!(message.new_seq_no,99999);
@@ -1293,7 +1293,7 @@ fn test_11B() {
         message.test_req_id = b"test_id".to_vec();
         test_server.send_message(message);
 
-        let message = client_poll_message!(client,connection,TestRequest);
+        let message = engine_poll_message!(client,connection,TestRequest);
         assert_eq!(message.msg_seq_num,99999);
         assert_eq!(message.test_req_id,b"test_id".to_vec());
     }
@@ -1316,7 +1316,7 @@ fn test_11B() {
         message.new_seq_no = 99999;
         test_server.send_message(message);
 
-        let message = client_poll_message!(client,connection,SequenceReset);
+        let message = engine_poll_message!(client,connection,SequenceReset);
         assert_eq!(message.msg_seq_num,msg_seq_num);
         assert_eq!(message.gap_fill_flag,false);
         assert_eq!(message.new_seq_no,99999);
@@ -1328,12 +1328,12 @@ fn test_11B() {
         message.test_req_id = b"test_id".to_vec();
         test_server.send_message(message);
 
-        let message = client_poll_message!(client,connection,TestRequest);
+        let message = engine_poll_message!(client,connection,TestRequest);
         assert_eq!(message.msg_seq_num,99999);
         assert_eq!(message.test_req_id,b"test_id".to_vec());
     }
 
-    //b. Same as (a) except NewSeqNo == inbound expected sequence number. Client should ignore
+    //b. Same as (a) except NewSeqNo == inbound expected sequence number. Engine should ignore
     //MsgSeqNum of received message and issue a warning.
     for msg_seq_num in msg_seq_nums.clone() {
         //Connect and Logon.
@@ -1346,12 +1346,12 @@ fn test_11B() {
         test_server.send_message(message);
 
         //Make sure client issued a warning.
-        client_poll_event!(client,ClientEvent::SequenceResetResetHasNoEffect(warning_connection) => {
+        engine_poll_event!(client,EngineEvent::SequenceResetResetHasNoEffect(warning_connection) => {
             assert_eq!(warning_connection,connection);
         });
 
         //Make sure client accepted the message.
-        let message = client_poll_message!(client,connection,SequenceReset);
+        let message = engine_poll_message!(client,connection,SequenceReset);
         assert_eq!(message.msg_seq_num,msg_seq_num);
         assert_eq!(message.gap_fill_flag,false);
         assert_eq!(message.new_seq_no,2);
@@ -1362,14 +1362,14 @@ fn test_11B() {
         message.test_req_id = b"test_id".to_vec();
         test_server.send_message(message);
 
-        let message = client_poll_message!(client,connection,TestRequest);
+        let message = engine_poll_message!(client,connection,TestRequest);
         assert_eq!(message.msg_seq_num,2);
         assert_eq!(message.test_req_id,b"test_id".to_vec());
     }
 
-    //c. Same as (a) except NewSeqNo < inbound expected sequence number. Client should ignore
-    //MsgSeqNum. Client should respond with Reject message containing an appropriate reason. Client
-    //should not change inbound expected sequence number. Client should issue an error.
+    //c. Same as (a) except NewSeqNo < inbound expected sequence number. Engine should ignore
+    //MsgSeqNum. Engine should respond with Reject message containing an appropriate reason. Engine
+    //should not change inbound expected sequence number. Engine should issue an error.
     for msg_seq_num in msg_seq_nums.clone() {
         //Connect and Logon.
         let (mut test_server,mut client,connection) = TestStream::setup_test_server_and_logon(build_dictionary());
@@ -1381,12 +1381,12 @@ fn test_11B() {
         test_server.send_message(message);
 
         //Make sure client issued an error.
-        client_poll_event!(client,ClientEvent::SequenceResetResetInThePast(warning_connection) => {
+        engine_poll_event!(client,EngineEvent::SequenceResetResetInThePast(warning_connection) => {
             assert_eq!(warning_connection,connection);
         });
 
         //Make sure client accepted the message.
-        let message = client_poll_message!(client,connection,SequenceReset);
+        let message = engine_poll_message!(client,connection,SequenceReset);
         assert_eq!(message.msg_seq_num,msg_seq_num);
         assert_eq!(message.gap_fill_flag,false);
         assert_eq!(message.new_seq_no,1);
@@ -1404,7 +1404,7 @@ fn test_11B() {
         message.test_req_id = b"test_id".to_vec();
         test_server.send_message(message);
 
-        let message = client_poll_message!(client,connection,TestRequest);
+        let message = engine_poll_message!(client,connection,TestRequest);
         assert_eq!(message.msg_seq_num,2);
         assert_eq!(message.test_req_id,b"test_id".to_vec());
     }
@@ -1417,7 +1417,7 @@ fn test_12B() {
         Logout,
     );
 
-    //Client should be able to initiate a Logout via the API. The client should wait for a Logout
+    //Engine should be able to initiate a Logout via the API. The client should wait for a Logout
     //message and then disconnect.
     {
         //Connect and Logon.
@@ -1442,9 +1442,9 @@ fn test_12B() {
         assert!(test_server.is_stream_closed(Duration::from_secs(5)));
 
         //Confirm client notified that it disconnected.
-        client_poll_event!(client,ClientEvent::ConnectionTerminated(terminated_connection,reason) => {
+        engine_poll_event!(client,EngineEvent::ConnectionTerminated(terminated_connection,reason) => {
             assert_eq!(terminated_connection,connection);
-            assert!(if let ConnectionTerminatedReason::ClientRequested = reason { true } else { false });
+            assert!(if let ConnectionTerminatedReason::LocalRequested = reason { true } else { false });
         });
     }
 
@@ -1467,7 +1467,7 @@ fn test_12B() {
         assert!(test_server.is_stream_closed(Duration::from_secs(5)));
 
         //Confirm client notified that it disconnected.
-        client_poll_event!(client,ClientEvent::ConnectionTerminated(terminated_connection,reason) => {
+        engine_poll_event!(client,EngineEvent::ConnectionTerminated(terminated_connection,reason) => {
             assert_eq!(terminated_connection,connection);
             assert!(if let ConnectionTerminatedReason::LogoutNoResponseError = reason { true } else { false });
         });
@@ -1481,10 +1481,10 @@ fn test_13B() {
         Logout,
     );
 
-    //a. Client receives Logout response in response to its Logout message and then should
+    //a. Engine receives Logout response in response to its Logout message and then should
     //disconnect immediately. This is already covered by 12B above.
 
-    //b. Client receives a Logout message without sending a Logout message first. Client should
+    //b. Engine receives a Logout message without sending a Logout message first. Engine should
     //respond with a Logout message and wait for server to disconnect.
     {
         //Connect and Logon.
@@ -1495,18 +1495,18 @@ fn test_13B() {
         message.msg_seq_num = 2;
         test_server.send_message(message);
 
-        //Client should respond with a response Logout message.
-        let _ = client_poll_message!(client,connection,Logout);
+        //Engine should respond with a response Logout message.
+        let _ = engine_poll_message!(client,connection,Logout);
         let _ = test_server.recv_message::<Logout>();
 
         //Server disconnects and client should acknowledge that the connection has been closed.
         //Since client isn't sending anymore data in this state, it can take up to 10 seconds to
         //notice the shutdown.
         let _ = test_server.stream.shutdown(Shutdown::Both);
-        thread::sleep(Duration::from_secs(6)); //6 seconds + the duration in client_poll_event!() >= 10 seconds
-        client_poll_event!(client,ClientEvent::ConnectionTerminated(terminated_connection,reason) => {
+        thread::sleep(Duration::from_secs(6)); //6 seconds + the duration in engine_poll_event!() >= 10 seconds
+        engine_poll_event!(client,EngineEvent::ConnectionTerminated(terminated_connection,reason) => {
             assert_eq!(terminated_connection,connection);
-            assert!(if let ConnectionTerminatedReason::ServerRequested = reason { true } else { false });
+            assert!(if let ConnectionTerminatedReason::RemoteRequested = reason { true } else { false });
         });
     }
 
@@ -1520,9 +1520,9 @@ fn test_13B() {
         let mut message = new_fixt_message!(Logout);
         message.msg_seq_num = 2;
         test_server.send_message(message);
-        let _ = client_poll_message!(client,connection,Logout);
+        let _ = engine_poll_message!(client,connection,Logout);
 
-        //Client should respond with a response Logout message.
+        //Engine should respond with a response Logout message.
         let _ = test_server.recv_message::<Logout>();
 
         //Wait around a little bit and make sure client doesn't disconnect instantly.
@@ -1532,9 +1532,9 @@ fn test_13B() {
         //Wait around a little over the full 10 seconds and make sure client does force a
         //disconnect.
         thread::sleep(Duration::from_millis(5500));
-        assert!(recv_bytes_with_timeout(&mut test_server.stream,Duration::from_secs(1)).is_none()); //Client should have stopped sending TestRequests and Heartbeats!
+        assert!(recv_bytes_with_timeout(&mut test_server.stream,Duration::from_secs(1)).is_none()); //Engine should have stopped sending TestRequests and Heartbeats!
         assert!(test_server.is_stream_closed(Duration::from_secs(1)));
-        client_poll_event!(client,ClientEvent::ConnectionTerminated(terminated_connection,reason) => {
+        engine_poll_event!(client,EngineEvent::ConnectionTerminated(terminated_connection,reason) => {
             assert_eq!(terminated_connection,connection);
             assert!(if let ConnectionTerminatedReason::LogoutNoHangUpError = reason { true } else { false });
         });
@@ -1585,7 +1585,7 @@ fn test_14B() {
         REQUIRED, test_req_id_2: TestReqID [FIX40..],
     });
 
-    fn do_garbled_test_with_dict<F: Fn(&mut TestStream,&mut Client,Connection),TestRequestResponse: FIXTMessage + Any + Clone>(session_reject_reason: SessionRejectReason,ref_tag_id: &'static [u8],test_func: F,dict: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>) {
+    fn do_garbled_test_with_dict<F: Fn(&mut TestStream,&mut Engine,Connection),TestRequestResponse: FIXTMessage + Any + Clone>(session_reject_reason: SessionRejectReason,ref_tag_id: &'static [u8],test_func: F,dict: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>) {
         //Connect and Logon.
         let (mut test_server,mut client,connection) = TestStream::setup_test_server_and_logon(dict);
 
@@ -1604,16 +1604,16 @@ fn test_14B() {
         message.test_req_id = b"test_id".to_vec();
         test_server.send_message(message);
 
-        let message = client_poll_message!(client,connection,TestRequestResponse);
+        let message = engine_poll_message!(client,connection,TestRequestResponse);
         assert_eq!(message.msg_seq_num(),3);
     }
 
-    fn do_garbled_test<F: Fn(&mut TestStream,&mut Client,Connection)>(session_reject_reason: SessionRejectReason,ref_tag_id: &'static [u8],test_func: F) {
+    fn do_garbled_test<F: Fn(&mut TestStream,&mut Engine,Connection)>(session_reject_reason: SessionRejectReason,ref_tag_id: &'static [u8],test_func: F) {
         do_garbled_test_with_dict::<F,TestRequest>(session_reject_reason,ref_tag_id,test_func,build_dictionary());
     }
 
     //a. Send message with tag not defined in spec (tag shouldn't be allowed in any message).
-    //Client should respond with Reject, increment inbound sequence number, and issue an error.
+    //Engine should respond with Reject, increment inbound sequence number, and issue an error.
     do_garbled_test(SessionRejectReason::InvalidTagNumber,UndefinedField::tag_bytes(),|test_server,client,connection| {
         //Send message with undefined tag.
         let mut message = new_fixt_message!(TestRequestWithUndefinedField);
@@ -1623,7 +1623,7 @@ fn test_14B() {
         test_server.send_message(message);
 
         //Make sure client issued an error.
-        client_poll_event!(client,ClientEvent::MessageReceivedGarbled(gm_connection,parse_error) => {
+        engine_poll_event!(client,EngineEvent::MessageReceivedGarbled(gm_connection,parse_error) => {
             assert_eq!(gm_connection,connection);
             match parse_error {
                 ParseError::UnknownTag(tag) => assert_eq!(tag,UndefinedField::tag()),
@@ -1632,7 +1632,7 @@ fn test_14B() {
         });
     });
 
-    //b. Send message with a required field missing. Client should respond with Reject, increment
+    //b. Send message with a required field missing. Engine should respond with Reject, increment
     //inbound sequence number, and issue an error.
     do_garbled_test(SessionRejectReason::RequiredTagMissing,TestReqID::tag_bytes(),|test_server,client,connection| {
         //Send message with missing required tag.
@@ -1641,7 +1641,7 @@ fn test_14B() {
         test_server.send_message(message);
 
         //Make sure client issued an error.
-        client_poll_event!(client,ClientEvent::MessageReceivedGarbled(gm_connection,parse_error) => {
+        engine_poll_event!(client,EngineEvent::MessageReceivedGarbled(gm_connection,parse_error) => {
             assert_eq!(gm_connection,connection);
             match parse_error {
                 ParseError::MissingRequiredTag(tag,message) => {
@@ -1653,7 +1653,7 @@ fn test_14B() {
         });
     });
 
-    //c. Send message with defined field but not for the message type. Client should respond with
+    //c. Send message with defined field but not for the message type. Engine should respond with
     //Reject, increment inbound sequence number, and issue an error.
     do_garbled_test(SessionRejectReason::TagNotDefinedForThisMessageType,HeartBtInt::tag_bytes(),|test_server,client,connection| {
         //Send message with wrong tag for message.
@@ -1664,7 +1664,7 @@ fn test_14B() {
         test_server.send_message(message);
 
         //Make sure client issued an error.
-        client_poll_event!(client,ClientEvent::MessageReceivedGarbled(gm_connection,parse_error) => {
+        engine_poll_event!(client,EngineEvent::MessageReceivedGarbled(gm_connection,parse_error) => {
             assert_eq!(gm_connection,connection);
             match parse_error {
                 ParseError::UnexpectedTag(tag) => assert_eq!(tag,HeartBtInt::tag()),
@@ -1673,7 +1673,7 @@ fn test_14B() {
         });
     });
 
-    //d. Send message with a tag containing no value. Client should respond with Reject, increment
+    //d. Send message with a tag containing no value. Engine should respond with Reject, increment
     //inbound sequence number, and issue an error.
     do_garbled_test(SessionRejectReason::TagSpecifiedWithoutAValue,TestReqIDEmpty::tag_bytes(),|test_server,client,connection| {
         //Send message with valid tag but empty field for message.
@@ -1682,7 +1682,7 @@ fn test_14B() {
         test_server.send_message(message);
 
         //Make sure client issued an error.
-        client_poll_event!(client,ClientEvent::MessageReceivedGarbled(gm_connection,parse_error) => {
+        engine_poll_event!(client,EngineEvent::MessageReceivedGarbled(gm_connection,parse_error) => {
             assert_eq!(gm_connection,connection);
             match parse_error {
                 ParseError::NoValueAfterTag(tag) => assert_eq!(tag,TestReqIDEmpty::tag()),
@@ -1691,7 +1691,7 @@ fn test_14B() {
         });
     });
 
-    //e. Send message with an incorrect value (not in an enumerated set) for a field. Client should
+    //e. Send message with an incorrect value (not in an enumerated set) for a field. Engine should
     //respond with Reject, increment inbound sequence number, and issue an error.
     {
         define_fixt_message!(TestRequestWithEnumeratedField: b"1" => {
@@ -1723,7 +1723,7 @@ fn test_14B() {
             test_server.send_message(message);
 
             //Make sure client issued an error.
-            client_poll_event!(client,ClientEvent::MessageReceivedGarbled(gm_connection,parse_error) => {
+            engine_poll_event!(client,EngineEvent::MessageReceivedGarbled(gm_connection,parse_error) => {
                 assert_eq!(gm_connection,connection);
                 match parse_error {
                     ParseError::OutOfRangeTag(tag) => assert_eq!(tag,SideField::tag()),
@@ -1733,7 +1733,7 @@ fn test_14B() {
         },build_dictionary());
     }
 
-    //f. Send message with an incorrect data format for a field. Client should respond with Reject,
+    //f. Send message with an incorrect data format for a field. Engine should respond with Reject,
     //increment inbound sequence number, and issue an error.
     do_garbled_test(SessionRejectReason::IncorrectDataFormatForValue,BeginSeqNoString::tag_bytes(),|test_server,client,connection| {
         //Send message with incorrect value.
@@ -1744,7 +1744,7 @@ fn test_14B() {
         test_server.send_message(message);
 
         //Make sure client issued an error.
-        client_poll_event!(client,ClientEvent::MessageReceivedGarbled(gm_connection,parse_error) => {
+        engine_poll_event!(client,EngineEvent::MessageReceivedGarbled(gm_connection,parse_error) => {
             assert_eq!(gm_connection,connection);
             match parse_error {
                 ParseError::WrongFormatTag(tag) => assert_eq!(tag,BeginSeqNoString::tag()),
@@ -1754,7 +1754,7 @@ fn test_14B() {
     });
 
     //g. Send message with one of the header fields after after the body fields or the trailer
-    //fields are not at the end. Client should respond with Reject, increment inbound sequence
+    //fields are not at the end. Engine should respond with Reject, increment inbound sequence
     //number, and issue an error.
     //This test seems to somewhat contradict page 26 of FIXT Version 1.1 that states a garbled
     //message should be ignored. We are opting to respond with a Reject whenever possible to ease
@@ -1771,7 +1771,7 @@ fn test_14B() {
             assert_eq!(bytes_written,message_bytes.len());
 
             //Make sure client issued an error.
-            client_poll_event!(client,ClientEvent::MessageReceivedGarbled(gm_connection,parse_error) => {
+            engine_poll_event!(client,EngineEvent::MessageReceivedGarbled(gm_connection,parse_error) => {
                 assert_eq!(gm_connection,connection);
                 match parse_error {
                     ParseError::BeginStrNotFirstTag => {},
@@ -1784,7 +1784,7 @@ fn test_14B() {
         });
     }
 
-    //h. Send message with a tag duplicated outside of an appropriate repeating group. Client
+    //h. Send message with a tag duplicated outside of an appropriate repeating group. Engine
     //should respond with Reject, increment inbound sequence number, and issue an error.
     do_garbled_test(SessionRejectReason::TagAppearsMoreThanOnce,TestReqID::tag_bytes(),|test_server,client,connection| {
         //Send message with duplicate tag.
@@ -1795,7 +1795,7 @@ fn test_14B() {
         test_server.send_message(message);
 
         //Make sure client issued an error.
-        client_poll_event!(client,ClientEvent::MessageReceivedGarbled(gm_connection,parse_error) => {
+        engine_poll_event!(client,EngineEvent::MessageReceivedGarbled(gm_connection,parse_error) => {
             assert_eq!(gm_connection,connection);
             match parse_error {
                 ParseError::DuplicateTag(tag) => assert_eq!(tag,TestReqID::tag()),
@@ -1804,7 +1804,7 @@ fn test_14B() {
         });
     });
 
-    //i. Send message with repeating groups that don't match the specified count. Client should
+    //i. Send message with repeating groups that don't match the specified count. Engine should
     //respond with Reject, increment inbound sequence number, and issue an error.
     {
         let mut messages_bytes: Vec<(FieldTag,&'static[u8],&'static [u8])> = Vec::new();
@@ -1818,7 +1818,7 @@ fn test_14B() {
                 assert_eq!(bytes_written,message_bytes.len());
 
                 //Make sure client issued an error.
-                client_poll_event!(client,ClientEvent::MessageReceivedGarbled(gm_connection,parse_error) => {
+                engine_poll_event!(client,EngineEvent::MessageReceivedGarbled(gm_connection,parse_error) => {
                     assert_eq!(gm_connection,connection);
                     match parse_error {
                         ParseError::NonRepeatingGroupTagInRepeatingGroup(tag) => assert_eq!(tag,ref_tag_id),
@@ -1832,7 +1832,7 @@ fn test_14B() {
     }
 
     //j. Send message with repeating groups but the first required field is not at the beginning of
-    //the repeating group. Client should Reject, increment inbound sequence number, and issue an
+    //the repeating group. Engine should Reject, increment inbound sequence number, and issue an
     //error.
     //Skipping because there is nothing about there being a required field order in repeating
     //groups (excluding the first field) according to page 21 of FIX Version 5.0 Service Pack 2
@@ -1846,7 +1846,7 @@ fn test_14B() {
     //l. Send message when application-level processing is not available.
     //Skipping because engine can't run without application-level processing available.
 
-    //m. Send message with a conditionally required field missing. Client should respond with
+    //m. Send message with a conditionally required field missing. Engine should respond with
     //Business Message Reject referencing the conditionally missing field, increment MsgSeqNum,
     //and issue an error.
     //Note: FIXT 1.1 implies responding with a Business Message Reject but page 106 of FIX Version
@@ -1866,7 +1866,7 @@ fn test_14B() {
         test_server.send_message(message);
 
         //Make sure client issued an error.
-        client_poll_event!(client,ClientEvent::MessageReceivedGarbled(gm_connection,parse_error) => {
+        engine_poll_event!(client,EngineEvent::MessageReceivedGarbled(gm_connection,parse_error) => {
             assert_eq!(gm_connection,connection);
             match parse_error {
                 ParseError::MissingConditionallyRequiredTag(tag,_) => assert_eq!(tag,OrigSendingTime::tag()),
@@ -1887,7 +1887,7 @@ fn test_14B() {
         message.test_req_id = b"test_id".to_vec();
         test_server.send_message(message);
 
-        let message = client_poll_message!(client,connection,TestRequest);
+        let message = engine_poll_message!(client,connection,TestRequest);
         assert_eq!(message.msg_seq_num(),3);
     }
 

@@ -28,7 +28,7 @@ use fix_rs::dictionary::field_types::other::EncryptMethod;
 use fix_rs::dictionary::messages::Logon;
 use fix_rs::fix::Parser;
 use fix_rs::fix_version::FIXVersion;
-use fix_rs::fixt::client::{Client,ClientEvent,Connection,Listener};
+use fix_rs::fixt::engine::{Engine,EngineEvent,Connection,Listener};
 use fix_rs::fixt::message::{BuildFIXTMessage,FIXTMessage};
 use fix_rs::message_version::MessageVersion;
 
@@ -43,32 +43,32 @@ pub const SERVER_SENDER_COMP_ID: &'static [u8] = CLIENT_TARGET_COMP_ID;
 const MAX_MESSAGE_SIZE: u64 = 4096;
 
 #[macro_export]
-macro_rules! client_poll_event {
-    ( $client:ident,$pat:pat => $body:expr ) => {{
-        let result = $client.poll(Some(Duration::from_secs(5))).expect("Client does not have any events");
+macro_rules! engine_poll_event {
+    ( $engine:ident,$pat:pat => $body:expr ) => {{
+        let result = $engine.poll(Some(Duration::from_secs(5))).expect("Engine does not have any events");
         if let $pat = result {
             $body
         }
         else {
-            panic!("Client has wrong event: {:?}",result)
+            panic!("Engine has wrong event: {:?}",result)
         }
     }};
 }
 
 #[macro_export]
-macro_rules! client_poll_no_event {
-    ( $client:ident ) => {{
-        let result = $client.poll(Some(Duration::from_secs(5)));
+macro_rules! engine_poll_no_event {
+    ( $engine:ident ) => {{
+        let result = $engine.poll(Some(Duration::from_secs(5)));
         if let Some(result) = result {
-            panic!("Client has an event: {:?}",result)
+            panic!("Engine has an event: {:?}",result)
         }
     }};
 }
 
 #[macro_export]
-macro_rules! client_poll_message {
-    ( $client:ident, $connection:ident, $message_type:ty ) => {
-        client_poll_event!($client,ClientEvent::MessageReceived(msg_connection,response_message) => {
+macro_rules! engine_poll_message {
+    ( $engine:ident, $connection:ident, $message_type:ty ) => {
+        engine_poll_event!($engine,EngineEvent::MessageReceived(msg_connection,response_message) => {
             assert_eq!(msg_connection,$connection);
 
             response_message.as_any().downcast_ref::<$message_type>().expect("Not expected message type").clone()
@@ -208,13 +208,13 @@ impl TestStream {
         }
     }
 
-    pub fn setup_test_server_with_ver(fix_version: FIXVersion,message_version: MessageVersion,message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>) -> (TestStream,Client,Connection) {
+    pub fn setup_test_server_with_ver(fix_version: FIXVersion,message_version: MessageVersion,message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>) -> (TestStream,Engine,Connection) {
         //Setup server listener socket.
         let addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127,0,0,1),SOCKET_PORT.fetch_add(1,Ordering::SeqCst) as u16));
         let listener = TcpListener::bind(&addr).unwrap();
 
         //Setup client and connect to socket.
-        let mut client = Client::new(message_dictionary.clone(),MAX_MESSAGE_SIZE).unwrap();
+        let mut client = Engine::new(message_dictionary.clone(),MAX_MESSAGE_SIZE).unwrap();
         let connection = client.add_connection(fix_version,message_version,CLIENT_SENDER_COMP_ID,CLIENT_TARGET_COMP_ID,addr).unwrap();
 
         //Try to accept connection from client. Fails on timeout or socket error.
@@ -222,18 +222,18 @@ impl TestStream {
 
         //Confirm client was able to connect.
         let event = client.poll(Duration::from_secs(5)).expect("Could not connect");
-        assert!(if let ClientEvent::ConnectionSucceeded(success_connection) = event { success_connection == connection } else { false });
+        assert!(if let EngineEvent::ConnectionSucceeded(success_connection) = event { success_connection == connection } else { false });
 
         (TestStream::new(fix_version,message_version,stream,message_dictionary),
          client,
          connection)
     }
 
-    pub fn setup_test_server(message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>) -> (TestStream,Client,Connection) {
+    pub fn setup_test_server(message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>) -> (TestStream,Engine,Connection) {
         Self::setup_test_server_with_ver(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,message_dictionary)
     }
 
-    pub fn setup_test_server_and_logon_with_ver(fix_version: FIXVersion,message_version: MessageVersion,message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>) -> (TestStream,Client,Connection) {
+    pub fn setup_test_server_and_logon_with_ver(fix_version: FIXVersion,message_version: MessageVersion,message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>) -> (TestStream,Engine,Connection) {
         //Connect.
         let (mut test_server,mut client,connection) = Self::setup_test_server_with_ver(fix_version,message_version,message_dictionary);
         test_server.parser.set_default_message_version(MessageVersion::FIX50);
@@ -250,25 +250,25 @@ impl TestStream {
         response_message.heart_bt_int = message.heart_bt_int;
         response_message.default_appl_ver_id = message.default_appl_ver_id;
         test_server.send_message_with_ver(fix_version,fix_version.max_message_version(),response_message);
-        client_poll_event!(client,ClientEvent::SessionEstablished(_) => {});
-        let message = client_poll_message!(client,connection,Logon);
+        engine_poll_event!(client,EngineEvent::SessionEstablished(_) => {});
+        let message = engine_poll_message!(client,connection,Logon);
         assert_eq!(message.msg_seq_num,1);
 
-        //After logon, just like the Client, setup the default message version that future messages
+        //After logon, just like the Engine, setup the default message version that future messages
         //should adhere to.
         test_server.parser.set_default_message_version(message_version);
 
         (test_server,client,connection)
     }
 
-    pub fn setup_test_server_and_logon(message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>) -> (TestStream,Client,Connection) {
+    pub fn setup_test_server_and_logon(message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>) -> (TestStream,Engine,Connection) {
         Self::setup_test_server_and_logon_with_ver(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,message_dictionary)
     }
 
-    pub fn setup_test_client_with_ver(fix_version: FIXVersion,message_version: MessageVersion,message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>) -> (TestStream,Client,Listener,Connection) {
+    pub fn setup_test_client_with_ver(fix_version: FIXVersion,message_version: MessageVersion,message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>) -> (TestStream,Engine,Listener,Connection) {
         //Setup client and listener.
         let addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127,0,0,1),SOCKET_PORT.fetch_add(1,Ordering::SeqCst) as u16));
-        let mut client = Client::new(message_dictionary.clone(),MAX_MESSAGE_SIZE).unwrap();
+        let mut client = Engine::new(message_dictionary.clone(),MAX_MESSAGE_SIZE).unwrap();
         let listener = client.add_listener(SERVER_SENDER_COMP_ID,&addr).unwrap().unwrap();
 
         //Setup a client socket and connect to server.
@@ -277,7 +277,7 @@ impl TestStream {
         //Confirm client was able to connect.
         let event = client.poll(Duration::from_secs(5)).expect("Could not accept");
         let connection = match event {
-            ClientEvent::ConnectionAccepted(success_listener,accepted_connection,_) => {
+            EngineEvent::ConnectionAccepted(success_listener,accepted_connection,_) => {
                 assert_eq!(success_listener,listener);
                 accepted_connection
             },
@@ -290,11 +290,11 @@ impl TestStream {
          connection)
     }
 
-    pub fn setup_test_client(message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>) -> (TestStream,Client,Listener,Connection) {
+    pub fn setup_test_client(message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>) -> (TestStream,Engine,Listener,Connection) {
         Self::setup_test_client_with_ver(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,message_dictionary)
     }
 
-    pub fn setup_test_client_and_logon_with_ver(fix_version: FIXVersion,message_version: MessageVersion,message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>) -> (TestStream,Client,Listener,Connection) {
+    pub fn setup_test_client_and_logon_with_ver(fix_version: FIXVersion,message_version: MessageVersion,message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>) -> (TestStream,Engine,Listener,Connection) {
         //Connect.
         let (mut test_client,mut engine,listener,connection) = Self::setup_test_client_with_ver(fix_version,message_version,message_dictionary);
         test_client.parser.set_default_message_version(MessageVersion::FIX50);
@@ -306,7 +306,7 @@ impl TestStream {
         logon_message.default_appl_ver_id = message_version;
         test_client.send_message_with_ver(fix_version,fix_version.max_message_version(),logon_message);
 
-        client_poll_event!(engine,ClientEvent::ConnectionLoggingOn(some_listener,some_connection,logon_message) => {
+        engine_poll_event!(engine,EngineEvent::ConnectionLoggingOn(some_listener,some_connection,logon_message) => {
             assert_eq!(some_listener,listener);
             assert_eq!(some_connection,connection);
             assert_eq!(logon_message.msg_seq_num,1);
@@ -328,7 +328,7 @@ impl TestStream {
         (test_client,engine,listener,connection)
     }
 
-    pub fn setup_test_client_and_logon(message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>) -> (TestStream,Client,Listener,Connection) {
+    pub fn setup_test_client_and_logon(message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>) -> (TestStream,Engine,Listener,Connection) {
         Self::setup_test_client_and_logon_with_ver(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,message_dictionary)
     }
 

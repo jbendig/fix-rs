@@ -10,7 +10,7 @@ use std::time::Duration;
 use fix_rs::dictionary::field_types::other::EncryptMethod;
 use fix_rs::dictionary::messages::{BusinessMessageReject,Heartbeat,Logon,Logout,Reject,ResendRequest,SequenceReset,TestRequest};
 use fix_rs::fix_version::FIXVersion;
-use fix_rs::fixt::client::{Client,ClientEvent};
+use fix_rs::fixt::engine::{Engine,EngineEvent};
 use fix_rs::message_version::MessageVersion;
 
 fn main() {
@@ -20,7 +20,7 @@ fn main() {
     //  enum MessageEnum:      An enum of the listed messages so Rust's match statement can be used to
     //                         make sure all messages are being handled.
     //  fn message_to_enum():  A function used to convert a FIXTMessage into a MessageEnum. Since
-    //                         the Client returns FIXTMessages, this function is a convenient way
+    //                         the Engine returns FIXTMessages, this function is a convenient way
     //                         to match and get concrete types.
     define_dictionary!(
         BusinessMessageReject,
@@ -33,9 +33,9 @@ fn main() {
         TestRequest,
     );
 
-    //Create a Client which is used for initiating FIX connections.
+    //Create an Engine which is used for initiating FIX connections.
     let max_message_size = 4096; //The maximum message size allowed to be received in bytes.
-    let mut client = Client::new(build_dictionary(),max_message_size).unwrap();
+    let mut client = Engine::new(build_dictionary(),max_message_size).unwrap();
 
     //Initiate a connection to a FIX engine. The connection_id is used to interact with this
     //connection.
@@ -52,7 +52,7 @@ fn main() {
     while let Some(event) = client.poll(timeout_duration) {
         match event {
             //Connection was able to open TCP stream to server.
-            ClientEvent::ConnectionSucceeded(connection_id) => {
+            EngineEvent::ConnectionSucceeded(connection_id) => {
                 println!("({})Connection succeeded",connection_id);
 
                 //Start logon process.
@@ -63,27 +63,27 @@ fn main() {
                 client.send_message(connection_id,logon_message);
             },
             //Connection could not open TCP stream to server.
-            ClientEvent::ConnectionFailed(connection_id,err) => {
+            EngineEvent::ConnectionFailed(connection_id,err) => {
                 println!("({})Connection failed: {}",connection_id,err);
                 break;
             },
-            //Connection to server was closed either using the Client::logout() function, logout
+            //Connection to server was closed either using the Engine::logout() function, logout
             //request by server, or an unrecoverable error.
-            ClientEvent::ConnectionTerminated(connection_id,reason) => {
+            EngineEvent::ConnectionTerminated(connection_id,reason) => {
                 println!("({})Connection terminated: {:?}",connection_id,reason);
                 break;
             },
             //Connection completed the logon process and is free to communicate.
-            ClientEvent::SessionEstablished(connection_id) => {
+            EngineEvent::SessionEstablished(connection_id) => {
                 println!("({})Session established",connection_id);
 
                 //Start sending messages here.
             },
             //Connection received a new message.
-            ClientEvent::MessageReceived(connection_id,message) => {
+            EngineEvent::MessageReceived(connection_id,message) => {
                 //Handle the received message. Must be one of the messages listed in the
                 //define_dictionary!() macro above. In this case, these are all administrative
-                //messages that are handled by the Client automatically but are passed along here
+                //messages that are handled by the Engine automatically but are passed along here
                 //for logging purposes.
                 match message_to_enum(&*message) {
                     MessageEnum::BusinessMessageReject(message) => {},
@@ -97,39 +97,39 @@ fn main() {
                 };
             },
             //Connection received a message that could not be parsed correctly.
-            ClientEvent::MessageReceivedGarbled(connection_id,parse_error) => {
+            EngineEvent::MessageReceivedGarbled(connection_id,parse_error) => {
                 println!("({})Could not parse message: {}",connection_id,parse_error);
             },
             //Connection received a message with a MsgSeqNum matching another message that was
             //already received.
-            ClientEvent::MessageReceivedDuplicate(connection_id,message) => {
+            EngineEvent::MessageReceivedDuplicate(connection_id,message) => {
                 println!("({})Received message with duplicate MsgSeqNum: {}",connection_id,message.msg_seq_num());
             },
             //Connection received a message that doesn't follow session rules and was rejected. No
             //further action is necessary but it might be worth logging.
-            ClientEvent::MessageRejected(connection_id,message) => {
+            EngineEvent::MessageRejected(connection_id,message) => {
                 println!("({})Message was rejected",connection_id);
             },
             //Connection received a SequenceReset-Reset message where NewSeqNo is set to the same
             //number as the expected MsgSeqNum.
-            ClientEvent::SequenceResetResetHasNoEffect(connection_id) => {
+            EngineEvent::SequenceResetResetHasNoEffect(connection_id) => {
                 println!("({})Received SequenceReset-Reset with no effect",connection_id);
             },
             //Connection received a SequenceReset-Reset message where NewSeqNo is set to an already
             //seen MsgSeqNum.
-            ClientEvent::SequenceResetResetInThePast(connection_id) => {
+            EngineEvent::SequenceResetResetInThePast(connection_id) => {
                 println!("{}: Received SequenceReset-Reset where NoSeqNo is in the past",connection_id);
             },
-            //Internal error setting up Client (before any connections were added).
-            ClientEvent::FatalError(_,_) => {
-                println!("Could not setup Client.");
+            //Internal error setting up Engine (before any connections were added).
+            EngineEvent::FatalError(_,_) => {
+                println!("Could not setup Engine.");
                 break;
             },
             //The following events are not used for client connections.
-            ClientEvent::ConnectionDropped(_,_) |
-            ClientEvent::ConnectionAccepted(_,_,_) |
-            ClientEvent::ConnectionLoggingOn(_,_,_) |
-            ClientEvent::ListenerFailed(_,_) => {}
+            EngineEvent::ConnectionDropped(_,_) |
+            EngineEvent::ConnectionAccepted(_,_,_) |
+            EngineEvent::ConnectionLoggingOn(_,_,_) |
+            EngineEvent::ListenerFailed(_,_) => {}
         }
     }
 }

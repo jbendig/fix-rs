@@ -37,7 +37,7 @@ use fix_rs::field_tag::{self,FieldTag};
 use fix_rs::fix::ParseError;
 use fix_rs::fix_version::FIXVersion;
 use fix_rs::fixt;
-use fix_rs::fixt::client::{ClientEvent,ConnectionTerminatedReason};
+use fix_rs::fixt::engine::{EngineEvent,ConnectionTerminatedReason};
 use fix_rs::fixt::tests::{AUTO_DISCONNECT_AFTER_INBOUND_RESEND_REQUEST_LOOP_COUNT,INBOUND_MESSAGES_BUFFER_LEN_MAX,INBOUND_BYTES_BUFFER_CAPACITY};
 use fix_rs::fixt::message::FIXTMessage;
 use fix_rs::message::{self,NOT_REQUIRED,REQUIRED,Message};
@@ -89,7 +89,7 @@ fn test_send_logout_before_logon() {
     assert!(test_server.is_stream_closed(Duration::from_secs(5)));
 
     //Confirm client notified that it disconnected.
-    client_poll_event!(client,ClientEvent::ConnectionTerminated(terminated_connection,reason) => {
+    engine_poll_event!(client,EngineEvent::ConnectionTerminated(terminated_connection,reason) => {
         assert_eq!(terminated_connection,connection);
         assert!(if let ConnectionTerminatedReason::LogonNotFirstMessageError = reason { true } else { false });
     });
@@ -123,7 +123,7 @@ fn test_recv_logout_with_high_msg_seq_num() {
     message.new_seq_no = 15;
     message.msg_seq_num = 2;
     test_server.send_message(message);
-    let _ = client_poll_message!(client,connection,SequenceReset);
+    let _ = engine_poll_message!(client,connection,SequenceReset);
 
     //Make sure client responds with Logout now that it's caught up.
     let message = test_server.recv_message::<Logout>();
@@ -131,9 +131,9 @@ fn test_recv_logout_with_high_msg_seq_num() {
 
     //Close connection and make sure client notifies that connection closed cleanly.
     let _ = test_server.stream.shutdown(Shutdown::Both);
-    client_poll_event!(client,ClientEvent::ConnectionTerminated(terminated_connection,reason) => {
+    engine_poll_event!(client,EngineEvent::ConnectionTerminated(terminated_connection,reason) => {
         assert_eq!(terminated_connection,connection);
-        assert!(if let ConnectionTerminatedReason::ServerRequested = reason { true } else { false });
+        assert!(if let ConnectionTerminatedReason::RemoteRequested = reason { true } else { false });
     });
 }
 
@@ -168,9 +168,9 @@ fn test_recv_logout_with_high_msg_seq_num_and_no_reply() {
 
     //Close connection and make sure client notifies that connection closed cleanly.
     let _ = test_server.stream.shutdown(Shutdown::Both);
-    client_poll_event!(client,ClientEvent::ConnectionTerminated(terminated_connection,reason) => {
+    engine_poll_event!(client,EngineEvent::ConnectionTerminated(terminated_connection,reason) => {
         assert_eq!(terminated_connection,connection);
-        assert!(if let ConnectionTerminatedReason::ServerRequested = reason { true } else { false });
+        assert!(if let ConnectionTerminatedReason::RemoteRequested = reason { true } else { false });
     });
 }
 
@@ -196,7 +196,7 @@ fn test_recv_logout_send_logout_recv_resend_request() {
     //Make sure client responds with Logout.
     let message = test_server.recv_message::<Logout>();
     assert_eq!(message.msg_seq_num,2);
-    let _ = client_poll_message!(client,connection,Logout);
+    let _ = engine_poll_message!(client,connection,Logout);
 
     //Ask client for missing messages even though they already responded to Logout. This should
     //cancel the logout when done before the timeout.
@@ -205,7 +205,7 @@ fn test_recv_logout_send_logout_recv_resend_request() {
     message.begin_seq_no = 2;
     message.end_seq_no = 0;
     test_server.send_message(message);
-    let _ = client_poll_message!(client,connection,ResendRequest);
+    let _ = engine_poll_message!(client,connection,ResendRequest);
 
     //Make sure ResendRequest is responded to.
     let message = test_server.recv_message::<SequenceReset>();
@@ -221,13 +221,13 @@ fn test_recv_logout_send_logout_recv_resend_request() {
     let mut message = new_fixt_message!(Logout);
     message.msg_seq_num = 4;
     test_server.send_message(message);
-    let _ = client_poll_message!(client,connection,Logout);
+    let _ = engine_poll_message!(client,connection,Logout);
 
     //Close connection and make sure client notifies that connection closed cleanly.
     let _ = test_server.stream.shutdown(Shutdown::Both);
-    client_poll_event!(client,ClientEvent::ConnectionTerminated(terminated_connection,reason) => {
+    engine_poll_event!(client,EngineEvent::ConnectionTerminated(terminated_connection,reason) => {
         assert_eq!(terminated_connection,connection);
-        assert!(if let ConnectionTerminatedReason::ServerRequested = reason { true } else { false });
+        assert!(if let ConnectionTerminatedReason::RemoteRequested = reason { true } else { false });
     });
 }
 
@@ -261,7 +261,7 @@ fn test_send_logout_and_recv_resend_request() {
     message.begin_seq_no = 2;
     message.end_seq_no = 0;
     test_server.send_message(message);
-    let _ = client_poll_message!(client,connection,ResendRequest);
+    let _ = engine_poll_message!(client,connection,ResendRequest);
 
     //Make sure client still responds to ResendRequest while logging out.
     let message = test_server.recv_message::<SequenceReset>();
@@ -273,9 +273,9 @@ fn test_send_logout_and_recv_resend_request() {
     message.msg_seq_num = 3;
     test_server.send_message(message);
 
-    client_poll_event!(client,ClientEvent::ConnectionTerminated(terminated_connection,reason) => {
+    engine_poll_event!(client,EngineEvent::ConnectionTerminated(terminated_connection,reason) => {
         assert_eq!(terminated_connection,connection);
-        assert!(if let ConnectionTerminatedReason::ClientRequested = reason { true } else { false });
+        assert!(if let ConnectionTerminatedReason::LocalRequested = reason { true } else { false });
     });
 }
 
@@ -314,7 +314,7 @@ fn test_send_logout_and_recv_logout_with_high_msg_seq_num() {
     message.msg_seq_num = 2;
     message.new_seq_no = 16;
     test_server.send_message(message);
-    let _ = client_poll_message!(client,connection,SequenceReset);
+    let _ = engine_poll_message!(client,connection,SequenceReset);
 
     //Make sure client automatically attempts to logout again after being caught up.
     let _ = test_server.recv_message::<Logout>();
@@ -324,9 +324,9 @@ fn test_send_logout_and_recv_logout_with_high_msg_seq_num() {
     message.msg_seq_num = 16;
     test_server.send_message(message);
 
-    client_poll_event!(client,ClientEvent::ConnectionTerminated(terminated_connection,reason) => {
+    engine_poll_event!(client,EngineEvent::ConnectionTerminated(terminated_connection,reason) => {
         assert_eq!(terminated_connection,connection);
-        assert!(if let ConnectionTerminatedReason::ClientRequested = reason { true } else { false });
+        assert!(if let ConnectionTerminatedReason::LocalRequested = reason { true } else { false });
     });
 }
 
@@ -366,7 +366,7 @@ fn test_send_logout_and_recv_logout_with_high_msg_seq_num_and_no_reply() {
     //logout with an expected MsgSeqNum, then we saw a later MsgSeqNum once already and something
     //has gone terribly wrong. If the other sends a further out MsgSeqNum but won't reply to
     //ResendRequest then we're just going to keep looping.
-    client_poll_event!(client,ClientEvent::ConnectionTerminated(terminated_connection,reason) => {
+    engine_poll_event!(client,EngineEvent::ConnectionTerminated(terminated_connection,reason) => {
         assert_eq!(terminated_connection,connection);
         assert!(if let ConnectionTerminatedReason::LogoutNoResponseError = reason { true } else { false });
     });
@@ -402,7 +402,7 @@ fn test_wrong_sender_comp_id_in_logon_response() {
     let message = test_server.recv_message::<Logout>();
     assert_eq!(message.text,b"SenderCompID is wrong".to_vec());
 
-    client_poll_event!(client,ClientEvent::MessageRejected(msg_connection,rejected_message) => {
+    engine_poll_event!(client,EngineEvent::MessageRejected(msg_connection,rejected_message) => {
         assert_eq!(msg_connection,connection);
 
         let message = rejected_message.as_any().downcast_ref::<Logon>().expect("Not expected message type").clone();
@@ -410,7 +410,7 @@ fn test_wrong_sender_comp_id_in_logon_response() {
         assert_eq!(message.sender_comp_id,b"unknown".to_vec());
     });
 
-    client_poll_event!(client,ClientEvent::ConnectionTerminated(terminated_connection,reason) => {
+    engine_poll_event!(client,EngineEvent::ConnectionTerminated(terminated_connection,reason) => {
         assert_eq!(terminated_connection,connection);
         assert!(if let ConnectionTerminatedReason::SenderCompIDWrongError = reason { true } else { false });
     });
@@ -446,7 +446,7 @@ fn test_wrong_target_comp_id_in_logon_response() {
     let message = test_server.recv_message::<Logout>();
     assert_eq!(message.text,b"TargetCompID is wrong".to_vec());
 
-    client_poll_event!(client,ClientEvent::MessageRejected(msg_connection,rejected_message) => {
+    engine_poll_event!(client,EngineEvent::MessageRejected(msg_connection,rejected_message) => {
         assert_eq!(msg_connection,connection);
 
         let message = rejected_message.as_any().downcast_ref::<Logon>().expect("Not expected message type").clone();
@@ -454,7 +454,7 @@ fn test_wrong_target_comp_id_in_logon_response() {
         assert_eq!(message.target_comp_id,b"unknown".to_vec());
     });
 
-    client_poll_event!(client,ClientEvent::ConnectionTerminated(terminated_connection,reason) => {
+    engine_poll_event!(client,EngineEvent::ConnectionTerminated(terminated_connection,reason) => {
         assert_eq!(terminated_connection,connection);
         assert!(if let ConnectionTerminatedReason::TargetCompIDWrongError = reason { true } else { false });
     });
@@ -494,7 +494,7 @@ fn test_overflowing_inbound_messages_buffer_does_resume() {
 
     //Make sure client acknowledges messages as normal.
     for x in 0..INBOUND_MESSAGES_BUFFER_LEN_MAX + 1 {
-        let message = client_poll_message!(client,connection,TestRequest);
+        let message = engine_poll_message!(client,connection,TestRequest);
         assert_eq!(message.msg_seq_num,(x + 2) as u64);
 
         let message = test_server.recv_message::<Heartbeat>();
@@ -524,7 +524,7 @@ fn test_sender_comp_id() {
         let bytes_written = test_server.stream.write(target_comp_id_fifth_tag_message).unwrap();
         assert_eq!(bytes_written,target_comp_id_fifth_tag_message.len());
 
-        let message = client_poll_message!(client,connection,TestMessage);
+        let message = engine_poll_message!(client,connection,TestMessage);
         assert_eq!(message.msg_seq_num,2);
         assert_eq!(message.sender_comp_id,SERVER_SENDER_COMP_ID);
 
@@ -538,7 +538,7 @@ fn test_sender_comp_id() {
         assert_eq!(message.session_reject_reason.expect("SessionRejectReason must be provided"),SessionRejectReason::TagSpecifiedOutOfRequiredOrder);
         assert_eq!(message.text,b"SenderCompID must be the 4th tag".to_vec());
 
-        client_poll_event!(client,ClientEvent::MessageReceivedGarbled(msg_connection,parse_error) => {
+        engine_poll_event!(client,EngineEvent::MessageReceivedGarbled(msg_connection,parse_error) => {
             assert_eq!(msg_connection,connection);
             assert!(if let ParseError::SenderCompIDNotFourthTag = parse_error { true } else { false });
         });
@@ -553,7 +553,7 @@ fn test_sender_comp_id() {
         assert_eq!(message.session_reject_reason.expect("SessionRejectReason must be provided"),SessionRejectReason::TagSpecifiedOutOfRequiredOrder);
         assert_eq!(message.text,b"SenderCompID must be the 4th tag".to_vec());
 
-        client_poll_event!(client,ClientEvent::MessageReceivedGarbled(msg_connection,parse_error) => {
+        engine_poll_event!(client,EngineEvent::MessageReceivedGarbled(msg_connection,parse_error) => {
             assert_eq!(msg_connection,connection);
             assert!(if let ParseError::SenderCompIDNotFourthTag = parse_error { true } else { false });
         });
@@ -569,7 +569,7 @@ fn test_sender_comp_id() {
         let bytes_written = test_server.stream.write(target_comp_id_fifth_tag_message).unwrap();
         assert_eq!(bytes_written,target_comp_id_fifth_tag_message.len());
 
-        let message = client_poll_message!(client,connection,TestMessage);
+        let message = engine_poll_message!(client,connection,TestMessage);
         assert_eq!(message.msg_seq_num,2);
         assert_eq!(message.sender_comp_id,SERVER_SENDER_COMP_ID);
 
@@ -578,7 +578,7 @@ fn test_sender_comp_id() {
         let bytes_written = test_server.stream.write(sender_comp_id_fifth_tag_message).unwrap();
         assert_eq!(bytes_written,sender_comp_id_fifth_tag_message.len());
 
-        let message = client_poll_message!(client,connection,TestMessage);
+        let message = engine_poll_message!(client,connection,TestMessage);
         assert_eq!(message.msg_seq_num,3);
         assert_eq!(message.sender_comp_id,SERVER_SENDER_COMP_ID);
 
@@ -591,7 +591,7 @@ fn test_sender_comp_id() {
         assert_eq!(message.msg_seq_num,2);
         assert_eq!(message.text,b"Required tag missing".to_vec());
 
-        client_poll_event!(client,ClientEvent::MessageReceivedGarbled(msg_connection,parse_error) => {
+        engine_poll_event!(client,EngineEvent::MessageReceivedGarbled(msg_connection,parse_error) => {
             assert_eq!(msg_connection,connection);
             assert!(if let ParseError::MissingRequiredTag(ref tag,_) = parse_error { *tag == SenderCompID::tag() } else { false });
         });
@@ -620,7 +620,7 @@ fn test_target_comp_id() {
         let bytes_written = test_server.stream.write(target_comp_id_fifth_tag_message).unwrap();
         assert_eq!(bytes_written,target_comp_id_fifth_tag_message.len());
 
-        let message = client_poll_message!(client,connection,TestMessage);
+        let message = engine_poll_message!(client,connection,TestMessage);
         assert_eq!(message.msg_seq_num,2);
         assert_eq!(message.target_comp_id,SERVER_TARGET_COMP_ID);
 
@@ -634,7 +634,7 @@ fn test_target_comp_id() {
         assert_eq!(message.session_reject_reason.expect("SessionRejectReason must be provided"),SessionRejectReason::TagSpecifiedOutOfRequiredOrder);
         assert_eq!(message.text,b"TargetCompID must be the 5th tag".to_vec());
 
-        client_poll_event!(client,ClientEvent::MessageReceivedGarbled(msg_connection,parse_error) => {
+        engine_poll_event!(client,EngineEvent::MessageReceivedGarbled(msg_connection,parse_error) => {
             assert_eq!(msg_connection,connection);
             assert!(if let ParseError::TargetCompIDNotFifthTag = parse_error { true } else { false });
         });
@@ -649,7 +649,7 @@ fn test_target_comp_id() {
         assert_eq!(message.session_reject_reason.expect("SessionRejectReason must be provided"),SessionRejectReason::TagSpecifiedOutOfRequiredOrder);
         assert_eq!(message.text,b"TargetCompID must be the 5th tag".to_vec());
 
-        client_poll_event!(client,ClientEvent::MessageReceivedGarbled(msg_connection,parse_error) => {
+        engine_poll_event!(client,EngineEvent::MessageReceivedGarbled(msg_connection,parse_error) => {
             assert_eq!(msg_connection,connection);
             assert!(if let ParseError::TargetCompIDNotFifthTag = parse_error { true } else { false });
         });
@@ -665,7 +665,7 @@ fn test_target_comp_id() {
         let bytes_written = test_server.stream.write(target_comp_id_fifth_tag_message).unwrap();
         assert_eq!(bytes_written,target_comp_id_fifth_tag_message.len());
 
-        let message = client_poll_message!(client,connection,TestMessage);
+        let message = engine_poll_message!(client,connection,TestMessage);
         assert_eq!(message.msg_seq_num,2);
         assert_eq!(message.target_comp_id,SERVER_TARGET_COMP_ID);
 
@@ -674,7 +674,7 @@ fn test_target_comp_id() {
         let bytes_written = test_server.stream.write(target_comp_id_sixth_tag_message).unwrap();
         assert_eq!(bytes_written,target_comp_id_sixth_tag_message.len());
 
-        let message = client_poll_message!(client,connection,TestMessage);
+        let message = engine_poll_message!(client,connection,TestMessage);
         assert_eq!(message.msg_seq_num,3);
         assert_eq!(message.target_comp_id,SERVER_TARGET_COMP_ID);
 
@@ -687,7 +687,7 @@ fn test_target_comp_id() {
         assert_eq!(message.msg_seq_num,2);
         assert_eq!(message.text,b"Required tag missing".to_vec());
 
-        client_poll_event!(client,ClientEvent::MessageReceivedGarbled(msg_connection,parse_error) => {
+        engine_poll_event!(client,EngineEvent::MessageReceivedGarbled(msg_connection,parse_error) => {
             assert_eq!(msg_connection,connection);
             assert!(if let ParseError::MissingRequiredTag(ref tag,_) = parse_error { *tag == TargetCompID::tag() } else { false });
         });
@@ -733,7 +733,7 @@ fn test_default_appl_ver_id() {
         test_server.send_message(message);
 
         //Confirm text field was excluded by client due to requiring >= FIX50 but default is FIX40.
-        let message = client_poll_message!(client,connection,TestMessage);
+        let message = engine_poll_message!(client,connection,TestMessage);
         assert_eq!(message.text.len(),0);
 
         //Make sever send a TestMessage again but force the text field to be sent.
@@ -743,7 +743,7 @@ fn test_default_appl_ver_id() {
         test_server.send_message(message);
 
         //Make sure message is considered invalid.
-        client_poll_event!(client,ClientEvent::MessageReceivedGarbled(msg_connection,parse_error) => {
+        engine_poll_event!(client,EngineEvent::MessageReceivedGarbled(msg_connection,parse_error) => {
             assert_eq!(msg_connection,connection);
             assert!(if let ParseError::UnknownTag(ref tag) = parse_error { *tag == FieldTag(58) } else { false });
         });
@@ -762,7 +762,7 @@ fn test_appl_ver_id() {
         TestMessage,
     );
 
-    //Make sure when ApplVerID is specified after the sixth field, Client responds with an
+    //Make sure when ApplVerID is specified after the sixth field, Engine responds with an
     //appropriate Reject message and notification.
     {
         //Connect and logon.
@@ -773,13 +773,13 @@ fn test_appl_ver_id() {
         let bytes_written = test_server.stream.write(appl_ver_id_seventh_tag_message).unwrap();
         assert_eq!(bytes_written,appl_ver_id_seventh_tag_message.len());
 
-        //Make sure Client responds with an appropriate reject.
+        //Make sure Engine responds with an appropriate reject.
         let message = test_server.recv_message::<Reject>();
         assert_eq!(message.session_reject_reason.unwrap(),SessionRejectReason::TagSpecifiedOutOfRequiredOrder);
         assert_eq!(message.text,b"ApplVerID must be the 6th tag if specified".to_vec());
 
-        //Make sure Client indicates that it rejected the message.
-        client_poll_event!(client,ClientEvent::MessageReceivedGarbled(msg_connection,parse_error) => {
+        //Make sure Engine indicates that it rejected the message.
+        engine_poll_event!(client,EngineEvent::MessageReceivedGarbled(msg_connection,parse_error) => {
             assert_eq!(msg_connection,connection);
             assert!(if let ParseError::ApplVerIDNotSixthTag = parse_error { true } else { false });
         });
@@ -796,8 +796,8 @@ fn test_appl_ver_id() {
         message.appl_ver_id = Some(MessageVersion::FIX40);
         test_server.send_message_with_ver(FIXVersion::FIXT_1_1,message.appl_ver_id.unwrap(),message);
 
-        //Confirm Client accepted message correctly.
-        let message = client_poll_message!(client,connection,TestMessage);
+        //Confirm Engine accepted message correctly.
+        let message = engine_poll_message!(client,connection,TestMessage);
         assert_eq!(message.appl_ver_id,Some(MessageVersion::FIX40));
         assert_eq!(message.text.len(),0);
 
@@ -808,12 +808,12 @@ fn test_appl_ver_id() {
         message.text = b"text".to_vec();
         test_server.send_message_with_ver(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,message); //Force text field to be included.
 
-        //Confirm Client rejected message because text field is unsupported for this version.
+        //Confirm Engine rejected message because text field is unsupported for this version.
         let message = test_server.recv_message::<Reject>();
         assert_eq!(message.session_reject_reason.unwrap(),SessionRejectReason::TagNotDefinedForThisMessageType);
         assert_eq!(message.text,b"Tag not defined for this message type".to_vec());
 
-        client_poll_event!(client,ClientEvent::MessageReceivedGarbled(msg_connection,parse_error) => {
+        engine_poll_event!(client,EngineEvent::MessageReceivedGarbled(msg_connection,parse_error) => {
             assert_eq!(msg_connection,connection);
             assert!(if let ParseError::UnexpectedTag(ref tag) = parse_error { *tag == Text::tag()  } else { false });
         });
@@ -853,8 +853,8 @@ fn test_message_type_default_application_version() {
     msg_type_grp.default_ver_indicator = true;
     response_message.no_msg_types.push(Box::new(msg_type_grp));
     test_server.send_message_with_ver(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,response_message);
-    client_poll_event!(client,ClientEvent::SessionEstablished(_) => {});
-    let message = client_poll_message!(client,connection,Logon);
+    engine_poll_event!(client,EngineEvent::SessionEstablished(_) => {});
+    let message = engine_poll_message!(client,connection,Logon);
     assert_eq!(message.msg_seq_num,1);
 
     //Make sure specifying a message type specific default application version overrides the
@@ -866,8 +866,8 @@ fn test_message_type_default_application_version() {
         message.text = b"test".to_vec();
         test_server.send_message_with_ver(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP1,message);
 
-        //Confirm Client accepted message correctly.
-        let message = client_poll_message!(client,connection,TestMessage);
+        //Confirm Engine accepted message correctly.
+        let message = engine_poll_message!(client,connection,TestMessage);
         assert_eq!(message.appl_ver_id,Some(MessageVersion::FIX50SP1)); //Set by parser what it parsed message as.
         assert_eq!(message.text,b"test");
     }
@@ -880,8 +880,8 @@ fn test_message_type_default_application_version() {
         message.appl_ver_id = Some(MessageVersion::FIX40);
         test_server.send_message_with_ver(FIXVersion::FIXT_1_1,message.appl_ver_id.unwrap(),message);
 
-        //Confirm Client accepted message correctly.
-        let message = client_poll_message!(client,connection,TestMessage);
+        //Confirm Engine accepted message correctly.
+        let message = engine_poll_message!(client,connection,TestMessage);
         assert_eq!(message.appl_ver_id,Some(MessageVersion::FIX40));
         assert_eq!(message.text.len(),0);
     }
@@ -928,10 +928,10 @@ fn test_respond_to_test_request_immediately_after_logon() {
     assert_eq!(bytes_written,bytes.len());
 
     //Make sure client acknowledges both as normal.
-    client_poll_event!(client,ClientEvent::SessionEstablished(_) => {});
-    let message = client_poll_message!(client,connection,Logon);
+    engine_poll_event!(client,EngineEvent::SessionEstablished(_) => {});
+    let message = engine_poll_message!(client,connection,Logon);
     assert_eq!(message.msg_seq_num,1);
-    let message = client_poll_message!(client,connection,TestRequest);
+    let message = engine_poll_message!(client,connection,TestRequest);
     assert_eq!(message.msg_seq_num,2);
 
     let message = test_server.recv_message::<Heartbeat>();
@@ -983,13 +983,13 @@ fn test_respect_default_appl_ver_id_in_test_request_immediately_after_logon() {
     assert_eq!(bytes_written,bytes.len());
 
     //Make sure client acknowledges Logon as normal.
-    client_poll_event!(client,ClientEvent::SessionEstablished(_) => {});
-    let message = client_poll_message!(client,connection,Logon);
+    engine_poll_event!(client,EngineEvent::SessionEstablished(_) => {});
+    let message = engine_poll_message!(client,connection,Logon);
     assert_eq!(message.msg_seq_num,1);
 
     //Make sure client applies DefaultApplVerID version to TestMessage so that the Text field is
     //parsed.
-    let message = client_poll_message!(client,connection,TestMessage);
+    let message = engine_poll_message!(client,connection,TestMessage);
     assert_eq!(message.msg_seq_num,2);
     assert_eq!(message.text,b"test".to_vec());
 }
@@ -1033,15 +1033,15 @@ fn test_logout_and_terminate_wrong_versioned_test_request_immediately_after_logo
     assert_eq!(bytes_written,bytes.len());
 
     //Make sure client acknowledges Logon as normal.
-    client_poll_event!(client,ClientEvent::SessionEstablished(_) => {});
-    let message = client_poll_message!(client,connection,Logon);
+    engine_poll_event!(client,EngineEvent::SessionEstablished(_) => {});
+    let message = engine_poll_message!(client,connection,Logon);
     assert_eq!(message.msg_seq_num,1);
 
-    //Make sure Client sends Logout and then disconnects.
+    //Make sure Engine sends Logout and then disconnects.
     let message = test_server.recv_message::<Logout>();
     assert_eq!(message.text,b"BeginStr is wrong, expected 'FIXT.1.1' but received 'FIX.4.2'".to_vec());
 
-    client_poll_event!(client,ClientEvent::ConnectionTerminated(terminated_connection,reason) => {
+    engine_poll_event!(client,EngineEvent::ConnectionTerminated(terminated_connection,reason) => {
         assert_eq!(terminated_connection,connection);
         assert!(
             if let ConnectionTerminatedReason::BeginStrWrongError{received,expected} = reason {
@@ -1096,11 +1096,11 @@ fn test_max_message_size() {
         response_message.heart_bt_int = message.heart_bt_int;
         response_message.default_appl_ver_id = message.default_appl_ver_id;
         test_server.send_message(response_message);
-        client_poll_event!(client,ClientEvent::SessionEstablished(_) => {});
-        let message = client_poll_message!(client,connection,Logon);
+        engine_poll_event!(client,EngineEvent::SessionEstablished(_) => {});
+        let message = engine_poll_message!(client,connection,Logon);
         assert_eq!(message.msg_seq_num,1);
 
-        //Try and send Client a message exceeding MAX_MESSAGE_SIZE.
+        //Try and send Engine a message exceeding MAX_MESSAGE_SIZE.
         let mut message = new_fixt_message!(TestMessage);
         message.msg_seq_num = 2;
         let current_message_len = message_length(&message);
@@ -1109,7 +1109,7 @@ fn test_max_message_size() {
         }
         test_server.send_message(message);
 
-        //Make sure Client rejected the message.
+        //Make sure Engine rejected the message.
         let message = test_server.recv_message::<Reject>();
         assert_eq!(message.msg_seq_num,2);
         assert_eq!(message.ref_seq_num,2);
@@ -1119,7 +1119,7 @@ fn test_max_message_size() {
         assert_eq!(message.text,expected_error_text);
     }
 
-    //Make sure exceeding the MaxMessageSize in the Logon response results in the Client just
+    //Make sure exceeding the MaxMessageSize in the Logon response results in the Engine just
     //disconnecting.
     {
         //Connect to server.
@@ -1147,8 +1147,8 @@ fn test_max_message_size() {
         }
         test_server.send_message(response_message);
 
-        //Make sure Client just disconnects.
-        client_poll_event!(client,ClientEvent::ConnectionTerminated(terminated_connection,reason) => {
+        //Make sure Engine just disconnects.
+        engine_poll_event!(client,EngineEvent::ConnectionTerminated(terminated_connection,reason) => {
             assert_eq!(terminated_connection,connection);
             assert!(if let ConnectionTerminatedReason::LogonParseError(parse_error) = reason {
                 if let ParseError::MessageSizeTooBig = parse_error { true } else { false }
@@ -1171,7 +1171,7 @@ fn test_block_read_when_write_blocks() {
         TestRequest,
     );
 
-    //Send a bunch of messages to Client without reading the responses. Client should stop reading
+    //Send a bunch of messages to Engine without reading the responses. Engine should stop reading
     //until it can write again.
     {
         //Connect and Logon.
@@ -1187,7 +1187,7 @@ fn test_block_read_when_write_blocks() {
             let mut client = client_clone.lock().unwrap();
             while let Some(event) = client.poll(Duration::from_secs(2)) {
                 match event {
-                    ClientEvent::ConnectionTerminated(_,_) => panic!("Client should not have terminated connection yet."),
+                    EngineEvent::ConnectionTerminated(_,_) => panic!("Engine should not have terminated connection yet."),
                     _ => {},
                 }
             }
@@ -1206,7 +1206,7 @@ fn test_block_read_when_write_blocks() {
                 break;
             }
             else if now.elapsed() > Duration::from_secs(15) {
-                panic!("Client never blocked receiving of new messages.");
+                panic!("Engine never blocked receiving of new messages.");
             }
 
             if !stop_writing {
@@ -1258,20 +1258,20 @@ fn test_block_read_when_write_blocks() {
         //Connect and Logon.
         let (mut test_server,mut client,_) = TestStream::setup_test_server_and_logon(build_dictionary());
 
-        //Flood client with TestRequest messages until Client drops the connection.
+        //Flood client with TestRequest messages until Engine drops the connection.
         let mut outbound_msg_seq_num = 2;
         let now = Instant::now();
         let mut stop_writing = false;
         loop {
             if now.elapsed() > Duration::from_secs(30) {
-                panic!("Client never disconnected.");
+                panic!("Engine never disconnected.");
             }
 
-            if let Some(ClientEvent::ConnectionTerminated(_,reason)) = client.poll(Duration::from_millis(0)) {
+            if let Some(EngineEvent::ConnectionTerminated(_,reason)) = client.poll(Duration::from_millis(0)) {
                 assert!(if let ConnectionTerminatedReason::SocketNotWritableTimeoutError = reason { true } else { false });
                 assert!(test_server.is_stream_closed(Duration::from_secs(3)));
 
-                //Success! Client disconnected.
+                //Success! Engine disconnected.
                 break;
             }
 
@@ -1303,12 +1303,12 @@ fn test_inbound_resend_loop_detection() {
     //Connect and logon.
     let (mut test_server,mut client,connection) = TestStream::setup_test_server_and_logon(build_dictionary());
 
-    //Have server send TestRequest so Client responds with a Heartbeat.
+    //Have server send TestRequest so Engine responds with a Heartbeat.
     let mut message = new_fixt_message!(TestRequest);
     message.msg_seq_num = 2;
     message.test_req_id = b"test".to_vec();
     test_server.send_message(message);
-    client_poll_message!(client,connection,TestRequest);
+    engine_poll_message!(client,connection,TestRequest);
     let message = test_server.recv_message::<Heartbeat>();
     assert_eq!(message.msg_seq_num,2);
     assert_eq!(message.test_req_id,b"test");
@@ -1324,7 +1324,7 @@ fn test_inbound_resend_loop_detection() {
         message.end_seq_no = 0;
         test_server.send_message(message);
 
-        let _ = client_poll_message!(client,connection,ResendRequest);
+        let _ = engine_poll_message!(client,connection,ResendRequest);
 
         let message = test_server.recv_message::<SequenceReset>();
         assert_eq!(message.gap_fill_flag,true);
@@ -1341,7 +1341,7 @@ fn test_inbound_resend_loop_detection() {
     let message = test_server.recv_message::<Logout>();
     assert_eq!(message.text,b"Detected ResendRequest loop for BeginSeqNo 2".to_vec());
 
-    client_poll_event!(client,ClientEvent::ConnectionTerminated(terminated_connection,reason) => {
+    engine_poll_event!(client,EngineEvent::ConnectionTerminated(terminated_connection,reason) => {
         assert_eq!(terminated_connection,connection);
         assert!(if let ConnectionTerminatedReason::InboundResendRequestLoopError = reason { true } else { false });
     });

@@ -1,4 +1,4 @@
-// Copyright 2016 James Bendig. See the COPYRIGHT file at the top-level
+// Copyright 2017 James Bendig. See the COPYRIGHT file at the top-level
 // directory of this distribution.
 //
 // Licensed under:
@@ -23,14 +23,14 @@ use std::thread;
 use std::time::{Duration,Instant};
 
 use dictionary::messages::Logon;
-use fixt::client_thread::{CONNECTION_COUNT_MAX,BASE_CONNECTION_TOKEN,INTERNAL_CLIENT_EVENT_TOKEN,InternalClientToThreadEvent,internal_client_thread};
+use fixt::engine_thread::{CONNECTION_COUNT_MAX,BASE_CONNECTION_TOKEN,INTERNAL_ENGINE_EVENT_TOKEN,InternalEngineToThreadEvent,internal_engine_thread};
 use fixt::message::{BuildFIXTMessage,FIXTMessage,debug_format_fixt_message};
 use fix::ParseError;
 use fix_version::FIXVersion;
 use message_version::MessageVersion;
 use token_generator::TokenGenerator;
 
-const CLIENT_EVENT_TOKEN: Token = Token(0);
+const ENGINE_EVENT_TOKEN: Token = Token(0);
 
 #[derive(Clone,Copy,Debug,Eq,Hash,PartialEq)]
 pub struct Connection(pub usize);
@@ -52,10 +52,10 @@ impl fmt::Display for Listener {
 
 pub enum ConnectionTerminatedReason {
     BeginStrWrongError{ received: FIXVersion, expected: FIXVersion },
-    ClientRequested,
     InboundMsgSeqNumMaxExceededError,
     InboundMsgSeqNumLowerThanExpectedError,
     InboundResendRequestLoopError,
+    LocalRequested,
     LogonHeartBtIntNegativeError,
     LogonParseError(ParseError),
     LogonNeverReceivedError,
@@ -64,8 +64,8 @@ pub enum ConnectionTerminatedReason {
     LogoutNoHangUpError,
     LogoutNoResponseError,
     OutboundMsgSeqNumMaxExceededError,
+    RemoteRequested,
     SenderCompIDWrongError,
-    ServerRequested,
     SocketNotWritableTimeoutError,
     SocketReadError(io::Error),
     SocketWriteError(io::Error),
@@ -81,20 +81,20 @@ impl fmt::Debug for ConnectionTerminatedReason {
                 let expected_str = String::from_utf8_lossy(expected.begin_string()).into_owned();
                 write!(f,"Received message with BeginStr containing '{}' but expected '{}'.",received_str,expected_str)
             },
-            ConnectionTerminatedReason::ClientRequested => write!(f,"Client requested logout and it was performed cleanly."),
             ConnectionTerminatedReason::InboundMsgSeqNumMaxExceededError => write!(f,"Expected inbound MsgSeqNum exceeded maximum allowed."),
             ConnectionTerminatedReason::InboundMsgSeqNumLowerThanExpectedError => write!(f,"Received message with lower MsgSeqNum than expected."),
             ConnectionTerminatedReason::InboundResendRequestLoopError => write!(f,"Received too many ResendRequests with the same BeginSeqNo."),
+            ConnectionTerminatedReason::LocalRequested => write!(f,"Local requested logout and it was performed cleanly."),
             ConnectionTerminatedReason::LogonHeartBtIntNegativeError => write!(f,"Response to logon included negative HeartBtInt."),
             ConnectionTerminatedReason::LogonParseError(_) => write!(f,"Could not parse logon response."), //Did you connect to a server not running a FIX engine?
             ConnectionTerminatedReason::LogonNeverReceivedError => write!(f,"Never received logon from new connection."),
-            ConnectionTerminatedReason::LogonNotFirstMessageError => write!(f,"Server responded to logon with a non-logon message."),
-            ConnectionTerminatedReason::LogonRejectedError => write!(f,"Server rejected logon for arbitrary reason."),
-            ConnectionTerminatedReason::LogoutNoHangUpError => write!(f,"Server requested logout but did not close socket after response."),
-            ConnectionTerminatedReason::LogoutNoResponseError => write!(f,"Client requested logout but server did not respond within a reasonable amount of time."),
+            ConnectionTerminatedReason::LogonNotFirstMessageError => write!(f,"Remote responded to logon with a non-logon message."),
+            ConnectionTerminatedReason::LogonRejectedError => write!(f,"Remote rejected logon for arbitrary reason."),
+            ConnectionTerminatedReason::LogoutNoHangUpError => write!(f,"Remote requested logout but did not close socket after response."),
+            ConnectionTerminatedReason::LogoutNoResponseError => write!(f,"Local requested logout but remote did not respond within a reasonable amount of time."),
             ConnectionTerminatedReason::OutboundMsgSeqNumMaxExceededError => write!(f,"Expected outbound MsgSeqNum exceeded maximum allowed."),
+            ConnectionTerminatedReason::RemoteRequested => write!(f,"Remote requested logout and it was performed cleanly."),
             ConnectionTerminatedReason::SenderCompIDWrongError => write!(f,"Received message with SenderCompID not matching the expected value."),
-            ConnectionTerminatedReason::ServerRequested => write!(f,"Server requested logout and it was performed cleanly."),
             ConnectionTerminatedReason::SocketNotWritableTimeoutError => write!(f,"Socket returned WouldBlock on write for an unreasonable amount of time."),
             ConnectionTerminatedReason::SocketReadError(ref error) => write!(f,"Socket could not be read from: {}",error),
             ConnectionTerminatedReason::SocketWriteError(ref error) => write!(f,"Socket could not be written to: {}",error),
@@ -104,7 +104,7 @@ impl fmt::Debug for ConnectionTerminatedReason {
     }
 }
 
-pub enum ClientEvent {
+pub enum EngineEvent {
     ConnectionFailed(Connection,io::Error), //Could not setup connection.
     ConnectionSucceeded(Connection), //Connection completed and ready to begin logon.
     ConnectionTerminated(Connection,ConnectionTerminatedReason), //Connection ended for ConnectionTerminatedReason reason.
@@ -122,26 +122,26 @@ pub enum ClientEvent {
     FatalError(&'static str,io::Error), //TODO: Probably should have an error type instead of static str here.
 }
 
-impl fmt::Debug for ClientEvent {
+impl fmt::Debug for EngineEvent {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            ClientEvent::ConnectionFailed(connection,ref error) => write!(f,"ClientEvent::ConnectionFailed({:?},{:?})",connection,error),
-            ClientEvent::ConnectionSucceeded(connection) => write!(f,"ClientEvent::ConnectionSucceeded({:?})",connection),
-            ClientEvent::ConnectionTerminated(connection,ref reason) => write!(f,"ClientEvent::ConnectionTerminated({:?},{:?})",connection,reason),
-            ClientEvent::ConnectionDropped(connection,addr) => write!(f,"ClientEvent::ConnectionDropped({:?},{:?})",connection,addr),
-            ClientEvent::ConnectionAccepted(listener,connection,addr) => write!(f,"ClientEvent::ConnectionAccepted({:?},{:?},{:?})",listener,connection,addr),
-            ClientEvent::ConnectionLoggingOn(listener,connection,ref message) => write!(f,"ClientEvent::ConnectionLoggingOn({:?},{:?},",listener,connection)
+            EngineEvent::ConnectionFailed(connection,ref error) => write!(f,"EngineEvent::ConnectionFailed({:?},{:?})",connection,error),
+            EngineEvent::ConnectionSucceeded(connection) => write!(f,"EngineEvent::ConnectionSucceeded({:?})",connection),
+            EngineEvent::ConnectionTerminated(connection,ref reason) => write!(f,"EngineEvent::ConnectionTerminated({:?},{:?})",connection,reason),
+            EngineEvent::ConnectionDropped(connection,addr) => write!(f,"EngineEvent::ConnectionDropped({:?},{:?})",connection,addr),
+            EngineEvent::ConnectionAccepted(listener,connection,addr) => write!(f,"EngineEvent::ConnectionAccepted({:?},{:?},{:?})",listener,connection,addr),
+            EngineEvent::ConnectionLoggingOn(listener,connection,ref message) => write!(f,"EngineEvent::ConnectionLoggingOn({:?},{:?},",listener,connection)
                                                                                  .and_then(|_| debug_format_fixt_message(&**message as &FIXTMessage,f))
                                                                                  .and_then(|_| write!(f,")")),
-            ClientEvent::SessionEstablished(connection) => write!(f,"ClientEvent::SessionEstablished({:?})",connection),
-            ClientEvent::ListenerFailed(listener,ref error) => write!(f,"ClientEvent::ListenerFailed({:?},{:?})",listener,error),
-            ClientEvent::MessageReceived(connection,ref message) => write!(f,"ClientEvent::MessageReceived({:?},{:?})",connection,message),
-            ClientEvent::MessageReceivedGarbled(connection,ref parse_error) => write!(f,"ClientEvent::MessageReceivedGarbled({:?},{:?})",connection,parse_error),
-            ClientEvent::MessageReceivedDuplicate(connection,ref message) => write!(f,"ClientEvent::MessageReceivedDuplicate({:?},{:?})",connection,message),
-            ClientEvent::MessageRejected(connection,ref message) => write!(f,"ClientEvent::MessageRejected({:?},{:?})",connection,message),
-            ClientEvent::SequenceResetResetHasNoEffect(connection) => write!(f,"ClientEvent:SequenceResetResetHasNoEffect({:?})",connection),
-            ClientEvent::SequenceResetResetInThePast(connection) => write!(f,"ClientEvent:SequenceResetResetInThePast({:?})",connection),
-            ClientEvent::FatalError(description,ref error) => write!(f,"ClientEvent::FatalError({:?},{:?})",description,error),
+            EngineEvent::SessionEstablished(connection) => write!(f,"EngineEvent::SessionEstablished({:?})",connection),
+            EngineEvent::ListenerFailed(listener,ref error) => write!(f,"EngineEvent::ListenerFailed({:?},{:?})",listener,error),
+            EngineEvent::MessageReceived(connection,ref message) => write!(f,"EngineEvent::MessageReceived({:?},{:?})",connection,message),
+            EngineEvent::MessageReceivedGarbled(connection,ref parse_error) => write!(f,"EngineEvent::MessageReceivedGarbled({:?},{:?})",connection,parse_error),
+            EngineEvent::MessageReceivedDuplicate(connection,ref message) => write!(f,"EngineEvent::MessageReceivedDuplicate({:?},{:?})",connection,message),
+            EngineEvent::MessageRejected(connection,ref message) => write!(f,"EngineEvent::MessageRejected({:?},{:?})",connection,message),
+            EngineEvent::SequenceResetResetHasNoEffect(connection) => write!(f,"EngineEvent:SequenceResetResetHasNoEffect({:?})",connection),
+            EngineEvent::SequenceResetResetInThePast(connection) => write!(f,"EngineEvent:SequenceResetResetInThePast({:?})",connection),
+            EngineEvent::FatalError(description,ref error) => write!(f,"EngineEvent::FatalError({:?},{:?})",description,error),
         }
     }
 }
@@ -155,34 +155,34 @@ fn to_socket_addr<A: ToSocketAddrs>(address: A) -> Option<SocketAddr> {
     }
 }
 
-pub struct Client {
+pub struct Engine {
     token_generator: Arc<Mutex<TokenGenerator>>,
-    tx: Sender<InternalClientToThreadEvent>,
-    rx: Receiver<ClientEvent>,
+    tx: Sender<InternalEngineToThreadEvent>,
+    rx: Receiver<EngineEvent>,
     poll: Poll,
     thread_handle: Option<thread::JoinHandle<()>>,
 }
 
-impl Client {
+impl Engine {
     pub fn new(message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>,
-               max_message_size: u64) -> Result<Client,io::Error> {
-        let client_poll = try!(Poll::new());
-        let (thread_to_client_tx,thread_to_client_rx) = channel::<ClientEvent>();
-        try!(client_poll.register(&thread_to_client_rx,CLIENT_EVENT_TOKEN,Ready::readable(),PollOpt::level()));
+               max_message_size: u64) -> Result<Engine,io::Error> {
+        let engine_poll = try!(Poll::new());
+        let (thread_to_engine_tx,thread_to_engine_rx) = channel::<EngineEvent>();
+        try!(engine_poll.register(&thread_to_engine_rx,ENGINE_EVENT_TOKEN,Ready::readable(),PollOpt::level()));
 
         let poll = try!(Poll::new());
-        let (client_to_thread_tx,client_to_thread_rx) = channel::<InternalClientToThreadEvent>();
-        try!(poll.register(&client_to_thread_rx,INTERNAL_CLIENT_EVENT_TOKEN,Ready::readable(),PollOpt::level()));
+        let (engine_to_thread_tx,engine_to_thread_rx) = channel::<InternalEngineToThreadEvent>();
+        try!(poll.register(&engine_to_thread_rx,INTERNAL_ENGINE_EVENT_TOKEN,Ready::readable(),PollOpt::level()));
 
         let token_generator = Arc::new(Mutex::new(TokenGenerator::new(BASE_CONNECTION_TOKEN.0,Some(CONNECTION_COUNT_MAX - BASE_CONNECTION_TOKEN.0))));
 
-        Ok(Client {
+        Ok(Engine {
             token_generator: token_generator.clone(),
-            tx: client_to_thread_tx,
-            rx: thread_to_client_rx,
-            poll: client_poll,
+            tx: engine_to_thread_tx,
+            rx: thread_to_engine_rx,
+            poll: engine_poll,
             thread_handle: Some(thread::spawn(move || {
-                internal_client_thread(poll,token_generator,thread_to_client_tx,client_to_thread_rx,message_dictionary,max_message_size);
+                internal_engine_thread(poll,token_generator,thread_to_engine_tx,engine_to_thread_rx,message_dictionary,max_message_size);
             })),
         })
     }
@@ -216,7 +216,7 @@ impl Client {
         };
 
         //Tell thread to setup this connection by connecting a socket and logging on.
-        self.tx.send(InternalClientToThreadEvent::NewConnection(token.clone(),fix_version,default_message_version,sender_comp_id.to_vec(),target_comp_id.to_vec(),address)).unwrap();
+        self.tx.send(InternalEngineToThreadEvent::NewConnection(token.clone(),fix_version,default_message_version,sender_comp_id.to_vec(),target_comp_id.to_vec(),address)).unwrap();
 
         let connection = Connection(token.0);
         Some(connection)
@@ -234,7 +234,7 @@ impl Client {
             None => return Ok(None),
         };
 
-        self.tx.send(InternalClientToThreadEvent::NewListener(token.clone(),sender_comp_id.to_vec(),listener)).unwrap();
+        self.tx.send(InternalEngineToThreadEvent::NewListener(token.clone(),sender_comp_id.to_vec(),listener)).unwrap();
 
         let listener = Listener(token.0);
         Ok(Some(listener))
@@ -250,35 +250,35 @@ impl Client {
     }
 
     pub fn send_message_box_with_message_version<MV: Into<Option<MessageVersion>>>(&mut self,connection: Connection,message_version: MV,message: Box<FIXTMessage + Send>) {
-        self.tx.send(InternalClientToThreadEvent::SendMessage(Token(connection.0),message_version.into(),message)).unwrap();
+        self.tx.send(InternalEngineToThreadEvent::SendMessage(Token(connection.0),message_version.into(),message)).unwrap();
     }
 
     pub fn approve_new_connection<IMSN: Into<Option<u64>>>(&mut self,connection: Connection,message: Box<Logon>,inbound_msg_seq_num: IMSN) {
-        self.tx.send(InternalClientToThreadEvent::ApproveNewConnection(connection,message,inbound_msg_seq_num.into().unwrap_or(2))).unwrap();
+        self.tx.send(InternalEngineToThreadEvent::ApproveNewConnection(connection,message,inbound_msg_seq_num.into().unwrap_or(2))).unwrap();
     }
 
     pub fn reject_new_connection(&mut self,connection: Connection,reason: Option<Vec<u8>>) {
-        self.tx.send(InternalClientToThreadEvent::RejectNewConnection(connection,reason)).unwrap();
+        self.tx.send(InternalEngineToThreadEvent::RejectNewConnection(connection,reason)).unwrap();
     }
 
     pub fn logout(&mut self,connection: Connection) {
-        self.tx.send(InternalClientToThreadEvent::Logout(Token(connection.0))).unwrap();
+        self.tx.send(InternalEngineToThreadEvent::Logout(Token(connection.0))).unwrap();
     }
 
-    pub fn poll<D: Into<Option<Duration>>>(&mut self,duration: D) -> Option<ClientEvent> {
-        //Perform any book keeping needed to manage client's state.
-        fn update_client(client: &mut Client,event: &ClientEvent) {
+    pub fn poll<D: Into<Option<Duration>>>(&mut self,duration: D) -> Option<EngineEvent> {
+        //Perform any book keeping needed to manage engine's state.
+        fn update_engine(engine: &mut Engine,event: &EngineEvent) {
             match *event {
-                ClientEvent::ConnectionFailed(connection,_) |
-                ClientEvent::ConnectionTerminated(connection,_) => {
-                    client.token_generator.lock().unwrap().remove(Token(connection.0));
+                EngineEvent::ConnectionFailed(connection,_) |
+                EngineEvent::ConnectionTerminated(connection,_) => {
+                    engine.token_generator.lock().unwrap().remove(Token(connection.0));
                 },
                 _ => {},
             }
         };
 
         if let Ok(event) = self.rx.try_recv() {
-            update_client(self,&event);
+            update_engine(self,&event);
             return Some(event);
         }
 
@@ -294,7 +294,7 @@ impl Client {
                 let result = self.rx.try_recv();
                 match result {
                     Ok(event) => {
-                        update_client(self,&event);
+                        update_engine(self,&event);
                         return Some(event);
                     },
                     Err(e) if e == TryRecvError::Disconnected => return None,
@@ -307,11 +307,11 @@ impl Client {
     }
 }
 
-impl Drop for Client {
+impl Drop for Engine {
     fn drop(&mut self) {
         //Shutdown thread and wait until it completes. No attempt is made to make connections
         //logout cleanly.
-        self.tx.send(InternalClientToThreadEvent::Shutdown).unwrap();
+        self.tx.send(InternalEngineToThreadEvent::Shutdown).unwrap();
         let thread_handle = mem::replace(&mut self.thread_handle,None);
         let _ = thread_handle.unwrap().join();
     }

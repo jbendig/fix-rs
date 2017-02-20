@@ -22,7 +22,7 @@ use fix_rs::dictionary::field_types::other::{EncryptMethod,MsgDirection};
 use fix_rs::dictionary::messages::Logon;
 use fix_rs::fix::Parser;
 use fix_rs::fix_version::FIXVersion;
-use fix_rs::fixt::client::Client;
+use fix_rs::fixt::engine::Engine;
 use fix_rs::message::Message;
 use fix_rs::message_version::MessageVersion;
 
@@ -103,6 +103,6 @@ fn main() {
         }
     }
 
-    let client = Client::new(build_dictionary(),4096);
+    let engine = Engine::new(build_dictionary(),4096);
 }
 

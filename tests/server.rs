@@ -34,7 +34,7 @@ use fix_rs::field_tag::{self,FieldTag};
 use fix_rs::fix::ParseError;
 use fix_rs::fix_version::FIXVersion;
 use fix_rs::fixt;
-use fix_rs::fixt::client::{ClientEvent,ConnectionTerminatedReason};
+use fix_rs::fixt::engine::{EngineEvent,ConnectionTerminatedReason};
 use fix_rs::fixt::message::FIXTMessage;
 use fix_rs::fixt::tests::{AUTO_DISCONNECT_AFTER_NO_LOGON_RECEIVED_SECONDS};
 use fix_rs::message::{self,REQUIRED};
@@ -56,7 +56,7 @@ fn test_wrong_target_comp_id_in_logon() {
     logon_message.target_comp_id = Vec::new();
     test_client.send_message(logon_message.clone());
 
-    client_poll_event!(engine,ClientEvent::ConnectionTerminated(terminated_connection,reason) => {
+    engine_poll_event!(engine,EngineEvent::ConnectionTerminated(terminated_connection,reason) => {
         assert_eq!(terminated_connection,connection);
         assert!(if let ConnectionTerminatedReason::TargetCompIDWrongError = reason { true } else { false });
     });
@@ -83,7 +83,7 @@ fn test_logon_all_fix_versions() {
         logon_message.default_appl_ver_id = fix_version.max_message_version();
         test_client.send_message_with_ver(fix_version,logon_message.default_appl_ver_id,logon_message);
 
-        client_poll_event!(engine,ClientEvent::ConnectionLoggingOn(some_listener,some_connection,logon_message) => {
+        engine_poll_event!(engine,EngineEvent::ConnectionLoggingOn(some_listener,some_connection,logon_message) => {
             assert_eq!(some_listener,listener);
             assert_eq!(some_connection,connection);
             assert_eq!(logon_message.msg_seq_num,1);
@@ -151,7 +151,7 @@ fn test_default_appl_ver_id() {
         test_client.send_message(message);
 
         //Confirm text field was excluded by engine due to requiring >= FIX50 but default is FIX40.
-        let message = client_poll_message!(engine,connection,TestMessage);
+        let message = engine_poll_message!(engine,connection,TestMessage);
         assert_eq!(message.text.len(),0);
 
         //Make client send a TestMessage again but force the text field to be sent.
@@ -161,7 +161,7 @@ fn test_default_appl_ver_id() {
         test_client.send_message(message);
 
         //Make sure message is considered invalid.
-        client_poll_event!(engine,ClientEvent::MessageReceivedGarbled(msg_connection,parse_error) => {
+        engine_poll_event!(engine,EngineEvent::MessageReceivedGarbled(msg_connection,parse_error) => {
             assert_eq!(msg_connection,connection);
             assert!(if let ParseError::UnknownTag(ref tag) = parse_error { *tag == FieldTag(58) } else { false });
         });
@@ -197,7 +197,7 @@ fn test_appl_ver_id() {
         assert_eq!(message.text,b"ApplVerID must be the 6th tag if specified".to_vec());
 
         //Make sure Engine indicates that it rejected the message.
-        client_poll_event!(engine,ClientEvent::MessageReceivedGarbled(msg_connection,parse_error) => {
+        engine_poll_event!(engine,EngineEvent::MessageReceivedGarbled(msg_connection,parse_error) => {
             assert_eq!(msg_connection,connection);
             assert!(if let ParseError::ApplVerIDNotSixthTag = parse_error { true } else { false });
         });
@@ -215,7 +215,7 @@ fn test_appl_ver_id() {
         test_client.send_message_with_ver(FIXVersion::FIXT_1_1,message.appl_ver_id.unwrap(),message);
 
         //Confirm Engine accepted message correctly.
-        let message = client_poll_message!(engine,connection,TestMessage);
+        let message = engine_poll_message!(engine,connection,TestMessage);
         assert_eq!(message.appl_ver_id,Some(MessageVersion::FIX40));
         assert_eq!(message.text.len(),0);
 
@@ -231,7 +231,7 @@ fn test_appl_ver_id() {
         assert_eq!(message.session_reject_reason.unwrap(),SessionRejectReason::TagNotDefinedForThisMessageType);
         assert_eq!(message.text,b"Tag not defined for this message type".to_vec());
 
-        client_poll_event!(engine,ClientEvent::MessageReceivedGarbled(msg_connection,parse_error) => {
+        engine_poll_event!(engine,EngineEvent::MessageReceivedGarbled(msg_connection,parse_error) => {
             assert_eq!(msg_connection,connection);
             assert!(if let ParseError::UnexpectedTag(ref tag) = parse_error { *tag == Text::tag()  } else { false });
         });
@@ -268,7 +268,7 @@ fn test_message_type_default_application_version() {
 
     test_client.send_message_with_ver(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,logon_message);
 
-    client_poll_event!(engine,ClientEvent::ConnectionLoggingOn(some_listener,some_connection,logon_message) => {
+    engine_poll_event!(engine,EngineEvent::ConnectionLoggingOn(some_listener,some_connection,logon_message) => {
         assert_eq!(some_listener,listener);
         assert_eq!(some_connection,connection);
 
@@ -293,7 +293,7 @@ fn test_message_type_default_application_version() {
         test_client.send_message_with_ver(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP1,message);
 
         //Confirm Engine accepted message correctly.
-        let message = client_poll_message!(engine,connection,TestMessage);
+        let message = engine_poll_message!(engine,connection,TestMessage);
         assert_eq!(message.appl_ver_id,Some(MessageVersion::FIX50SP1)); //Set by parser what it parsed message as.
         assert_eq!(message.text,b"test");
     }
@@ -307,7 +307,7 @@ fn test_message_type_default_application_version() {
         test_client.send_message_with_ver(FIXVersion::FIXT_1_1,message.appl_ver_id.unwrap(),message);
 
         //Confirm Engine accepted message correctly.
-        let message = client_poll_message!(engine,connection,TestMessage);
+        let message = engine_poll_message!(engine,connection,TestMessage);
         assert_eq!(message.appl_ver_id,Some(MessageVersion::FIX40));
         assert_eq!(message.text.len(),0);
     }
@@ -329,7 +329,7 @@ fn test_block_read_while_approving_logon() {
     logon_message.target_comp_id = CLIENT_TARGET_COMP_ID.to_vec();
     test_client.send_message(logon_message.clone());
 
-    client_poll_event!(engine,ClientEvent::ConnectionLoggingOn(some_listener,some_connection,_) => {
+    engine_poll_event!(engine,EngineEvent::ConnectionLoggingOn(some_listener,some_connection,_) => {
         assert_eq!(some_listener,listener);
         assert_eq!(some_connection,connection);
     });
@@ -341,7 +341,7 @@ fn test_block_read_while_approving_logon() {
     test_client.send_message(message);
 
     //Confirm message does not generate an event and is not replied to with a Heartbeat.
-    client_poll_no_event!(engine);
+    engine_poll_no_event!(engine);
     assert!(test_client.try_recv_fixt_message(Duration::from_secs(1)).is_none());
 
     //Approve connection.
@@ -353,7 +353,7 @@ fn test_block_read_while_approving_logon() {
     let _ = test_client.recv_message::<Logon>();
 
     //Confirm TestRequest now generates an event and is replied to with a Heartbeat.
-    let message = client_poll_message!(engine,connection,TestRequest);
+    let message = engine_poll_message!(engine,connection,TestRequest);
     assert_eq!(message.msg_seq_num,2);
     assert_eq!(message.test_req_id,b"test");
     let message = test_client.recv_message::<Heartbeat>();
@@ -373,7 +373,7 @@ fn test_auto_disconnect_after_no_logon() {
     thread::sleep(Duration::from_secs(AUTO_DISCONNECT_AFTER_NO_LOGON_RECEIVED_SECONDS));
 
     //Confirm connection was terminated.
-    client_poll_event!(engine,ClientEvent::ConnectionTerminated(terminated_connection,reason) => {
+    engine_poll_event!(engine,EngineEvent::ConnectionTerminated(terminated_connection,reason) => {
         assert_eq!(terminated_connection,connection);
         assert!(if let ConnectionTerminatedReason::LogonNeverReceivedError = reason { true } else { false });
     });
@@ -394,7 +394,7 @@ fn test_connection_terminated_when_disconnected_with_no_logon() {
     let _ = test_client.stream.shutdown(Shutdown::Both);
 
     //Confirm connection was terminated.
-    client_poll_event!(engine,ClientEvent::ConnectionTerminated(terminated_connection,reason) => {
+    engine_poll_event!(engine,EngineEvent::ConnectionTerminated(terminated_connection,reason) => {
         assert_eq!(terminated_connection,connection);
         assert!(if let ConnectionTerminatedReason::SocketWriteError(_) = reason { true } else { false });
     });
@@ -414,7 +414,7 @@ fn test_connection_terminated_while_approving_logon() {
     logon_message.target_comp_id = CLIENT_TARGET_COMP_ID.to_vec();
     test_client.send_message(logon_message.clone());
 
-    client_poll_event!(engine,ClientEvent::ConnectionLoggingOn(some_listener,some_connection,_) => {
+    engine_poll_event!(engine,EngineEvent::ConnectionLoggingOn(some_listener,some_connection,_) => {
         assert_eq!(some_listener,listener);
         assert_eq!(some_connection,connection);
     });
@@ -423,7 +423,7 @@ fn test_connection_terminated_while_approving_logon() {
     test_client.stream.shutdown(Shutdown::Both);
 
     //Confirm connection was terminated.
-    client_poll_event!(engine,ClientEvent::ConnectionTerminated(terminated_connection,reason) => {
+    engine_poll_event!(engine,EngineEvent::ConnectionTerminated(terminated_connection,reason) => {
         assert_eq!(terminated_connection,connection);
         assert!(if let ConnectionTerminatedReason::SocketWriteError(_) = reason { true } else { false });
     });
@@ -454,7 +454,7 @@ fn test_heart_bt_int() {
         thread::sleep(Duration::from_millis(500));
         assert!(test_client.is_stream_closed(Duration::from_secs(5)));
 
-        client_poll_event!(engine,ClientEvent::ConnectionTerminated(terminated_connection,reason) => {
+        engine_poll_event!(engine,EngineEvent::ConnectionTerminated(terminated_connection,reason) => {
             assert_eq!(terminated_connection,connection);
             assert!(if let ConnectionTerminatedReason::LogonHeartBtIntNegativeError = reason { true } else { false });
         });
@@ -470,7 +470,7 @@ fn test_heart_bt_int() {
         logon_message.heart_bt_int = heart_bt_int;
         test_client.send_message(logon_message);
 
-        client_poll_event!(engine,ClientEvent::ConnectionLoggingOn(some_listener,some_connection,logon_message) => {
+        engine_poll_event!(engine,EngineEvent::ConnectionLoggingOn(some_listener,some_connection,logon_message) => {
             assert_eq!(some_listener,listener);
             assert_eq!(some_connection,connection);
             assert_eq!(logon_message.msg_seq_num,1);

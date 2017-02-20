@@ -1,4 +1,4 @@
-// Copyright 2016 James Bendig. See the COPYRIGHT file at the top-level
+// Copyright 2017 James Bendig. See the COPYRIGHT file at the top-level
 // directory of this distribution.
 //
 // Licensed under:
@@ -34,7 +34,7 @@ use field::Field;
 use field_type::FieldType;
 use fix::{Parser,ParseError};
 use fix_version::FIXVersion;
-use fixt::client::{ClientEvent,Connection,ConnectionTerminatedReason,Listener};
+use fixt::engine::{EngineEvent,Connection,ConnectionTerminatedReason,Listener};
 use fixt::message::{BuildFIXTMessage,FIXTMessage};
 use message_version::MessageVersion;
 use network_read_retry::NetworkReadRetry;
@@ -48,6 +48,8 @@ use token_generator::TokenGenerator;
 //mistake.
 //TODO: Need to make inbound and outbound MsgSeqNums adjustable at connection setup and available
 //on connection termination to support persistent sessions.
+//TODO: Stop allowing outgoing messages when performing an emergency logout.
+//TODO: Need to sanitize output strings when serializing.
 
 const NO_INBOUND_TIMEOUT_PADDING_MS: u64 = 250;
 const AUTO_DISCONNECT_AFTER_LOGOUT_RESPONSE_SECS: u64 = 10;
@@ -64,23 +66,23 @@ const TIMER_TIMEOUTS_PER_TICK_MAX: usize = 256;
 pub const CONNECTION_COUNT_MAX: usize = 65536;
 const TIMEOUTS_PER_CONNECTION_MAX: usize = 3;
 
-pub const INTERNAL_CLIENT_EVENT_TOKEN: Token = Token(0);
+pub const INTERNAL_ENGINE_EVENT_TOKEN: Token = Token(0);
 const TIMEOUT_TOKEN: Token = Token(1);
 const NETWORK_READ_RETRY_TOKEN: Token = Token(2);
 pub const BASE_CONNECTION_TOKEN: Token = Token(3);
 
 #[derive(Clone,Copy,PartialEq)]
 enum LoggingOutInitiator {
-    Client,
-    Server
+    Local,
+    Remote
 }
 
 enum LoggingOutType {
-    Ok, //Client requested logout.
+    Ok, //Engine requested logout.
     Error(ConnectionTerminatedReason), //An unrecoverable error occurred.
     ResendRequesting(LoggingOutInitiator), //LoggingOutInitiator requested logout but MsgSeqNum was higher than expected so we're trying to collect the missing messages before continuing.
-    Responding, //Server requested logout and we are about to send a response.
-    Responded, //Server requested logout and we sent a response.
+    Responding, //Remote requested logout and we are about to send a response.
+    Responded, //Remote requested logout and we sent a response.
 }
 
 enum ConnectionStatus {
@@ -151,10 +153,10 @@ impl ConnectionStatus {
         }
     }
 
-    fn is_logging_out_with_resending_request_initiated_by_client(&self) -> bool {
+    fn is_logging_out_with_resending_request_initiated_by_local(&self) -> bool {
         if let ConnectionStatus::LoggingOut(ref logging_out_type) = *self {
             if let LoggingOutType::ResendRequesting(ref logging_out_initiator) = *logging_out_type {
-                if let LoggingOutInitiator::Client = *logging_out_initiator {
+                if let LoggingOutInitiator::Local = *logging_out_initiator {
                     return true;
                 }
             }
@@ -163,10 +165,10 @@ impl ConnectionStatus {
         false
     }
 
-    fn is_logging_out_with_resending_request_initiated_by_server(&self) -> bool {
+    fn is_logging_out_with_resending_request_initiated_by_remote(&self) -> bool {
         if let ConnectionStatus::LoggingOut(ref logging_out_type) = *self {
             if let LoggingOutType::ResendRequesting(ref logging_out_initiator) = *logging_out_type {
-                if let LoggingOutInitiator::Server = *logging_out_initiator {
+                if let LoggingOutInitiator::Remote = *logging_out_initiator {
                     return true;
                 }
             }
@@ -297,7 +299,7 @@ fn administrative_msg_types() -> Vec<&'static [u8]> {
          Heartbeat::msg_type()]
 }
 
-pub enum InternalClientToThreadEvent {
+pub enum InternalEngineToThreadEvent {
     NewConnection(Token,FIXVersion,MessageVersion,<<SenderCompID as Field>::Type as FieldType>::Type,<<TargetCompID as Field>::Type as FieldType>::Type,SocketAddr),
     NewListener(Token,<<SenderCompID as Field>::Type as FieldType>::Type,TcpListener),
     SendMessage(Token,Option<MessageVersion>,Box<FIXTMessage + Send>),
@@ -307,7 +309,7 @@ pub enum InternalClientToThreadEvent {
     Shutdown,
 }
 
-impl fmt::Debug for InternalClientToThreadEvent {
+impl fmt::Debug for InternalEngineToThreadEvent {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         //TODO: Actually implement this if its ever used. Write now this exists so some unwrap()
         //calls that can never fail will compile.
@@ -424,7 +426,7 @@ impl InternalConnection {
                             }
                         }
                     }
-                    //Similarly, if a Logout message was sent as a response to to the server
+                    //Similarly, if a Logout message was sent as a response to to the remote
                     //issuing a Logout, start a timer and wait so many seconds before closing the
                     //socket. This is the recommended way to respond to a Logout instead of
                     //disconnecting immediately.
@@ -456,7 +458,7 @@ impl InternalConnection {
                 let message_version = if let Some(message_version) = message.message_version { message_version } else { self.default_message_version };
                 self.outbound_buffer.clear_and_read_all(|ref mut bytes| { message.message.read(fix_version,message_version,bytes); });
 
-                //TODO: Hold onto message and pass it off to the client or some callback so the
+                //TODO: Hold onto message and pass it off to the engine or some callback so the
                 //library user knows exactly which messages have been sent -- although not
                 //necessarily acknowledged.
             }
@@ -588,7 +590,7 @@ impl InternalConnection {
         //Begin the logout process. Use respond_to_logout() to respond to a logout message.
 
         assert!(match logging_out_type {
-            LoggingOutType::Ok => !self.status.is_logging_out() || self.status.is_logging_out_with_resending_request_initiated_by_client(),
+            LoggingOutType::Ok => !self.status.is_logging_out() || self.status.is_logging_out_with_resending_request_initiated_by_local(),
             LoggingOutType::Error(_) => !self.status.is_logging_out_with_error(),
             _ => false,
         });
@@ -598,7 +600,7 @@ impl InternalConnection {
 
         //TODO: The clearing of outbound messages might be optional. Probably need a receipt or
         //something for those that are left unprocessed.
-        self.outbound_messages.clear(); //TODO: May want to store unprocessed messages so client knows what didn't go out.
+        self.outbound_messages.clear(); //TODO: May want to store unprocessed messages so engine knows what didn't go out.
         self.outbound_messages.push(OutboundMessage::from(logout));
 
         //If attempting to logout cleanly, setup timer to auto-logout if we don't get a Logout
@@ -616,7 +618,7 @@ impl InternalConnection {
     }
 
     fn respond_to_logout(&mut self) {
-        assert!(self.status.is_established() || self.status.is_logging_out_with_resending_request_initiated_by_server());
+        assert!(self.status.is_established() || self.status.is_logging_out_with_resending_request_initiated_by_remote());
 
         let logout = Logout::new();
         self.outbound_messages.push(OutboundMessage::from(logout));
@@ -650,14 +652,14 @@ impl InternalConnection {
     fn clear_inbound_resend_request_msg_seq_num(&mut self,timer: &mut Timer<(TimeoutType,Token)>) {
         self.inbound_resend_request_msg_seq_num = None;
 
-        //If server started a logout, we noticed missing messaged, and have now
+        //If remote started a logout, we noticed missing messaged, and have now
         //received all of those messages, finally respond to logout.
-        if self.status.is_logging_out_with_resending_request_initiated_by_server() {
+        if self.status.is_logging_out_with_resending_request_initiated_by_remote() {
             self.respond_to_logout();
         }
-        //Same as above except client initiated logout and suspended it long enough to
+        //Same as above except engine initiated logout and suspended it long enough to
         //retrieve messages.
-        else if self.status.is_logging_out_with_resending_request_initiated_by_client() {
+        else if self.status.is_logging_out_with_resending_request_initiated_by_local() {
             self.initiate_logout(timer,LoggingOutType::Ok,b"");
         }
     }
@@ -721,8 +723,8 @@ impl InternalListener {
 struct InternalThread {
     poll: Poll,
     token_generator: Arc<Mutex<TokenGenerator>>,
-    tx: Sender<ClientEvent>,
-    rx: Receiver<InternalClientToThreadEvent>,
+    tx: Sender<EngineEvent>,
+    rx: Receiver<InternalEngineToThreadEvent>,
     message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>,
     max_message_size: u64,
     connections: HashMap<Token,InternalConnection>,
@@ -732,19 +734,19 @@ struct InternalThread {
 }
 
 impl InternalThread {
-    fn on_internal_client_event(&mut self) -> Result<(),ConnectionEventError> {
-        let client_event = match self.rx.try_recv() {
+    fn on_internal_engine_event(&mut self) -> Result<(),ConnectionEventError> {
+        let engine_event = match self.rx.try_recv() {
             Ok(e) => e,
-            Err(_) => return Ok(()), //Shouldn't be possible but PROBABLY just means no client events are available.
+            Err(_) => return Ok(()), //Shouldn't be possible but PROBABLY just means no engine events are available.
         };
 
-        match client_event {
-            //Client wants to setup a new connection.
-            InternalClientToThreadEvent::NewConnection(token,fix_version,default_message_version,sender_comp_id,target_comp_id,address) => {
+        match engine_event {
+            //Engine wants to setup a new connection.
+            InternalEngineToThreadEvent::NewConnection(token,fix_version,default_message_version,sender_comp_id,target_comp_id,address) => {
                 let socket = match TcpStream::connect(&address) {
                     Ok(socket) => socket,
                     Err(e) => {
-                        self.tx.send(ClientEvent::ConnectionFailed(Connection(token.0),e)).unwrap();
+                        self.tx.send(EngineEvent::ConnectionFailed(Connection(token.0),e)).unwrap();
                         return Ok(())
                     },
                 };
@@ -760,14 +762,14 @@ impl InternalThread {
 
                 //Have poll let us know when we can can read or write.
                 if let Err(e) = self.poll.register(&connection.socket,connection.token,Ready::all(),PollOpt::edge()) {
-                    self.tx.send(ClientEvent::ConnectionFailed(connection.as_connection(),e)).unwrap();
+                    self.tx.send(EngineEvent::ConnectionFailed(connection.as_connection(),e)).unwrap();
                     return Ok(())
                 }
 
                 self.connections.insert(token,connection);
             },
-            //Client wants to setup a listener to accept new connections.
-            InternalClientToThreadEvent::NewListener(token,sender_comp_id,socket) => {
+            //Engine wants to setup a listener to accept new connections.
+            InternalEngineToThreadEvent::NewListener(token,sender_comp_id,socket) => {
                 let listener = InternalListener {
                     socket: socket,
                     token: token,
@@ -775,14 +777,14 @@ impl InternalThread {
                 };
 
                 if let Err(e) = self.poll.register(&listener.socket,listener.token,Ready::readable(),PollOpt::edge()) {
-                    self.tx.send(ClientEvent::ListenerFailed(listener.as_listener(),e)).unwrap();
+                    self.tx.send(EngineEvent::ListenerFailed(listener.as_listener(),e)).unwrap();
                     return Ok(())
                 }
 
                 self.listeners.insert(token,listener);
             },
-            //Client wants to send a message over a connection.
-            InternalClientToThreadEvent::SendMessage(token,message_version,message) => {
+            //Engine wants to send a message over a connection.
+            InternalEngineToThreadEvent::SendMessage(token,message_version,message) => {
                 if let Entry::Occupied(mut connection_entry) = self.connections.entry(token) {
                     let mut outbound_message = OutboundMessage::from_box(message);
                     outbound_message.message_version = message_version;
@@ -794,8 +796,8 @@ impl InternalThread {
                     //TODO: Maybe submit this to a logging system or something?
                 }
             },
-            //Client wants to approve logon of a connection that was accepted by a listener.
-            InternalClientToThreadEvent::ApproveNewConnection(connection,message,inbound_msg_seq_num) => {
+            //Engine wants to approve logon of a connection that was accepted by a listener.
+            InternalEngineToThreadEvent::ApproveNewConnection(connection,message,inbound_msg_seq_num) => {
                 if let Entry::Occupied(mut connection_entry) = self.connections.entry(Token(connection.0)) {
                     {
                         let connection = connection_entry.get_mut();
@@ -830,7 +832,7 @@ impl InternalThread {
                         if inbound_msg_seq_num < connection.inbound_msg_seq_num {
                             connection.inbound_msg_seq_num = inbound_msg_seq_num;
 
-                            //Fetch the messages the server says were sent but we never
+                            //Fetch the messages the remote says were sent but we never
                             //received using a ResendRequest.
                             let mut resend_request = ResendRequest::new();
                             resend_request.begin_seq_no = inbound_msg_seq_num;
@@ -854,8 +856,8 @@ impl InternalThread {
                     //TODO: Maybe submit this to a logging system or something?
                 }
             },
-            //Client wants to reject logon of a connection that was accepted by a listener.
-            InternalClientToThreadEvent::RejectNewConnection(connection,reason) => {
+            //Engine wants to reject logon of a connection that was accepted by a listener.
+            InternalEngineToThreadEvent::RejectNewConnection(connection,reason) => {
                 //This should only be used for new connections but there is no check for now so
                 //user of the engine has a way to arbitrarily disconnect over an error instead of
                 //logging out cleanly.
@@ -876,15 +878,15 @@ impl InternalThread {
                     //TODO: Maybe submit this to a logging system or something?
                 }
             },
-            //Client wants to begin the clean logout process on a connection.
-            InternalClientToThreadEvent::Logout(token) => {
+            //Engine wants to begin the clean logout process on a connection.
+            InternalEngineToThreadEvent::Logout(token) => {
                 if let Entry::Occupied(mut connection_entry) = self.connections.entry(token) {
                     match connection_entry.get_mut().status {
                         ConnectionStatus::SendingLogon |
                         ConnectionStatus::ReceivingLogon(_,_) |
                         ConnectionStatus::ApprovingLogon => {
                             //Just disconnect since connection hasn't had a chance to logon.
-                            return Err(ConnectionEventError::TerminateConnection(connection_entry.remove(),ConnectionTerminatedReason::ClientRequested));
+                            return Err(ConnectionEventError::TerminateConnection(connection_entry.remove(),ConnectionTerminatedReason::LocalRequested));
                         },
                         ConnectionStatus::LoggingOut(_) => {}, //Already logging out.
                         ConnectionStatus::Established => {
@@ -899,9 +901,9 @@ impl InternalThread {
                     //TODO: Maybe submit this to a logging system or something?
                 }
             },
-            //Client wants to shutdown all connections immediately. Incoming or outgoing messages
+            //Engine wants to shutdown all connections immediately. Incoming or outgoing messages
             //might be lost!
-            InternalClientToThreadEvent::Shutdown => return Err(ConnectionEventError::Shutdown),
+            InternalEngineToThreadEvent::Shutdown => return Err(ConnectionEventError::Shutdown),
         };
 
         Ok(())
@@ -957,7 +959,7 @@ impl InternalThread {
                         println!("Shutting down connection after writing to socket resulted in WouldBlock for too long");
                         return Err(ConnectionEventError::TerminateConnection(connection_entry.remove(),ConnectionTerminatedReason::SocketNotWritableTimeoutError));
                     }
-                    TimeoutType::ContinueLogout if connection_entry.get().status.is_logging_out_with_resending_request_initiated_by_server() => {
+                    TimeoutType::ContinueLogout if connection_entry.get().status.is_logging_out_with_resending_request_initiated_by_remote() => {
                         connection_entry.get_mut().respond_to_logout();
                     },
                     TimeoutType::NoLogon => {
@@ -1043,7 +1045,7 @@ impl InternalThread {
                 if !connection_entry.get().is_connected {
                     //Let user know that the socket's connect() call succeeded.
                     connection_entry.get_mut().is_connected = true;
-                    self.tx.send(ClientEvent::ConnectionSucceeded(connection_entry.get().as_connection())).unwrap();
+                    self.tx.send(EngineEvent::ConnectionSucceeded(connection_entry.get().as_connection())).unwrap();
                 }
             }
 
@@ -1052,8 +1054,8 @@ impl InternalThread {
             //Otherwise, the connection dropped for some unknown reason.
             if event.kind().is_hup() {
                 if connection_entry.get_mut().status.is_logging_out_with_responded() {
-                    println!("Shutting down connection after server logged out cleanly.");
-                    return Err(ConnectionEventError::TerminateConnection(connection_entry.remove(),ConnectionTerminatedReason::ServerRequested));
+                    println!("Shutting down connection after remote logged out cleanly.");
+                    return Err(ConnectionEventError::TerminateConnection(connection_entry.remove(),ConnectionTerminatedReason::RemoteRequested));
                 }
                 else {
                     //Coax a socket write to fail in order to get an error code that we can pass
@@ -1074,14 +1076,14 @@ impl InternalThread {
                             Some(token) => token,
                             None => {
                                 let _ = socket.shutdown(Shutdown::Both);
-                                self.tx.send(ClientEvent::ConnectionDropped(listener_entry.get().as_listener(),addr)).unwrap();
+                                self.tx.send(EngineEvent::ConnectionDropped(listener_entry.get().as_listener(),addr)).unwrap();
                                 return Ok(());
                             },
                         };
 
-                        //Let client know about the connection and have a chance to reject it
-                        //before it even sends a Logon message.
-                        self.tx.send(ClientEvent::ConnectionAccepted(listener_entry.get().as_listener(),Connection(token.0),addr.clone())).unwrap();
+                        //Let engine know about the connection and have a chance to reject it
+                        //before remote sends a Logon message.
+                        self.tx.send(EngineEvent::ConnectionAccepted(listener_entry.get().as_listener(),Connection(token.0),addr.clone())).unwrap();
 
                         let fix_version = FIXVersion::max_version(); //Accept the latest message version at first. This works out because Logon is forwards version compatible.
                         let mut connection = InternalConnection::new(self.message_dictionary.clone(),
@@ -1101,14 +1103,14 @@ impl InternalThread {
                         //Have poll let us know when we can can read or write.
                         if let Err(_) = self.poll.register(&connection.socket,connection.token,Ready::all(),PollOpt::edge()) {
                             let _ = connection.socket.shutdown(Shutdown::Both);
-                            self.tx.send(ClientEvent::ConnectionDropped(listener_entry.get().as_listener(),addr)).unwrap();
+                            self.tx.send(EngineEvent::ConnectionDropped(listener_entry.get().as_listener(),addr)).unwrap();
                             return Ok(())
                         }
 
                         self.connections.insert(token,connection);
                     },
                     Err(err) => {
-                        self.tx.send(ClientEvent::ListenerFailed(listener_entry.get().as_listener(),err)).unwrap();
+                        self.tx.send(EngineEvent::ListenerFailed(listener_entry.get().as_listener(),err)).unwrap();
                     },
                 }
             }
@@ -1117,11 +1119,11 @@ impl InternalThread {
         Ok(())
     }
 
-    fn on_network_message(connection: &mut InternalConnection,mut message: Box<FIXTMessage + Send>,tx: &Sender<ClientEvent>,timer: &mut Timer<(TimeoutType,Token)>) -> Result<(),ConnectionTerminatedReason>  {
+    fn on_network_message(connection: &mut InternalConnection,mut message: Box<FIXTMessage + Send>,tx: &Sender<EngineEvent>,timer: &mut Timer<(TimeoutType,Token)>) -> Result<(),ConnectionTerminatedReason>  {
         //Perform book keeping needed to maintain the FIX connection and then pass off the message
-        //to the client.
+        //to the engine.
 
-        fn if_on_resend_request(connection: &mut InternalConnection,message: Box<FIXTMessage + Send>,msg_seq_num: MsgSeqNumType,tx: &Sender<ClientEvent>,timer: &mut Timer<(TimeoutType,Token)>) -> Option<Box<FIXTMessage + Send>> {
+        fn if_on_resend_request(connection: &mut InternalConnection,message: Box<FIXTMessage + Send>,msg_seq_num: MsgSeqNumType,tx: &Sender<EngineEvent>,timer: &mut Timer<(TimeoutType,Token)>) -> Option<Box<FIXTMessage + Send>> {
             let mut rejected = false;
 
             if let Some(resend_request) = message.as_any().downcast_ref::<ResendRequest>() {
@@ -1180,9 +1182,9 @@ impl InternalThread {
                 }
 
                 //If:
-                // 1. The server initiates a logout
+                // 1. The remote initiates a logout
                 // 2. We acknowledge the logout
-                // 3. The server sends a ResendRequest (instead of disconnecting AND before our
+                // 3. The remote sends a ResendRequest (instead of disconnecting AND before our
                 //    disconnect timeout)
                 //Then we need to assume the logout was cancelled.
                 //See FIXT v1.1, page 42.
@@ -1198,7 +1200,7 @@ impl InternalThread {
 
             //Appease the borrow checker by fully handling reject much later than where occurred.
             if rejected {
-                tx.send(ClientEvent::MessageRejected(connection.as_connection(),message)).unwrap();
+                tx.send(EngineEvent::MessageRejected(connection.as_connection(),message)).unwrap();
                 None
             }
             else {
@@ -1206,17 +1208,17 @@ impl InternalThread {
             }
         }
 
-        fn reject_for_sending_time_accuracy(connection: &mut InternalConnection,message: Box<FIXTMessage + Send>,msg_seq_num: MsgSeqNumType,tx: &Sender<ClientEvent>) {
+        fn reject_for_sending_time_accuracy(connection: &mut InternalConnection,message: Box<FIXTMessage + Send>,msg_seq_num: MsgSeqNumType,tx: &Sender<EngineEvent>) {
             let mut reject = Reject::new();
             reject.ref_seq_num = msg_seq_num;
             reject.session_reject_reason = Some(SessionRejectReason::SendingTimeAccuracyProblem);
             reject.text = b"SendingTime accuracy problem".to_vec();
             connection.outbound_messages.push(OutboundMessage::from(reject));
 
-            tx.send(ClientEvent::MessageRejected(connection.as_connection(),message)).unwrap();
+            tx.send(EngineEvent::MessageRejected(connection.as_connection(),message)).unwrap();
         }
 
-        fn on_greater_than_expected_msg_seq_num(connection: &mut InternalConnection,mut message: Box<FIXTMessage + Send>,msg_seq_num: MsgSeqNumType,tx: &Sender<ClientEvent>,timer: &mut Timer<(TimeoutType,Token)>) -> Option<Box<FIXTMessage + Send>> {
+        fn on_greater_than_expected_msg_seq_num(connection: &mut InternalConnection,mut message: Box<FIXTMessage + Send>,msg_seq_num: MsgSeqNumType,tx: &Sender<EngineEvent>,timer: &mut Timer<(TimeoutType,Token)>) -> Option<Box<FIXTMessage + Send>> {
             //FIXT v1.1, page 13: We should reply to ResendRequest first when MsgSeqNum is higher
             //than expected. Afterwards, we should send our own ResendRequest.
             message = match if_on_resend_request(connection,message,msg_seq_num,tx,timer) {
@@ -1224,7 +1226,7 @@ impl InternalThread {
                 None => return None,
             };
 
-            //Fetch the messages the server says were sent but we never
+            //Fetch the messages the remote says were sent but we never
             //received using a ResendRequest.
             let mut resend_request = ResendRequest::new();
             resend_request.begin_seq_no = connection.inbound_msg_seq_num;
@@ -1245,22 +1247,22 @@ impl InternalThread {
             if let Some(logout) = message.as_any().downcast_ref::<Logout>() {
                 let logging_out_initiator = if let ConnectionStatus::LoggingOut(ref logging_out_type) = connection.status {
                     match logging_out_type {
-                        &LoggingOutType::Ok => { //Server acknowledged our logout but we're missing some messages.
-                            Some(LoggingOutInitiator::Client)
+                        &LoggingOutType::Ok => { //Remote acknowledged our logout but we're missing some messages.
+                            Some(LoggingOutInitiator::Local)
                         },
-                        &LoggingOutType::Responding | //Server sent two diffrent Logouts in a row with messages inbetween missing.
-                        &LoggingOutType::Responded => { //Server cancelled original logout and we're some how missing some messages.
-                            Some(LoggingOutInitiator::Server)
+                        &LoggingOutType::Responding | //Remote sent two diffrent Logouts in a row with messages inbetween missing.
+                        &LoggingOutType::Responded => { //Remote cancelled original logout and we're some how missing some messages.
+                            Some(LoggingOutInitiator::Remote)
                         },
                         &LoggingOutType::Error(_) => { None } //Does not matter. We are closing the connection immediately.
-                        &LoggingOutType::ResendRequesting(logging_out_initiator) => { //Server resent Logout before fully responding to our ResendRequest.
+                        &LoggingOutType::ResendRequesting(logging_out_initiator) => { //Remote resent Logout before fully responding to our ResendRequest.
                             None //No change so timeout timer can't be kept alive perpetually.
                         },
                     }
                 }
                 else {
-                    //Server is initiating logout.
-                    Some(LoggingOutInitiator::Server)
+                    //Remote is initiating logout.
+                    Some(LoggingOutInitiator::Remote)
                 };
 
                 //Begin watching for missing messages so we can finish logging out.
@@ -1270,7 +1272,7 @@ impl InternalThread {
                     //Start a timer to acknowledge Logout if messages are not fulfilled in a reasonable
                     //amount of time. If they are fulfilled sooner, we'll just acknowledge sooner.
                     match logging_out_initiator {
-                        LoggingOutInitiator::Server => {
+                        LoggingOutInitiator::Remote => {
                             let timeout_duration = Some(Duration::from_secs(AUTO_CONTINUE_AFTER_LOGOUT_RESEND_REQUEST_SECS));
                             reset_timeout(
                                 timer,
@@ -1280,9 +1282,9 @@ impl InternalThread {
                                 &connection.token
                             );
                         }
-                        LoggingOutInitiator::Client => {
+                        LoggingOutInitiator::Local => {
                             //Let the auto-disconnect timer continue even though some messages
-                            //might be lost. This is because if the server ignores our
+                            //might be lost. This is because if the remote ignores our
                             //ResendRequest but responds to a new Logout attempt, we'll have three
                             //possibly catastrophic outcomes.
                             //1. Logout response has MsgSeqNum < expected: Critical error.
@@ -1301,14 +1303,14 @@ impl InternalThread {
             Some(message)
         }
 
-        fn on_less_than_expected_msg_seq_num(connection: &mut InternalConnection,message: Box<FIXTMessage + Send>,msg_seq_num: MsgSeqNumType,tx: &Sender<ClientEvent>,timer: &mut Timer<(TimeoutType,Token)>) {
+        fn on_less_than_expected_msg_seq_num(connection: &mut InternalConnection,message: Box<FIXTMessage + Send>,msg_seq_num: MsgSeqNumType,tx: &Sender<EngineEvent>,timer: &mut Timer<(TimeoutType,Token)>) {
             //Messages with MsgSeqNum lower than expected are never processed as normal. They are
             //either duplicates (as indicated) or an unrecoverable error where one side fell
             //out of sync.
             if message.is_poss_dup() {
                 if message.orig_sending_time() <= message.sending_time() {
                     //Duplicate message that otherwise seems correct.
-                    tx.send(ClientEvent::MessageReceivedDuplicate(connection.as_connection(),message)).unwrap();
+                    tx.send(EngineEvent::MessageReceivedDuplicate(connection.as_connection(),message)).unwrap();
                 }
                 else {
                     //Reject message even though it's a duplicate. Currently, we probably don't
@@ -1326,7 +1328,7 @@ impl InternalThread {
             }
         }
 
-        fn on_expected_msg_seq_num(connection: &mut InternalConnection,mut message: Box<FIXTMessage + Send>,msg_seq_num: MsgSeqNumType,tx: &Sender<ClientEvent>,timer: &mut Timer<(TimeoutType,Token)>) -> Result<Option<Box<FIXTMessage + Send>>,ConnectionTerminatedReason> {
+        fn on_expected_msg_seq_num(connection: &mut InternalConnection,mut message: Box<FIXTMessage + Send>,msg_seq_num: MsgSeqNumType,tx: &Sender<EngineEvent>,timer: &mut Timer<(TimeoutType,Token)>) -> Result<Option<Box<FIXTMessage + Send>>,ConnectionTerminatedReason> {
             //Start by incrementing expected inbound MsgSeqNum since the message is at least
             //formatted correctly and matches the expected MsgSeqNum.
             try!(connection.increment_inbound_msg_seq_num());
@@ -1355,7 +1357,7 @@ impl InternalThread {
                         reject.text.extend_from_slice(sequence_reset.new_seq_no.to_string().as_bytes());
                         connection.outbound_messages.push(OutboundMessage::from(reject));
 
-                        tx.send(ClientEvent::MessageRejected(connection.as_connection(),Box::new(mem::replace(sequence_reset,SequenceReset::new())))).unwrap();
+                        tx.send(EngineEvent::MessageRejected(connection.as_connection(),Box::new(mem::replace(sequence_reset,SequenceReset::new())))).unwrap();
                     }
                 }
                 else {
@@ -1373,12 +1375,12 @@ impl InternalThread {
 
             //Handle Logout messages.
             if let Some(logout) = message.as_any().downcast_ref::<Logout>() {
-                //Server responded to our Logout.
+                //Remote responded to our Logout.
                 if let ConnectionStatus::LoggingOut(_) = connection.status {
                     connection.shutdown();
-                    return Err(ConnectionTerminatedReason::ClientRequested);
+                    return Err(ConnectionTerminatedReason::LocalRequested);
                 }
-                //Server started logout process.
+                //Remote started logout process.
                 else {
                     connection.respond_to_logout();
                 }
@@ -1428,7 +1430,7 @@ impl InternalThread {
             reject.text = b"CompID problem".to_vec();
             connection.outbound_messages.insert(0,OutboundMessage::from(reject));
 
-            tx.send(ClientEvent::MessageRejected(connection.as_connection(),message)).unwrap();
+            tx.send(EngineEvent::MessageRejected(connection.as_connection(),message)).unwrap();
 
             return Ok(());
         }
@@ -1448,16 +1450,16 @@ impl InternalThread {
                 reject.text = b"CompID problem".to_vec();
                 connection.outbound_messages.insert(0,OutboundMessage::from(reject));
 
-                tx.send(ClientEvent::MessageRejected(connection.as_connection(),message)).unwrap();
+                tx.send(EngineEvent::MessageRejected(connection.as_connection(),message)).unwrap();
 
                 return Ok(());
             }
         }
 
-        //When the connection first starts, it sends a Logon message to the server. The server then
+        //When the connection first starts, it sends a Logon message to the remote. The remote then
         //must respond with a Logon acknowleding the Logon, a Logout rejecting the Logon, or just
         //disconnecting. In this case, if a  Logon is received, we setup timers to send periodic
-        //messages in case there is no activity. We then notify the client that the session is
+        //messages in case there is no activity. We then notify the engine that the session is
         //established and other messages can now be sent or received.
         let just_logged_on = if connection.status.is_sending_logon() {
             if let Some(message) = message.as_any().downcast_ref::<Logon>() {
@@ -1492,7 +1494,7 @@ impl InternalThread {
 
                 //TODO: Need to take MaxMessageSize into account.
                 //TODO: Optionally support filtering message types (NoMsgTypes).
-                tx.send(ClientEvent::SessionEstablished(connection.as_connection())).unwrap();
+                tx.send(EngineEvent::SessionEstablished(connection.as_connection())).unwrap();
             }
             else {
                 connection.initiate_logout(timer,LoggingOutType::Error(ConnectionTerminatedReason::LogonNotFirstMessageError),b"First message not a logon");
@@ -1549,7 +1551,7 @@ impl InternalThread {
                 //automatically unblocked when the Logon response is sent.
                 connection.begin_blocking_inbound(timer);
 
-                tx.send(ClientEvent::ConnectionLoggingOn(listener,connection.as_connection(),Box::new(message.clone()))).unwrap();
+                tx.send(EngineEvent::ConnectionLoggingOn(listener,connection.as_connection(),Box::new(message.clone()))).unwrap();
 
                 return Ok(());
             }
@@ -1572,7 +1574,7 @@ impl InternalThread {
                     connection.clear_inbound_resend_request_msg_seq_num(timer);
                 }
                 else if sequence_reset.new_seq_no == connection.inbound_msg_seq_num {
-                    tx.send(ClientEvent::SequenceResetResetHasNoEffect(connection.as_connection())).unwrap();
+                    tx.send(EngineEvent::SequenceResetResetHasNoEffect(connection.as_connection())).unwrap();
                 }
                 else {//if sequence_reset.new_seq_no < connection.inbound_msg_seq_num
                     let mut reject = Reject::new();
@@ -1582,7 +1584,7 @@ impl InternalThread {
                     reject.text.extend_from_slice(sequence_reset.new_seq_no.to_string().as_bytes());
                     connection.outbound_messages.push(OutboundMessage::from(reject));
 
-                    tx.send(ClientEvent::SequenceResetResetInThePast(connection.as_connection())).unwrap();
+                    tx.send(EngineEvent::SequenceResetResetInThePast(connection.as_connection())).unwrap();
                 }
 
                 true
@@ -1632,12 +1634,12 @@ impl InternalThread {
             connection.outbound_messages.push(OutboundMessage::from(heartbeat));
         }
 
-        tx.send(ClientEvent::MessageReceived(connection.as_connection(),message)).unwrap();
+        tx.send(EngineEvent::MessageReceived(connection.as_connection(),message)).unwrap();
 
         Ok(())
     }
 
-    fn on_network_parse_error(connection: &mut InternalConnection,parse_error: ParseError,tx: &Sender<ClientEvent>)-> Result<(),ConnectionTerminatedReason> {
+    fn on_network_parse_error(connection: &mut InternalConnection,parse_error: ParseError,tx: &Sender<EngineEvent>)-> Result<(),ConnectionTerminatedReason> {
         fn push_reject<T: Into<Vec<u8>>>(connection: &mut InternalConnection,ref_msg_type: &[u8],ref_tag_id: T,session_reject_reason: SessionRejectReason,text: &[u8]) -> Result<(),ConnectionTerminatedReason> {
             let mut reject = Reject::new();
             reject.ref_msg_type = ref_msg_type.to_vec();
@@ -1749,7 +1751,7 @@ impl InternalThread {
                 try!(connection.increment_inbound_msg_seq_num());
 
                 //Tell user about the garbled message just in case they care.
-                tx.send(ClientEvent::MessageReceivedGarbled(connection.as_connection(),parse_error)).unwrap();
+                tx.send(EngineEvent::MessageReceivedGarbled(connection.as_connection(),parse_error)).unwrap();
             },
         };
 
@@ -1757,10 +1759,10 @@ impl InternalThread {
     }
 }
 
-pub fn internal_client_thread(poll: Poll,
+pub fn internal_engine_thread(poll: Poll,
                               token_generator: Arc<Mutex<TokenGenerator>>,
-                              tx: Sender<ClientEvent>,
-                              rx: Receiver<InternalClientToThreadEvent>,
+                              tx: Sender<EngineEvent>,
+                              rx: Receiver<InternalEngineToThreadEvent>,
                               message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>,
                               max_message_size: u64) {
     //TODO: There should probably be a mechanism to log every possible message, even those we
@@ -1788,7 +1790,7 @@ pub fn internal_client_thread(poll: Poll,
     //Have poll let us know when we need to send a heartbeat, testrequest, or respond to some other
     //timeout.
     if let Err(e) = internal_thread.poll.register(&internal_thread.timer,TIMEOUT_TOKEN,Ready::readable(),PollOpt::level()) {
-        internal_thread.tx.send(ClientEvent::FatalError("Cannot register timer for polling",e)).unwrap();
+        internal_thread.tx.send(EngineEvent::FatalError("Cannot register timer for polling",e)).unwrap();
         return;
     }
 
@@ -1796,22 +1798,22 @@ pub fn internal_client_thread(poll: Poll,
     //typically occurs when messages are being received faster than they can be parsed in order to
     //give the already parsed messages a chance to be processed.
     if let Err(e) = internal_thread.poll.register(&internal_thread.network_read_retry,NETWORK_READ_RETRY_TOKEN,Ready::all(),PollOpt::level()) {
-        internal_thread.tx.send(ClientEvent::FatalError("Cannot register network read retry for polling",e)).unwrap();
+        internal_thread.tx.send(EngineEvent::FatalError("Cannot register network read retry for polling",e)).unwrap();
         return;
     }
 
-    //Poll events sent by Client, triggered by timer timeout, or network activity and act upon them
+    //Poll events sent by Engine, triggered by timer timeout, or network activity and act upon them
     //on a per-connection basis.
     let mut events = Events::with_capacity(EVENT_POLL_CAPACITY);
     loop {
         if let Err(e) = internal_thread.poll.poll(&mut events,None) {
-            internal_thread.tx.send(ClientEvent::FatalError("Cannot poll events",e)).unwrap();
+            internal_thread.tx.send(EngineEvent::FatalError("Cannot poll events",e)).unwrap();
             return;
         }
 
         for event in events.iter() {
             let result = match event.token() {
-                INTERNAL_CLIENT_EVENT_TOKEN => internal_thread.on_internal_client_event(),
+                INTERNAL_ENGINE_EVENT_TOKEN => internal_thread.on_internal_engine_event(),
                 TIMEOUT_TOKEN => internal_thread.on_timeout(),
                 NETWORK_READ_RETRY_TOKEN => {
                     if let Some(token) = internal_thread.network_read_retry.poll() {
@@ -1865,7 +1867,7 @@ pub fn internal_client_thread(poll: Poll,
             //block is incredibly ugly but required to appease the borrow checker.
             let e = if let ConnectionTerminatedReason::SocketReadError(err) = e {
                 if !connection.is_connected {
-                    internal_thread.tx.send(ClientEvent::ConnectionFailed(connection.as_connection(),err)).unwrap();
+                    internal_thread.tx.send(EngineEvent::ConnectionFailed(connection.as_connection(),err)).unwrap();
                     return true;
                 }
 
@@ -1873,7 +1875,7 @@ pub fn internal_client_thread(poll: Poll,
             } else { e };
 
             //Notify user that connection was terminated.
-            internal_thread.tx.send(ClientEvent::ConnectionTerminated(connection.as_connection(),e)).unwrap();
+            internal_thread.tx.send(EngineEvent::ConnectionTerminated(connection.as_connection(),e)).unwrap();
 
             true
         });

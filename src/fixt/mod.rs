@@ -9,13 +9,13 @@
 // at your option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub mod client;
-mod client_thread;
+pub mod engine;
+mod engine_thread;
 #[macro_use]
 pub mod message;
 
 pub mod tests {
-    pub use super::client_thread::{
+    pub use super::engine_thread::{
         AUTO_DISCONNECT_AFTER_INBOUND_RESEND_REQUEST_LOOP_COUNT,
         AUTO_DISCONNECT_AFTER_NO_LOGON_RECEIVED_SECONDS,
         INBOUND_MESSAGES_BUFFER_LEN_MAX,
