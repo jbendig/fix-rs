@@ -20,7 +20,7 @@ This project is an early work in progress and still under heavy development.
 ## Examples
 
 - **Client**: [examples/client.rs](examples/client.rs) shows how to initiate a connection and communicate with a FIX engine.
-- **Server**: Not yet supported.
+- **Server**: [examples/server.rs](examples/server.rs) shows how to accept connections and function as a FIX engine.
 
 ## License
 
