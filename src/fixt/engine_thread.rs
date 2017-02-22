@@ -1110,7 +1110,7 @@ impl InternalThread {
                         self.connections.insert(token,connection);
                     },
                     Err(err) => {
-                        self.tx.send(EngineEvent::ListenerFailed(listener_entry.get().as_listener(),err)).unwrap();
+                        self.tx.send(EngineEvent::ListenerAcceptFailed(listener_entry.get().as_listener(),err)).unwrap();
                     },
                 }
             }

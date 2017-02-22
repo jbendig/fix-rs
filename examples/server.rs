@@ -74,11 +74,16 @@ fn main() {
                     server.reject_new_connection(connection_id,Some(b"Invalid username and/or password".to_vec()));
                 }
             },
-            //Listener encountered an unrecoverable socket error and has been stopped.
+            //Listener could not be setup because of a lack of resources.
             EngineEvent::ListenerFailed(listener_id,err) => {
                 println!("({})Listener failed: {:?}",listener_id,err);
                 break;
             },
+            //Listener encountered a socket error while trying to accept a new connection.
+            EngineEvent::ListenerAcceptFailed(listener_id,err) => {
+                println!("({})Listener accept failed: {:?}",listener_id,err);
+                break;
+            }
             //Connection to server was closed either using the Engine::logout() function, logout
             //request by client, or an unrecoverable error.
             EngineEvent::ConnectionTerminated(connection_id,reason) => {

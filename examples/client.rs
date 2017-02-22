@@ -129,7 +129,8 @@ fn main() {
             EngineEvent::ConnectionDropped(_,_) |
             EngineEvent::ConnectionAccepted(_,_,_) |
             EngineEvent::ConnectionLoggingOn(_,_,_) |
-            EngineEvent::ListenerFailed(_,_) => {}
+            EngineEvent::ListenerFailed(_,_) |
+            EngineEvent::ListenerAcceptFailed(_,_) => {}
         }
     }
 }

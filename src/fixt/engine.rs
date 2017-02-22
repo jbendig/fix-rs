@@ -112,7 +112,8 @@ pub enum EngineEvent {
     ConnectionAccepted(Listener,Connection,SocketAddr), //Listener accepted a new connection and is awaiting a Logon message.
     ConnectionLoggingOn(Listener,Connection,Box<Logon>),
     SessionEstablished(Connection), //Connection completed logon process successfully.
-    ListenerFailed(Listener,io::Error), //Could not accept a connection with listener.
+    ListenerFailed(Listener,io::Error), //Could not setup listener.
+    ListenerAcceptFailed(Listener,io::Error), //Could not accept a connection with listener.
     MessageReceived(Connection,Box<FIXTMessage + Send>), //New valid message was received.
     MessageReceivedGarbled(Connection,ParseError), //New message could not be parsed correctly. (If not garbled (FIXT 1.1, page 40), a Reject will be issued first)
     MessageReceivedDuplicate(Connection,Box<FIXTMessage + Send>), //Message with MsgSeqNum already seen was received.
@@ -135,6 +136,7 @@ impl fmt::Debug for EngineEvent {
                                                                                  .and_then(|_| write!(f,")")),
             EngineEvent::SessionEstablished(connection) => write!(f,"EngineEvent::SessionEstablished({:?})",connection),
             EngineEvent::ListenerFailed(listener,ref error) => write!(f,"EngineEvent::ListenerFailed({:?},{:?})",listener,error),
+            EngineEvent::ListenerAcceptFailed(listener,ref error) => write!(f,"EngineEvent::ListenerAcceptFailed({:?},{:?})",listener,error),
             EngineEvent::MessageReceived(connection,ref message) => write!(f,"EngineEvent::MessageReceived({:?},{:?})",connection,message),
             EngineEvent::MessageReceivedGarbled(connection,ref parse_error) => write!(f,"EngineEvent::MessageReceivedGarbled({:?},{:?})",connection,parse_error),
             EngineEvent::MessageReceivedDuplicate(connection,ref message) => write!(f,"EngineEvent::MessageReceivedDuplicate({:?},{:?})",connection,message),
