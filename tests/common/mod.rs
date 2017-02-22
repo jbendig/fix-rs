@@ -42,6 +42,28 @@ pub const SERVER_SENDER_COMP_ID: &'static [u8] = CLIENT_TARGET_COMP_ID;
 
 const MAX_MESSAGE_SIZE: u64 = 4096;
 
+//Helper function to make it easier to figure out what the body_length tag should be set to.
+#[allow(unused)]
+fn estimate_body_length(message_bytes: &[u8]) -> usize {
+    let mut previous_byte = 0;
+    let mut found_body_length_tag = false;
+    let mut body_start = 0;
+    for (index,byte) in message_bytes.iter().enumerate() {
+        if body_start == 0 && found_body_length_tag && *byte == b'\x01' {
+            body_start = index + 1;
+        }
+        if previous_byte == b'9' && *byte == b'=' {
+            found_body_length_tag = true;
+        }
+        if previous_byte == b'0' && *byte == b'=' && message_bytes[index - 2] == b'1' && message_bytes[index - 3] == 1 {
+            return index - 2 - body_start;
+        }
+        previous_byte = *byte;
+    }
+
+    panic!("Message is malformed.");
+}
+
 #[macro_export]
 macro_rules! engine_poll_event {
     ( $engine:ident,$pat:pat => $body:expr ) => {{
