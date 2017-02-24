@@ -10,6 +10,10 @@ readme = "README.md"
 keywords = ["fix", "protocol", "finance", "trading", "library"]
 license = "MIT/Apache-2.0"
 
+[features]
+default = []
+load-testing = ["clap"]
+
 [dependencies]
 "fix-rs-macros" = { path = "fix-rs-macros", version ="0.1.0" }
 "mio" = "0.6"
@@ -17,3 +21,9 @@ license = "MIT/Apache-2.0"
 "time" = "0.1"
 "phf" = "0.7.21"
 "phf_macros" = "0.7.21"
+"clap" = { version = "~2.19.0", optional = true }
+
+[[bin]]
+name="fix-rs-lt"
+path="src/bin/fix-rs-lt.rs"
+required-features = ["load-testing"]

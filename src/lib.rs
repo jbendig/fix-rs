@@ -25,6 +25,9 @@ extern crate mio;
 extern crate phf;
 extern crate time;
 
+#[cfg(feature="load-testing")]
+pub mod byte_buffer;
+#[cfg(not(feature="load-testing"))]
 mod byte_buffer;
 #[macro_use]
 pub mod fixt;
