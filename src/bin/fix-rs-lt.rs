@@ -9,9 +9,13 @@
 // at your option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(attr_literals)]
+
 extern crate clap;
 #[macro_use]
 extern crate fix_rs;
+#[macro_use]
+extern crate fix_rs_macros;
 extern crate mio;
 
 use clap::{App,Arg};
@@ -26,17 +30,172 @@ use std::thread;
 use std::time::{Duration,Instant};
 
 use fix_rs::byte_buffer::ByteBuffer;
+use fix_rs::dictionary::fields::{ApplVerID,MsgSeqNum,OrigSendingTime,SenderCompID,SendingTime,TargetCompID,TestReqID};
+use fix_rs::dictionary::field_types::generic::StringFieldType;
 use fix_rs::dictionary::field_types::other::EncryptMethod;
-use fix_rs::dictionary::messages::{Logon,Heartbeat,TestRequest};
+use fix_rs::dictionary::messages::Logon;
+use fix_rs::field::Field;
+use fix_rs::field_tag;
+use fix_rs::field_type::FieldType;
 use fix_rs::fix::Parser;
 use fix_rs::fix_version::FIXVersion;
+use fix_rs::fixt;
 use fix_rs::fixt::message::FIXTMessage;
-use fix_rs::message::Message;
-use fix_rs::message_version::MessageVersion;
+use fix_rs::message::{self,REQUIRED,NOT_REQUIRED,Message,SetValueError};
+use fix_rs::message_version::{self,MessageVersion};
 
 const SEND_MESSAGE_TIMEOUT_SECS: u64 = 10;
 const MAX_MESSAGE_SIZE: u64 = 4096;
 const MESSAGE_COUNT: u64 = 1000;
+
+define_fields!(
+    EmptySenderCompID: EmptyFieldType = 49,
+    EmptyTargetCompID: EmptyFieldType = 56,
+    EmptySendingTime: EmptyFieldType = 52,
+    StringSendingTime: StringFieldType = 52,
+);
+
+pub struct EmptyFieldType;
+
+impl FieldType for EmptyFieldType {
+    type Type = PhantomData<()>;
+
+    fn default_value() -> Self::Type {
+        Default::default()
+    }
+
+    fn set_value(_: &mut Self::Type,_: &[u8]) -> Result<(),SetValueError> {
+        Ok(())
+    }
+
+    fn is_empty(_: &Self::Type) -> bool {
+        true
+    }
+
+    fn len(_: &Self::Type) -> usize {
+        0
+    }
+
+    fn read(_: &Self::Type,_: FIXVersion,_: MessageVersion,_: &mut Vec<u8>) -> usize {
+        0
+    }
+}
+
+define_message!(Heartbeat: b"0" => {
+    //Used parts of Standard Header
+    REQUIRED, sender_comp_id: EmptySenderCompID [FIX40..],
+    REQUIRED, target_comp_id: EmptyTargetCompID [FIX40..],
+    REQUIRED, msg_seq_num: MsgSeqNum [FIX40..],
+    REQUIRED, sending_time: EmptySendingTime [FIX40..],
+
+    //Other
+    NOT_REQUIRED, test_req_id: TestReqID [FIX40..],
+});
+
+impl FIXTMessage for Heartbeat {
+    fn new_into_box(&self) -> Box<FIXTMessage + Send> {
+        Box::new(Heartbeat::new())
+    }
+
+    fn msg_type(&self) -> &'static [u8] {
+        b"0"
+    }
+
+    fn msg_seq_num(&self) -> <<MsgSeqNum as Field>::Type as FieldType>::Type {
+        self.msg_seq_num
+    }
+
+    fn sender_comp_id(&self) -> &<<SenderCompID as Field>::Type as FieldType>::Type {
+        unimplemented!();
+    }
+
+    fn target_comp_id(&self) -> &<<TargetCompID as Field>::Type as FieldType>::Type {
+        unimplemented!();
+    }
+
+    fn set_appl_ver_id(&mut self,_appl_ver_id: MessageVersion) {
+    }
+
+    fn is_poss_dup(&self) -> bool {
+        unimplemented!();
+    }
+
+    fn sending_time(&self) -> <<SendingTime as Field>::Type as FieldType>::Type {
+        unimplemented!();
+    }
+
+    fn orig_sending_time(&self) -> <<OrigSendingTime as Field>::Type as FieldType>::Type {
+        unimplemented!();
+    }
+
+    fn setup_fixt_session_header(&mut self,
+                                 _msg_seq_num: Option<<<MsgSeqNum as Field>::Type as FieldType>::Type>,
+                                 _sender_comp_id: <<SenderCompID as Field>::Type as FieldType>::Type,
+                                 _target_comp_id: <<TargetCompID as Field>::Type as FieldType>::Type) {
+        unimplemented!();
+    }
+}
+
+define_message!(TestRequest: b"1" => {
+    //Used parts of Standard Header
+    REQUIRED, sender_comp_id: SenderCompID [FIX40..],
+    REQUIRED, target_comp_id: TargetCompID [FIX40..],
+    NOT_REQUIRED, appl_ver_id: ApplVerID [FIX40..],
+    REQUIRED, msg_seq_num: MsgSeqNum [FIX40..],
+    REQUIRED, sending_time: StringSendingTime [FIX40..],
+
+    //Other
+    NOT_REQUIRED, test_req_id: TestReqID [FIX40..],
+});
+
+impl FIXTMessage for TestRequest {
+    fn new_into_box(&self) -> Box<FIXTMessage + Send> {
+        Box::new(TestRequest::new())
+    }
+
+    fn msg_type(&self) -> &'static [u8] {
+        b"1"
+    }
+
+    fn msg_seq_num(&self) -> <<MsgSeqNum as Field>::Type as FieldType>::Type {
+        self.msg_seq_num
+    }
+
+    fn sender_comp_id(&self) -> &<<SenderCompID as Field>::Type as FieldType>::Type {
+        &self.sender_comp_id
+    }
+
+    fn target_comp_id(&self) -> &<<TargetCompID as Field>::Type as FieldType>::Type {
+        &self.target_comp_id
+    }
+
+    fn set_appl_ver_id(&mut self,_appl_ver_id: MessageVersion) {
+    }
+
+    fn is_poss_dup(&self) -> bool {
+        unimplemented!();
+    }
+
+    fn sending_time(&self) -> <<SendingTime as Field>::Type as FieldType>::Type {
+        unimplemented!();
+    }
+
+    fn orig_sending_time(&self) -> <<OrigSendingTime as Field>::Type as FieldType>::Type {
+        unimplemented!();
+    }
+
+    fn setup_fixt_session_header(&mut self,
+                                 msg_seq_num: Option<<<MsgSeqNum as Field>::Type as FieldType>::Type>,
+                                 sender_comp_id: <<SenderCompID as Field>::Type as FieldType>::Type,
+                                 target_comp_id: <<TargetCompID as Field>::Type as FieldType>::Type) {
+        if let Some(msg_seq_num) = msg_seq_num {
+            self.msg_seq_num = msg_seq_num;
+        }
+        self.sender_comp_id = sender_comp_id;
+        self.target_comp_id = target_comp_id;
+        self.sending_time = b"20170101-00:00:00".to_vec();
+    }
+}
 
 #[derive(Clone)]
 struct LatencyResult {
@@ -233,7 +392,6 @@ fn test_request() -> Result<(),io::Error> {
         }
     }
 
-    //TODO: Use custom messages here with unused fields  as noops when calling set_value.
     define_dictionary!(
         Logon,
         TestRequest,
