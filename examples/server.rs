@@ -36,7 +36,7 @@ fn main() {
 
     //Setup a listener to accept new connections. The listener_id is used to interact with this
     //listener.
-    let sender_comp_id = b"Client"; //SenderCompID sent in every FIX message.
+    let sender_comp_id = b"Server"; //SenderCompID sent in every FIX message.
     let addr = "127.0.0.1:7001"; //IP and port to listen on.
     let listener_id = server.add_listener(sender_comp_id,addr);
 
