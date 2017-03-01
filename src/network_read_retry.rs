@@ -43,19 +43,27 @@ impl NetworkReadRetry {
     }
 
     pub fn poll(&mut self) -> Option<Token> {
-        self.tokens_to_retry.remove(0)
+        self.remove_by_index(0)
     }
 
     pub fn remove_all(&mut self,token: Token) {
         let mut x = 0;
         while x < self.tokens_to_retry.len() {
             if self.tokens_to_retry[x] == token {
-                self.tokens_to_retry.remove(x);
+                self.remove_by_index(x);
                 continue;
             }
 
             x += 1;
         }
+    }
+
+    pub fn remove_by_index(&mut self,index: usize) -> Option<Token> {
+        if let Some(ref mut set_readiness) = *self.set_readiness.borrow_mut() {
+            let _ = set_readiness.set_readiness(Ready::none());
+        }
+
+        self.tokens_to_retry.remove(index)
     }
 }
 
