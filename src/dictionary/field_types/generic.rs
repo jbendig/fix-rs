@@ -25,6 +25,20 @@ use message::{Message,MessageBuildable,SetValueError};
 use message_version::MessageVersion;
 use rule::Rule;
 
+//Helper function(s)
+
+fn slice_to_int<T: FromStr>(bytes: &[u8]) -> Result<T,SetValueError> {
+    //Safe version.
+    /*let string = String::from_utf8_lossy(bytes);
+    T::from_str(string.as_ref()).map_err(|_| SetValueError::WrongFormat)*/
+
+    //Unsafe version. (Slightly faster and should be okay considering what from_str is
+    //doing. Famous last words?)
+    use std::str;
+    let string = unsafe { str::from_utf8_unchecked(bytes) };
+    T::from_str(string).map_err(|_| SetValueError::WrongFormat)
+}
+
 //Generic Field Types (Sorted Alphabetically)
 
 pub struct BoolTrueOrBlankFieldType;
@@ -670,15 +684,17 @@ impl FieldType for LocalMktDateFieldType {
     }
 
     fn set_value(field: &mut Self::Type,bytes: &[u8]) -> Result<(),SetValueError> {
-        //TODO: Share the format string in a constant.
-        let value_string = String::from_utf8_lossy(bytes).into_owned();
-        if let Ok(new_date) = Self::Type::parse_from_str(&value_string,"%Y%m%d") {
-            *field = new_date;
-
-            return Ok(());
+        if bytes.len() != 8 {
+            return Err(SetValueError::WrongFormat);
         }
 
-        Err(SetValueError::WrongFormat)
+        let year = try!(slice_to_int::<i32>(&bytes[0..4]));
+        let month = try!(slice_to_int::<u32>(&bytes[4..6]));
+        let day = try!(slice_to_int::<u32>(&bytes[6..8]));
+
+        *field = NaiveDate::from_ymd(year,month,day);
+
+        Ok(())
     }
 
     fn is_empty(field: &Self::Type) -> bool {
@@ -1059,18 +1075,6 @@ impl FieldType for UTCTimestampFieldType {
     }
 
     fn set_value(field: &mut Self::Type,bytes: &[u8]) -> Result<(),SetValueError> {
-        fn slice_to_int<T: FromStr>(bytes: &[u8]) -> Result<T,SetValueError> {
-            //Safe version.
-            /*let string = String::from_utf8_lossy(bytes);
-            T::from_str(string.as_ref()).map_err(|_| SetValueError::WrongFormat)*/
-
-            //Unsafe version. (Slightly faster and should be okay considering what from_str is
-            //doing. Famous last words?)
-            use std::str;
-            let string = unsafe { str::from_utf8_unchecked(bytes) };
-            T::from_str(string).map_err(|_| SetValueError::WrongFormat)
-        }
-
         if bytes.len() < 17 || bytes[8] != b'-' || bytes[11] != b':' || bytes[14] != b':' {
             return Err(SetValueError::WrongFormat);
         }
