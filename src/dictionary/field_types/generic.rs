@@ -9,7 +9,7 @@
 // at your option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use chrono::{Datelike,Local,NaiveDate,NaiveTime,TimeZone};
+use chrono::{Datelike,Local,NaiveDate,NaiveTime};
 use chrono::datetime::DateTime;
 use chrono::offset::utc::UTC;
 use chrono::naive::datetime::NaiveDateTime;
@@ -1059,16 +1059,49 @@ impl FieldType for UTCTimestampFieldType {
     }
 
     fn set_value(field: &mut Self::Type,bytes: &[u8]) -> Result<(),SetValueError> {
-        //TODO: Support making the .sss, indicating milliseconds, optional.
-        //TODO: Share the format string in a constant.
-        let value_string = String::from_utf8_lossy(bytes).into_owned();
-        if let Ok(new_timestamp) = field.offset().datetime_from_str(&value_string,"%Y%m%d-%T%.3f") {
-            *field = new_timestamp;
+        fn slice_to_int<T: FromStr>(bytes: &[u8]) -> Result<T,SetValueError> {
+            //Safe version.
+            /*let string = String::from_utf8_lossy(bytes);
+            T::from_str(string.as_ref()).map_err(|_| SetValueError::WrongFormat)*/
 
-            return Ok(());
+            //Unsafe version. (Slightly faster and should be okay considering what from_str is
+            //doing. Famous last words?)
+            use std::str;
+            let string = unsafe { str::from_utf8_unchecked(bytes) };
+            T::from_str(string).map_err(|_| SetValueError::WrongFormat)
         }
 
-        Err(SetValueError::WrongFormat)
+        if bytes.len() < 17 || bytes[8] != b'-' || bytes[11] != b':' || bytes[14] != b':' {
+            return Err(SetValueError::WrongFormat);
+        }
+
+        let year = try!(slice_to_int::<i32>(&bytes[0..4]));
+        let month = try!(slice_to_int::<u32>(&bytes[4..6]));
+        let day = try!(slice_to_int::<u32>(&bytes[6..8]));
+        let hours = try!(slice_to_int::<u32>(&bytes[9..11]));
+        let minutes = try!(slice_to_int::<u32>(&bytes[12..14]));
+        let seconds = try!(slice_to_int::<u32>(&bytes[15..17]));
+        let milliseconds = if bytes.len() == 17 {
+            0
+        }
+        else if bytes.len() == 21 {
+            if bytes[17] != b'.' {
+                return Err(SetValueError::WrongFormat);
+            }
+
+            try!(slice_to_int::<u32>(&bytes[18..21]))
+        }
+        else {
+            return Err(SetValueError::WrongFormat);
+        };
+
+        *field = DateTime::<UTC>::from_utc(
+            NaiveDate::from_ymd(year,month,day)
+                       .and_hms_milli(hours,minutes,seconds,milliseconds),
+            UTC
+        );
+
+        Ok(())
     }
 
     fn is_empty(field: &Self::Type) -> bool {
