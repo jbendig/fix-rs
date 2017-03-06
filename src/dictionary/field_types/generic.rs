@@ -591,18 +591,14 @@ impl FieldType for DayOfMonthFieldType {
     }
 
     fn set_value(field: &mut Self::Type,bytes: &[u8]) -> Result<(),SetValueError> {
-        let value_string = String::from_utf8_lossy(bytes).into_owned();
-        if let Ok(new_value) = u8::from_str(&value_string) {
-            if new_value < 1 || new_value > 31 {
-                return Err(SetValueError::OutOfRange);
-            }
-
-            *field = Some(new_value);
-
-            return Ok(());
+        let new_value = try!(slice_to_int::<u8>(bytes));
+        if new_value < 1 || new_value > 31 {
+            return Err(SetValueError::OutOfRange);
         }
 
-        Err(SetValueError::WrongFormat)
+        *field = Some(new_value);
+
+        Ok(())
     }
 
     fn is_empty(field: &Self::Type) -> bool {
@@ -635,14 +631,9 @@ impl FieldType for IntFieldType {
     }
 
     fn set_value(field: &mut Self::Type,bytes: &[u8]) -> Result<(),SetValueError> {
-        let value_string = String::from_utf8_lossy(bytes).into_owned();
-        if let Ok(new_value) = Self::Type::from_str(&value_string) {
-            *field = new_value;
+        *field = try!(slice_to_int::<Self::Type>(bytes));
 
-            return Ok(());
-        }
-
-        Err(SetValueError::WrongFormat)
+        Ok(())
     }
 
     fn is_empty(_field: &Self::Type) -> bool {
@@ -887,14 +878,9 @@ impl FieldType for SeqNumFieldType {
     }
 
     fn set_value(field: &mut Self::Type,bytes: &[u8]) -> Result<(),SetValueError> {
-        let value_string = String::from_utf8_lossy(bytes).into_owned();
-        if let Ok(new_value) = Self::Type::from_str(&value_string) {
-            *field = new_value;
+        *field = try!(slice_to_int::<Self::Type>(bytes));
 
-            return Ok(());
-        }
-
-        Err(SetValueError::WrongFormat)
+        Ok(())
     }
 
     fn is_empty(field: &Self::Type) -> bool {
@@ -1016,16 +1002,30 @@ impl FieldType for UTCTimeOnlyFieldType {
     }
 
     fn set_value(field: &mut Self::Type,bytes: &[u8]) -> Result<(),SetValueError> {
-        //TODO: Support making the .sss, indicating milliseconds, optional.
-        //TODO: Share the format string in a constant.
-        let value_string = String::from_utf8_lossy(bytes).into_owned();
-        if let Ok(new_time) = Self::Type::parse_from_str(&value_string,"%T%.3f") {
-            *field = new_time;
-
-            return Ok(());
+        if bytes.len() < 8 || bytes[2] != b':' || bytes[5] != b':' {
+            return Err(SetValueError::WrongFormat);
         }
 
-        Err(SetValueError::WrongFormat)
+        let hours = try!(slice_to_int::<u32>(&bytes[0..2]));
+        let minutes = try!(slice_to_int::<u32>(&bytes[3..5]));
+        let seconds = try!(slice_to_int::<u32>(&bytes[6..8]));
+        let milliseconds = if bytes.len() == 8 {
+            0
+        }
+        else if bytes.len() == 12 {
+            if bytes[8] != b'.' {
+                return Err(SetValueError::WrongFormat);
+            }
+
+            try!(slice_to_int::<u32>(&bytes[9..12]))
+        }
+        else {
+            return Err(SetValueError::WrongFormat);
+        };
+
+        *field = NaiveTime::from_hms_milli(hours,minutes,seconds,milliseconds);
+
+        Ok(())
     }
 
     fn is_empty(_field: &Self::Type) -> bool {
