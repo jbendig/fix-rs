@@ -9,7 +9,7 @@
 // at your option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use chrono::{Datelike,Local,NaiveDate,NaiveTime};
+use chrono::{Datelike,Local,NaiveDate,NaiveTime,Timelike};
 use chrono::datetime::DateTime;
 use chrono::offset::utc::UTC;
 use chrono::naive::datetime::NaiveDateTime;
@@ -1119,8 +1119,19 @@ impl FieldType for UTCTimestampFieldType {
     fn read(field: &Self::Type,_fix_version: FIXVersion,_message_version: MessageVersion,buf: &mut Vec<u8>) -> usize {
         assert!(!Self::is_empty(&field)); //Was required field not set?
 
-        let value_string = field.format("%Y%m%d-%T%.3f").to_string();
-        buf.write(value_string.as_bytes()).unwrap()
+        buf.reserve(21);
+        let naive_utc = field.naive_utc();
+        write!(buf,
+               "{:04}{:02}{:02}-{:02}:{:02}:{:02}.{:03}",
+               naive_utc.year(),
+               naive_utc.month(),
+               naive_utc.day(),
+               naive_utc.hour(),
+               naive_utc.minute(),
+               naive_utc.second(),
+               naive_utc.nanosecond() / 1_000_000).unwrap();
+
+        21
     }
 }
 
