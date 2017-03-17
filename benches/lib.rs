@@ -32,6 +32,7 @@ fn parse_simple_message_bench(b: &mut Bencher) {
     );
 
     let mut parser = Parser::new(build_dictionary(),4096);
+    b.bytes = MESSAGE_BYTES.len() as u64;
     b.iter(|| {
         let (bytes_read,result) = parser.parse(MESSAGE_BYTES);
         assert!(result.is_ok());
@@ -51,10 +52,14 @@ fn serialize_simple_message_bench(b: &mut Bencher) {
     assert!(bytes_read == MESSAGE_BYTES.len());
     match message_to_enum(&**(parser.messages.first().unwrap())) {
         MessageEnum::NewOrderSingle(message) => {
-            b.iter(|| {
+            let serialize_func = || {
                 let mut data = Vec::new();
                 message.read(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,&mut data);
-            });
+                data.len() as u64
+            };
+
+            b.bytes = serialize_func();
+            b.iter(serialize_func);
         },
     }
 }
