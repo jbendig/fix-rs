@@ -10,7 +10,6 @@
 // except according to those terms.
 
 #![feature(attr_literals)]
-#![feature(duration_checked_ops)]
 #![feature(plugin)]
 #![feature(proc_macro)]
 
