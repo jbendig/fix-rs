@@ -43,7 +43,7 @@ use fix_rs::fix::ParseError;
 use fix_rs::field_tag::{self,FieldTag};
 use fix_rs::fix_version::FIXVersion;
 use fix_rs::fixt;
-use fix_rs::fixt::engine::{Engine,EngineEvent,Connection,ConnectionTerminatedReason,Listener};
+use fix_rs::fixt::engine::{Engine,EngineEvent,Connection,ConnectionTerminatedReason,Listener,ResendResponse};
 use fix_rs::fixt::message::{BuildFIXTMessage,FIXTMessage};
 use fix_rs::message::{self,NOT_REQUIRED,REQUIRED,MessageDetails};
 use fix_rs::message_version::{self,MessageVersion};
@@ -1065,7 +1065,7 @@ fn test_8B() {
     );
 
     //Connect and logon.
-    let (mut test_server,_client,_) = TestStream::setup_test_server_and_logon(build_dictionary());
+    let (mut test_server,mut client,connection) = TestStream::setup_test_server_and_logon(build_dictionary());
 
     //Sleep until TestRequest and Heartbeat are triggered.
     thread::sleep(Duration::from_millis(6000)); //1.2 * HeartBeatInt as stated.
@@ -1079,6 +1079,9 @@ fn test_8B() {
     message.begin_seq_no = 2;
     message.end_seq_no = 3;
     test_server.send_message(message);
+
+    //Respond to ResendRequest with a gap fill.
+    engine_gap_fill_resend_request!(client,connection,2..4);
 
     //Make sure client responds with an appropriate SequenceReset-GapFill.
     let message = test_server.recv_message::<SequenceReset>();
@@ -1969,6 +1972,9 @@ fn test_20B() {
     message.begin_seq_no = 2;
     message.end_seq_no = 5;
     test_server.send_message(message);
+
+    //Reply to ResendRequest with a gap fill.
+    engine_gap_fill_resend_request!(client,connection,2..6);
 
     //Make sure client complies with ResendRequest.
     let message = test_server.recv_message::<SequenceReset>();

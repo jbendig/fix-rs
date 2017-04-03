@@ -16,6 +16,7 @@ use mio::tcp::TcpListener;
 use std::fmt;
 use std::io;
 use std::mem;
+use std::ops::Range;
 use std::net::{SocketAddr,ToSocketAddrs};
 use std::sync::{Arc,Mutex};
 use std::sync::mpsc::TryRecvError;
@@ -118,6 +119,7 @@ pub enum EngineEvent {
     MessageReceivedGarbled(Connection,ParseError), //New message could not be parsed correctly. (If not garbled (FIXT 1.1, page 40), a Reject will be issued first)
     MessageReceivedDuplicate(Connection,Box<FIXTMessage + Send>), //Message with MsgSeqNum already seen was received.
     MessageRejected(Connection,Box<FIXTMessage + Send>), //New message breaks session rules and was rejected.
+    ResendRequested(Connection,Range<u64>), //Range of messages by MsgSeqNum that are requested to be resent. [Range::start,Range::end)
     SequenceResetResetHasNoEffect(Connection),
     SequenceResetResetInThePast(Connection),
     FatalError(&'static str,io::Error), //TODO: Probably should have an error type instead of static str here.
@@ -141,6 +143,7 @@ impl fmt::Debug for EngineEvent {
             EngineEvent::MessageReceivedGarbled(connection,ref parse_error) => write!(f,"EngineEvent::MessageReceivedGarbled({:?},{:?})",connection,parse_error),
             EngineEvent::MessageReceivedDuplicate(connection,ref message) => write!(f,"EngineEvent::MessageReceivedDuplicate({:?},{:?})",connection,message),
             EngineEvent::MessageRejected(connection,ref message) => write!(f,"EngineEvent::MessageRejected({:?},{:?})",connection,message),
+            EngineEvent::ResendRequested(connection,ref range) => write!(f,"EngineEvent::ResendRequested({:?},{:?})",connection,range),
             EngineEvent::SequenceResetResetHasNoEffect(connection) => write!(f,"EngineEvent:SequenceResetResetHasNoEffect({:?})",connection),
             EngineEvent::SequenceResetResetInThePast(connection) => write!(f,"EngineEvent:SequenceResetResetInThePast({:?})",connection),
             EngineEvent::FatalError(description,ref error) => write!(f,"EngineEvent::FatalError({:?},{:?})",description,error),
@@ -148,6 +151,10 @@ impl fmt::Debug for EngineEvent {
     }
 }
 
+pub enum ResendResponse {
+    Message(Option<MessageVersion>,Box<FIXTMessage + Send>),
+    Gap(Range<u64>),
+}
 
 fn to_socket_addr<A: ToSocketAddrs>(address: A) -> Option<SocketAddr> {
     //Use first socket address. This more or less emulates TcpStream::connect.
@@ -253,6 +260,36 @@ impl Engine {
 
     pub fn send_message_box_with_message_version<MV: Into<Option<MessageVersion>>>(&mut self,connection: Connection,message_version: MV,message: Box<FIXTMessage + Send>) {
         self.tx.send(InternalEngineToThreadEvent::SendMessage(Token(connection.0),message_version.into(),message)).unwrap();
+    }
+
+    pub fn send_resend_response(&mut self,connection: Connection,response: Vec<ResendResponse>) {
+        if response.is_empty() {
+            return;
+        }
+
+        //Perform a quick sanity check to make sure the response is strictly increasing.
+        {
+            fn resend_response_end(response: &ResendResponse) -> u64 {
+               match *response {
+                    ResendResponse::Message(_,ref message) => message.msg_seq_num(),
+                    ResendResponse::Gap(ref range) => {
+                        assert!(range.start <= range.end);
+                        range.end
+                    },
+                }
+            }
+
+            let mut iter = response.iter();
+            let mut previous = resend_response_end(iter.next().unwrap());
+            for item in iter {
+                let next = resend_response_end(item);
+                assert!(previous < next);
+                previous = next;
+            }
+        }
+
+        //Pass response on to actually be sent.
+        self.tx.send(InternalEngineToThreadEvent::ResendMessages(Token(connection.0),response)).unwrap();
     }
 
     pub fn approve_new_connection<IMSN: Into<Option<u64>>>(&mut self,connection: Connection,message: Box<Logon>,inbound_msg_seq_num: IMSN) {

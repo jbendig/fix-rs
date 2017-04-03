@@ -35,8 +35,10 @@ pub trait FIXTMessage: Message {
     fn target_comp_id(&self) -> &<<TargetCompID as Field>::Type as FieldType>::Type;
     fn set_appl_ver_id(&mut self,message_version: MessageVersion);
     fn is_poss_dup(&self) -> bool;
+    fn set_is_poss_dup(&mut self,is_poss_dup: bool);
     fn sending_time(&self) -> <<SendingTime as Field>::Type as FieldType>::Type;
     fn orig_sending_time(&self) -> <<OrigSendingTime as Field>::Type as FieldType>::Type;
+    fn set_orig_sending_time(&mut self,orig_sending_time: <<OrigSendingTime as Field>::Type as FieldType>::Type);
     fn setup_fixt_session_header(&mut self,
                                  msg_seq_num: Option<<<MsgSeqNum as Field>::Type as FieldType>::Type>,
                                  sender_comp_id: <<SenderCompID as Field>::Type as FieldType>::Type,
@@ -139,12 +141,20 @@ macro_rules! define_fixt_message {
                 self.poss_dup_flag
             }
 
+            fn set_is_poss_dup(&mut self,is_poss_dup: bool) {
+                self.poss_dup_flag = is_poss_dup;
+            }
+
             fn sending_time(&self) -> <<$crate::dictionary::fields::SendingTime as $crate::field::Field>::Type as $crate::field_type::FieldType>::Type {
                 self.sending_time
             }
 
             fn orig_sending_time(&self) -> <<$crate::dictionary::fields::OrigSendingTime as $crate::field::Field>::Type as $crate::field_type::FieldType>::Type {
                 self.orig_sending_time
+            }
+
+            fn set_orig_sending_time(&mut self,orig_sending_time: <<$crate::dictionary::fields::OrigSendingTime as $crate::field::Field>::Type as $crate::field_type::FieldType>::Type) {
+                self.orig_sending_time = orig_sending_time;
             }
 
             fn setup_fixt_session_header(&mut self,

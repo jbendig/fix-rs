@@ -37,7 +37,7 @@ use fix_rs::field_tag::{self,FieldTag};
 use fix_rs::fix::ParseError;
 use fix_rs::fix_version::FIXVersion;
 use fix_rs::fixt;
-use fix_rs::fixt::engine::{EngineEvent,ConnectionTerminatedReason};
+use fix_rs::fixt::engine::{EngineEvent,ConnectionTerminatedReason,ResendResponse};
 use fix_rs::fixt::tests::{AUTO_DISCONNECT_AFTER_INBOUND_RESEND_REQUEST_LOOP_COUNT,INBOUND_MESSAGES_BUFFER_LEN_MAX,INBOUND_BYTES_BUFFER_CAPACITY};
 use fix_rs::fixt::message::FIXTMessage;
 use fix_rs::message::{self,NOT_REQUIRED,REQUIRED,Message};
@@ -205,6 +205,9 @@ fn test_recv_logout_send_logout_recv_resend_request() {
     message.begin_seq_no = 2;
     message.end_seq_no = 0;
     test_server.send_message(message);
+
+    //Handle the resend request.
+    engine_gap_fill_resend_request!(client,connection,2..3);
     let _ = engine_poll_message!(client,connection,ResendRequest);
 
     //Make sure ResendRequest is responded to.
@@ -261,6 +264,8 @@ fn test_send_logout_and_recv_resend_request() {
     message.begin_seq_no = 2;
     message.end_seq_no = 0;
     test_server.send_message(message);
+
+    engine_gap_fill_resend_request!(client,connection,2..5);
     let _ = engine_poll_message!(client,connection,ResendRequest);
 
     //Make sure client still responds to ResendRequest while logging out.
@@ -1324,6 +1329,7 @@ fn test_inbound_resend_loop_detection() {
         message.end_seq_no = 0;
         test_server.send_message(message);
 
+        engine_gap_fill_resend_request!(client,connection,2..3);
         let _ = engine_poll_message!(client,connection,ResendRequest);
 
         let message = test_server.recv_message::<SequenceReset>();

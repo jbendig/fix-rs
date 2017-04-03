@@ -99,6 +99,24 @@ macro_rules! engine_poll_message {
 }
 
 #[macro_export]
+macro_rules! engine_gap_fill_resend_request {
+    ( $engine:ident, $connection:ident, $expected_range:expr ) => {
+        engine_poll_event!($engine,EngineEvent::ResendRequested(connection,range) => {
+            let expected_start = $expected_range.start;
+            let expected_end = $expected_range.end;
+
+            assert_eq!(connection,$connection);
+            assert_eq!(range.start,expected_start);
+            assert_eq!(range.end,expected_end);
+
+            let mut response = Vec::new();
+            response.push(ResendResponse::Gap(range));
+            $engine.send_resend_response(connection,response);
+        });
+    };
+}
+
+#[macro_export]
 macro_rules! new_fixt_message {
     ( FROM_SERVER $message_type:ident ) => {{
         let mut message = $message_type::new();

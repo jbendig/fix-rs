@@ -34,7 +34,7 @@ use field::Field;
 use field_type::FieldType;
 use fix::{Parser,ParseError};
 use fix_version::FIXVersion;
-use fixt::engine::{EngineEvent,Connection,ConnectionTerminatedReason,Listener};
+use fixt::engine::{EngineEvent,Connection,ConnectionTerminatedReason,Listener,ResendResponse};
 use fixt::message::{BuildFIXTMessage,FIXTMessage};
 use message_version::MessageVersion;
 use network_read_retry::NetworkReadRetry;
@@ -303,6 +303,7 @@ pub enum InternalEngineToThreadEvent {
     NewConnection(Token,FIXVersion,MessageVersion,<<SenderCompID as Field>::Type as FieldType>::Type,<<TargetCompID as Field>::Type as FieldType>::Type,SocketAddr),
     NewListener(Token,<<SenderCompID as Field>::Type as FieldType>::Type,TcpListener),
     SendMessage(Token,Option<MessageVersion>,Box<FIXTMessage + Send>),
+    ResendMessages(Token,Vec<ResendResponse>),
     ApproveNewConnection(Connection,Box<Logon>,u64),
     RejectNewConnection(Connection,Option<Vec<u8>>),
     Logout(Token),
@@ -796,6 +797,58 @@ impl InternalThread {
                     //TODO: Maybe submit this to a logging system or something?
                 }
             },
+            //Engine wants to send a set of messages as a response to a resend request.
+            InternalEngineToThreadEvent::ResendMessages(token,response) => {
+            if let Entry::Occupied(mut connection_entry) = self.connections.entry(token) {
+                    //TODO: It might make sense to take these responses as a group and do a sorted
+                    //insert into outbound_messages. This way we at least try to prevent excessive
+                    //ResendRequests from being sent to us later.
+                    for message in response {
+                        match message {
+                            ResendResponse::Message(message_version,mut message) => {
+                                //Make sure message is marked as a potential duplicate or else
+                                //we'll trigger an InboundMsgSeqNumLowerThanExpectedError or
+                                //equivalent on the other side of the connection.
+                                message.set_is_poss_dup(true);
+                                let orig_sending_time = message.sending_time();
+                                message.set_orig_sending_time(orig_sending_time);
+
+                                let mut outbound_message = OutboundMessage::from_box(message);
+                                outbound_message.message_version = message_version;
+                                outbound_message.auto_msg_seq_num = false; //We must preserve MsgSeqNum for response.
+                                connection_entry.get_mut().outbound_messages.push(outbound_message);
+                            },
+                            ResendResponse::Gap(range) => {
+                                let mut sequence_reset = SequenceReset::new();
+                                sequence_reset.gap_fill_flag = true;
+                                sequence_reset.msg_seq_num = range.start;
+                                sequence_reset.new_seq_no = range.end;
+                                connection_entry.get_mut().outbound_messages.push(
+                                    OutboundMessage::new(sequence_reset,false)
+                                );
+                            },
+                        }
+                    }
+
+                    //If we are still waiting on a response to our own RespondRequest, send a new
+                    //RespondRequest. Deferring like this is the correct behavior according to FIXT
+                    //v1.1, page 13.
+                    if connection_entry.get().inbound_resend_request_msg_seq_num.is_some() {
+                        let mut resend_request = ResendRequest::new();
+                        resend_request.begin_seq_no = connection_entry.get().inbound_msg_seq_num;
+                        resend_request.end_seq_no = 0;
+                        connection_entry.get_mut().outbound_messages.push(
+                            OutboundMessage::from(resend_request)
+                        );
+                    }
+
+                    try_write_connection_or_terminate!(connection_entry,self);
+                }
+                else {
+                    //Silently ignore message for invalid connection.
+                    //TODO: Maybe submit this to a logging system or something?
+                }
+            },
             //Engine wants to approve logon of a connection that was accepted by a listener.
             InternalEngineToThreadEvent::ApproveNewConnection(connection,message,inbound_msg_seq_num) => {
                 if let Entry::Occupied(mut connection_entry) = self.connections.entry(Token(connection.0)) {
@@ -1170,15 +1223,10 @@ impl InternalThread {
                         connection.inbound_last_seen_resend_request.count = 1;
                     }
 
-                    //Fill message gap by resending messages.
-                    //TODO: This shouldn't always be a gap fill. Only for
-                    //administrative messages. Need to handle business messages
-                    //appropriately.
-                    let mut sequence_reset = SequenceReset::new();
-                    sequence_reset.gap_fill_flag = true;
-                    sequence_reset.msg_seq_num = resend_request.begin_seq_no;
-                    sequence_reset.new_seq_no = if resend_request.end_seq_no == 0 { connection.outbound_msg_seq_num } else { resend_request.end_seq_no + 1 }; //TODO: Handle potential overflow.
-                    connection.outbound_messages.push(OutboundMessage::new(sequence_reset,false));
+                    //Notify the engine of which messages are requested. Then it's up to the engine
+                    //to give said messages to us so we can send them.
+                    let end_seq_no = if resend_request.end_seq_no == 0 { connection.outbound_msg_seq_num } else { resend_request.end_seq_no + 1 }; //TODO: Handle potential overflow.
+                    tx.send(EngineEvent::ResendRequested(connection.as_connection(),resend_request.begin_seq_no..end_seq_no)).unwrap();
                 }
 
                 //If:
@@ -1226,12 +1274,15 @@ impl InternalThread {
                 None => return None,
             };
 
-            //Fetch the messages the remote says were sent but we never
-            //received using a ResendRequest.
-            let mut resend_request = ResendRequest::new();
-            resend_request.begin_seq_no = connection.inbound_msg_seq_num;
-            resend_request.end_seq_no = 0;
-            connection.outbound_messages.push(OutboundMessage::from(resend_request));
+            //Fetch the messages the remote says were sent but we never received using
+            //ResendRequest. The one exception is if we are _receiving_ a ResendRequest message
+            //because then we're suppose to defer until after we respond.
+            if message.as_any().downcast_ref::<ResendRequest>().is_none() {
+                let mut resend_request = ResendRequest::new();
+                resend_request.begin_seq_no = connection.inbound_msg_seq_num;
+                resend_request.end_seq_no = 0;
+                connection.outbound_messages.push(OutboundMessage::from(resend_request));
+            }
 
             //Keep track of the newest msg_seq_num that's been seen so we know when the message gap has
             //been filled.

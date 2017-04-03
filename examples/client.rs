@@ -110,6 +110,11 @@ fn main() {
             EngineEvent::MessageRejected(connection_id,message) => {
                 println!("({})Message was rejected",connection_id);
             },
+            //Connected received a ResendRequest message for the messages in
+            //[range.start,range.end).
+            EngineEvent::ResendRequested(connection_id,range) => {
+                println!("({})Received ResendRequest for messages where {} <= MsgSeqNum < {}",connection_id,range.start,range.end);
+            },
             //Connection received a SequenceReset-Reset message where NewSeqNo is set to the same
             //number as the expected MsgSeqNum.
             EngineEvent::SequenceResetResetHasNoEffect(connection_id) => {

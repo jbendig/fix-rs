@@ -95,11 +95,19 @@ impl FIXTMessage for NullMessage {
         unimplemented!();
     }
 
+    fn set_is_poss_dup(&mut self,_is_poss_dup: bool) {
+        unimplemented!();
+    }
+
     fn sending_time(&self) -> <<SendingTime as Field>::Type as FieldType>::Type {
         unimplemented!();
     }
 
     fn orig_sending_time(&self) -> <<OrigSendingTime as Field>::Type as FieldType>::Type {
+        unimplemented!();
+    }
+
+    fn set_orig_sending_time(&mut self,_orig_sending_time: <<OrigSendingTime as Field>::Type as FieldType>::Type) {
         unimplemented!();
     }
 

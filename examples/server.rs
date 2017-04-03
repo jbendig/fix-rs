@@ -8,7 +8,7 @@ extern crate fix_rs;
 use std::time::Duration;
 
 use fix_rs::dictionary::messages::{BusinessMessageReject,Heartbeat,Logon,Logout,Reject,ResendRequest,SequenceReset,TestRequest};
-use fix_rs::fixt::engine::{Engine,EngineEvent};
+use fix_rs::fixt::engine::{Engine,EngineEvent,ResendResponse};
 
 fn main() {
     //List only the messages we need. The define_dictionary!() macro creates the following for us:
@@ -119,6 +119,16 @@ fn main() {
             //further action is necessary but it might be worth logging.
             EngineEvent::MessageRejected(connection_id,message) => {
                 println!("({})Message was rejected",connection_id);
+            },
+            //Connected received a ResendRequest message for the messages in
+            //[range.start,range.end).
+            EngineEvent::ResendRequested(connection_id,range) => {
+                //Messages should be added to response in order. Administrative messages should be
+                //filled with a ResendResponse::Gap. Business messages should each be added as a
+                //ResendResponse::Message.
+                let mut response = Vec::new();
+                response.push(ResendResponse::Gap(range));
+                server.send_resend_response(connection_id,response);
             },
             //Connection received a SequenceReset-Reset message where NewSeqNo is set to the same
             //number as the expected MsgSeqNum.
