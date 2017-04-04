@@ -5,9 +5,10 @@ authors = ["James Bendig <jbendig@starbytesoftware.com>"]
 description = "FIX (Financial Information Exchange) engine written in Rust."
 homepage = "https://github.com/jbendig/fix-rs"
 repository = "https://github.com/jbendig/fix-rs"
-# documentation = "TODO"
+documentation = "https://docs.rs/fix-rs/"
 readme = "README.md"
 keywords = ["fix", "protocol", "finance", "trading", "library"]
+categories = ["network-programming", ]
 license = "MIT/Apache-2.0"
 
 [features]
@@ -15,7 +16,7 @@ default = []
 load-testing = ["clap"]
 
 [dependencies]
-"fix-rs-macros" = { path = "fix-rs-macros", version ="0.1.0" }
+"fix-rs-macros" = { path = "fix-rs-macros", version = "0.1.0" }
 "mio" = "0.6"
 "chrono" = "0.2"
 "time" = "0.1"
