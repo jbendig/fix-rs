@@ -596,8 +596,8 @@ fn test_request_latency() -> Result<(),io::Error> {
 
 fn main() {
     let matches = App::new("fix-rs-lt")
-                       .version("0.1.0")
-                       .author("James Bendig")
+                       .version(env!("CARGO_PKG_VERSION"))
+                       .author(env!("CARGO_PKG_AUTHORS"))
                        .about("Load/Latency testing tool for fix-rs")
                        .arg(Arg::with_name("type")
                                  .required(true)
