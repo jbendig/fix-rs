@@ -212,6 +212,15 @@ macro_rules! define_message {
                 result
             }
 
+            fn required_field_count(version: $crate::message_version::MessageVersion) -> usize {
+                let mut result = 0;
+                $( if match_message_version!(version,$( $version )*) && $field_required {
+                    result += 1;
+                } )*
+
+                result
+            }
+
             fn fields(version: $crate::message_version::MessageVersion) -> $crate::message::FieldHashMap {
                 let mut fields = ::std::collections::HashMap::with_capacity_and_hasher($message_name::field_count(version) * 1,$crate::hash::BuildFieldHasher);
                 $( if match_message_version!(version,$( $version )*) {
@@ -222,7 +231,7 @@ macro_rules! define_message {
             }
 
             fn required_fields(version: $crate::message_version::MessageVersion) -> $crate::message::FieldHashSet {
-                let mut result = ::std::collections::HashSet::with_hasher($crate::hash::BuildFieldHasher);
+                let mut result = ::std::collections::HashSet::with_capacity_and_hasher($message_name::required_field_count(version) * 1,$crate::hash::BuildFieldHasher);
                 $( if match_message_version!(version,$( $version )*) && $field_required {
                     result.insert(<$field_type as $crate::field::Field>::tag());
                 } )*
