@@ -123,7 +123,7 @@ fn main() {
             //Connection received a SequenceReset-Reset message where NewSeqNo is set to an already
             //seen MsgSeqNum.
             EngineEvent::SequenceResetResetInThePast(connection_id) => {
-                println!("{}: Received SequenceReset-Reset where NoSeqNo is in the past",connection_id);
+                println!("({})Received SequenceReset-Reset where NoSeqNo is in the past",connection_id);
             },
             //Internal error setting up Engine (before any connections were added).
             EngineEvent::FatalError(_,_) => {
