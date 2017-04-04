@@ -9,6 +9,20 @@
 // at your option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! fix-rs is a [FIX][1] (Financial Information Exchange) engine written in Rust.
+//!
+//! # Supported FIX Versions
+//! - FIX 4.0
+//! - FIX 4.1
+//! - FIX 4.2
+//! - FIX 4.3
+//! - FIX 4.4
+//! - FIX 5.0
+//! - FIX 5.0 SP 1
+//! - FIX 5.0 SP 2
+//!
+//! [1]: http://www.fixtradingcommunity.org/
+
 #![feature(attr_literals)]
 #![feature(plugin)]
 #![feature(proc_macro)]
