@@ -127,6 +127,7 @@ pub struct BuildMessageInternalCache {
     pub fields_fix50sp2: Option<FieldHashMap>,
 }
 
+#[doc(hidden)]
 #[macro_export]
 macro_rules! symbol_to_message_version {
     ( FIX40 ) => { $crate::message_version::MessageVersion::FIX40 };
@@ -139,6 +140,7 @@ macro_rules! symbol_to_message_version {
     ( FIX50SP2 ) => { $crate::message_version::MessageVersion::FIX50SP2 };
 }
 
+#[doc(hidden)]
 #[macro_export]
 macro_rules! match_message_version {
     ( $version:ident, $minimum_version:tt ) => {{

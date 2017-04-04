@@ -9,6 +9,8 @@
 // at your option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![doc(hidden)]
+
 use std::hash::{BuildHasher,Hasher};
 
 pub struct FieldHasher {
