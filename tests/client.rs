@@ -1320,7 +1320,6 @@ fn test_inbound_resend_loop_detection() {
 
     //Have server ignore the Heartbeat response by sending ResendRequest a few times. The client
     //should eventually logout and disconnect.
-    //TODO: Doesn't actually logout yet. :X
     const BASE_MSG_SEQ_NUM: u64 = 3;
     for x in 0..AUTO_DISCONNECT_AFTER_INBOUND_RESEND_REQUEST_LOOP_COUNT {
         let mut message = new_fixt_message!(ResendRequest);
