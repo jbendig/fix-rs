@@ -17,6 +17,8 @@
 
 This project is an early work in progress and still under heavy development.
 
+Current progress is focused on evaluating whether to support [tokio](https://tokio.rs).
+
 ## Examples
 
 - **Client**: [examples/client.rs](examples/client.rs) shows how to initiate a connection and communicate with a FIX engine.
