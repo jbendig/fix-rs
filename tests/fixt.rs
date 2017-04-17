@@ -43,7 +43,7 @@ use fix_rs::fix::ParseError;
 use fix_rs::field_tag::{self,FieldTag};
 use fix_rs::fix_version::FIXVersion;
 use fix_rs::fixt;
-use fix_rs::fixt::engine::{Engine,EngineEvent,Connection,ConnectionTerminatedReason,Listener,ResendResponse};
+use fix_rs::engine::event_engine::{EventEngine as Engine,EngineEvent,Connection,ConnectionTerminatedReason,Listener,ResendResponse};
 use fix_rs::fixt::message::{BuildFIXTMessage,FIXTMessage};
 use fix_rs::message::{self,NOT_REQUIRED,REQUIRED,MessageDetails};
 use fix_rs::message_version::{self,MessageVersion};

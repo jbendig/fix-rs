@@ -28,7 +28,7 @@ use fix_rs::dictionary::field_types::other::EncryptMethod;
 use fix_rs::dictionary::messages::Logon;
 use fix_rs::fix::Parser;
 use fix_rs::fix_version::FIXVersion;
-use fix_rs::fixt::engine::{Engine,EngineEvent,Connection,Listener};
+use fix_rs::engine::event_engine::{EventEngine as Engine,EngineEvent,Connection,Listener};
 use fix_rs::fixt::message::{BuildFIXTMessage,FIXTMessage};
 use fix_rs::message_version::MessageVersion;
 

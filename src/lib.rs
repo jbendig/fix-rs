@@ -24,6 +24,7 @@
 //! [1]: http://www.fixtradingcommunity.org/
 
 #![feature(attr_literals)]
+#![feature(conservative_impl_trait)]
 #![feature(plugin)]
 #![feature(proc_macro)]
 
@@ -34,9 +35,12 @@
 extern crate chrono;
 #[macro_use]
 extern crate fix_rs_macros;
+extern crate futures;
 extern crate mio;
 extern crate phf;
 extern crate time;
+extern crate tokio_core;
+extern crate tokio_io;
 
 #[cfg(feature="load-testing")]
 pub mod byte_buffer;
@@ -45,6 +49,7 @@ mod byte_buffer;
 #[macro_use]
 pub mod fixt;
 pub mod constant;
+pub mod engine;
 #[macro_use]
 pub mod field;
 pub mod field_tag;

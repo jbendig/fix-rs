@@ -23,6 +23,9 @@ load-testing = ["clap"]
 "phf" = "0.7.21"
 "phf_macros" = "0.7.21"
 "clap" = { version = "~2.19.0", optional = true }
+"futures" = "0.1.13"
+"tokio-core" = "0.1.6"
+"tokio-io" = "0.1.1"
 
 [[bin]]
 name="fix-rs-lt"

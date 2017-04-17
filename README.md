@@ -15,9 +15,13 @@
 
 ## Status
 
-This project is an early work in progress and still under heavy development.
+This is the [tokio](https://tokio.rs) branch for fix-rs. It's used to evaluate when/if tokio should be supported. The goal is to have an API compatible with `fixt::engine::Engine` but have the backend using tokio instead of mio. Then, ideally the tokio parts could be reused for custom engines with different performance requirements. This new version is found in the `engine/` directory.
 
-Current progress is focused on evaluating whether to support [tokio](https://tokio.rs).
+Thoughts so far as of tokio-core 0.1.6:
+
+- Cryptic compiler errors make it very hard to use.
+- Sharing state between futures is complicated and makes reusability difficult.
+- Performance is slightly worse than using mio directly.
 
 ## Examples
 

@@ -156,7 +156,7 @@ pub enum ResendResponse {
     Gap(Range<u64>),
 }
 
-fn to_socket_addr<A: ToSocketAddrs>(address: A) -> Option<SocketAddr> {
+pub fn to_socket_addr<A: ToSocketAddrs>(address: A) -> Option<SocketAddr> {
     //Use first socket address. This more or less emulates TcpStream::connect.
     match address.to_socket_addrs() {
         Ok(mut address_iter) => address_iter.next(),

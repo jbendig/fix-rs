@@ -8,7 +8,7 @@ extern crate fix_rs;
 use std::time::Duration;
 
 use fix_rs::dictionary::messages::{BusinessMessageReject,Heartbeat,Logon,Logout,Reject,ResendRequest,SequenceReset,TestRequest};
-use fix_rs::fixt::engine::{Engine,EngineEvent,ResendResponse};
+use fix_rs::engine::event_engine::{EventEngine as Engine,EngineEvent,ResendResponse};
 
 fn main() {
     //List only the messages we need. The define_dictionary!() macro creates the following for us:
@@ -42,7 +42,7 @@ fn main() {
 
     //Poll server for new events. Events include new connections, connection status updates,
     //received messages, errors, etc.
-    let timeout_duration = Duration::from_secs(120); //Optional
+    let timeout_duration = Duration::from_secs(12000); //Optional
     while let Some(event) = server.poll(timeout_duration) {
         match event {
             //Listener accepted a new connection and is awaiting a Logon message.
