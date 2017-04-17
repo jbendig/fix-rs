@@ -9,6 +9,7 @@
 // at your option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::cmp::{Ord,Ordering,PartialOrd};
 use std::fmt;
 
 #[derive(Clone,Copy,Eq,Hash,PartialEq)]
@@ -73,5 +74,17 @@ impl<'a> From<&'a [u8]> for FieldTag {
 impl From<u64> for FieldTag {
     fn from(tag: u64) -> Self {
         FieldTag(tag)
+    }
+}
+
+impl PartialOrd for FieldTag {
+    fn partial_cmp(&self,other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for FieldTag {
+    fn cmp(&self,other: &Self) -> Ordering {
+        self.0.cmp(&other.0)
     }
 }
