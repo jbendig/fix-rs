@@ -25,7 +25,7 @@ use std::sync::{Arc,Mutex};
 use std::time::Duration;
 
 use byte_buffer::ByteBuffer;
-use dictionary::{CloneDictionary,standard_msg_types};
+use dictionary::{CloneDictionary,administrative_msg_types,standard_msg_types};
 use dictionary::field_types::generic::UTCTimestampFieldType;
 use dictionary::field_types::other::{BusinessRejectReason,MsgDirection,SessionRejectReason};
 use dictionary::fields::{ApplVerID,MsgSeqNum,SenderCompID,TargetCompID,OrigSendingTime};
@@ -287,16 +287,6 @@ fn reset_inbound_timeout(timer: &mut Timer<(TimeoutType,Token)>,inbound_timeout:
         TimeoutType::Inbound,
         token
     );
-}
-
-fn administrative_msg_types() -> Vec<&'static [u8]> {
-    vec![Logon::msg_type(),
-         Logout::msg_type(),
-         Reject::msg_type(),
-         ResendRequest::msg_type(),
-         SequenceReset::msg_type(),
-         TestRequest::msg_type(),
-         Heartbeat::msg_type()]
 }
 
 pub enum InternalEngineToThreadEvent {

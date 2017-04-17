@@ -70,6 +70,18 @@ impl CloneDictionary for HashMap<&'static [u8],Box<BuildFIXTMessage + Send>> {
     }
 }
 
+pub fn administrative_msg_types() -> Vec<&'static [u8]> {
+    use self::messages::{Logon,Logout,Reject,ResendRequest,SequenceReset,TestRequest,Heartbeat};
+
+    vec![Logon::msg_type(),
+         Logout::msg_type(),
+         Reject::msg_type(),
+         ResendRequest::msg_type(),
+         SequenceReset::msg_type(),
+         TestRequest::msg_type(),
+         Heartbeat::msg_type()]
+}
+
 pub fn standard_msg_types() -> HashSet<&'static [u8]> {
     let mut result: HashSet<&'static [u8]> = HashSet::with_capacity(118 * 2);
 
