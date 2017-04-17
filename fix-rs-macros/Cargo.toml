@@ -1,6 +1,6 @@
 [package]
 name = "fix-rs-macros"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["James Bendig <jbendig@starbytesoftware.com>"]
 description = "Derive macros used by fix-rs."
 homepage = "https://github.com/jbendig/fix-rs"
