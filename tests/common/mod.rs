@@ -15,6 +15,7 @@ extern crate mio;
 
 use mio::{Events,Poll,PollOpt,Ready,Token};
 use mio::tcp::{TcpListener,TcpStream};
+use mio::unix::UnixReady;
 use std::any::Any;
 use std::collections::HashMap;
 use std::net::{Ipv4Addr,SocketAddr,SocketAddrV4};
@@ -234,7 +235,7 @@ impl TestStream {
         //and Windows where a stream can only be registered with one Poll for the life of the
         //socket. See: https://github.com/carllerche/mio/issues/327
         let poll = Poll::new().unwrap();
-        poll.register(&stream,Token(0),Ready::all(),PollOpt::edge()).unwrap();
+        poll.register(&stream,Token(0),Ready::readable() | Ready::writable() | UnixReady::hup() | UnixReady::error(),PollOpt::edge()).unwrap();
 
         let mut parser = Parser::new(message_dictionary,MAX_MESSAGE_SIZE);
         parser.set_default_message_version(message_version);
@@ -380,7 +381,8 @@ impl TestStream {
             self.poll.poll(&mut events,Some(Duration::from_millis(0))).unwrap();
 
             for event in events.iter() {
-                if event.kind().is_hup() || event.kind().is_error() {
+                let readiness = UnixReady::from(event.readiness());
+                if readiness.is_hup() || readiness.is_error() {
                     return true;
                 }
             }

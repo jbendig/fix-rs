@@ -9,6 +9,8 @@
 // at your option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(deprecated)]
+
 use mio::{Events,Poll,PollOpt,Ready,Token};
 use mio::channel::{channel,Receiver,Sender};
 use std::collections::HashMap;

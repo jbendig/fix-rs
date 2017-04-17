@@ -9,9 +9,12 @@
 // at your option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(deprecated)]
+
 use mio::{Event,Events,Poll,PollOpt,Ready,Token};
 use mio::channel::{Receiver,Sender};
 use mio::tcp::{Shutdown,TcpListener,TcpStream};
+use mio::unix::UnixReady;
 use mio::timer::{Timeout,Timer};
 use mio::timer::Builder as TimerBuilder;
 use std::cmp;
@@ -752,7 +755,10 @@ impl InternalThread {
                                                          target_comp_id);
 
                 //Have poll let us know when we can can read or write.
-                if let Err(e) = self.poll.register(&connection.socket,connection.token,Ready::all(),PollOpt::edge()) {
+                if let Err(e) = self.poll.register(&connection.socket,
+                                                   connection.token,
+                                                   Ready::readable() | Ready::writable() | UnixReady::hup() | UnixReady::error(),
+                                                   PollOpt::edge()) {
                     self.tx.send(EngineEvent::ConnectionFailed(connection.as_connection(),e)).unwrap();
                     return Ok(())
                 }
@@ -1144,7 +1150,10 @@ impl InternalThread {
                         connection.status = ConnectionStatus::ReceivingLogon(listener_entry.get().as_listener(),timeout);
 
                         //Have poll let us know when we can can read or write.
-                        if let Err(_) = self.poll.register(&connection.socket,connection.token,Ready::all(),PollOpt::edge()) {
+                        if let Err(_) = self.poll.register(&connection.socket,
+                                                           connection.token,
+                                                           Ready::readable() | Ready::writable() | UnixReady::hup() | UnixReady::error(),
+                                                           PollOpt::edge()) {
                             let _ = connection.socket.shutdown(Shutdown::Both);
                             self.tx.send(EngineEvent::ConnectionDropped(listener_entry.get().as_listener(),addr)).unwrap();
                             return Ok(())
@@ -1838,7 +1847,7 @@ pub fn internal_engine_thread(poll: Poll,
     //Have poll let us know when we need to retry parsing and/or reading incoming bytes. This
     //typically occurs when messages are being received faster than they can be parsed in order to
     //give the already parsed messages a chance to be processed.
-    if let Err(e) = internal_thread.poll.register(&internal_thread.network_read_retry,NETWORK_READ_RETRY_TOKEN,Ready::all(),PollOpt::level()) {
+    if let Err(e) = internal_thread.poll.register(&internal_thread.network_read_retry,NETWORK_READ_RETRY_TOKEN,Ready::readable(),PollOpt::level()) {
         internal_thread.tx.send(EngineEvent::FatalError("Cannot register network read retry for polling",e)).unwrap();
         return;
     }

@@ -60,7 +60,7 @@ impl NetworkReadRetry {
 
     pub fn remove_by_index(&mut self,index: usize) -> Option<Token> {
         if let Some(ref mut set_readiness) = *self.set_readiness.borrow_mut() {
-            let _ = set_readiness.set_readiness(Ready::none());
+            let _ = set_readiness.set_readiness(Ready::empty());
         }
 
         self.tokens_to_retry.remove(index)
@@ -73,7 +73,8 @@ impl Evented for NetworkReadRetry {
             return Err(io::Error::new(io::ErrorKind::Other,"NetworkReadRetry already registered"));
         }
 
-        let (registration,set_readiness) = Registration::new(poll,token,interest,opts);
+        let (registration,set_readiness) = Registration::new2();
+        try!(registration.register(poll,token,interest,opts));
         *self.registration.borrow_mut() = Some(registration);
         *self.set_readiness.borrow_mut() = Some(set_readiness);
 
@@ -82,7 +83,7 @@ impl Evented for NetworkReadRetry {
 
     fn reregister(&self,poll: &Poll,token: Token,interest: Ready,opts: PollOpt) -> io::Result<()> {
         if let Some(ref mut registration) = *self.registration.borrow_mut() {
-            return registration.update(poll,token,interest,opts);
+            return poll.reregister(registration,token,interest,opts);
         }
 
         Err(io::Error::new(io::ErrorKind::Other,"NetworkReadRetry not registered"))
@@ -90,7 +91,7 @@ impl Evented for NetworkReadRetry {
 
     fn deregister(&self,poll: &Poll) -> io::Result<()> {
         if let Some(ref mut registration) = *self.registration.borrow_mut() {
-            return registration.deregister(poll);
+            return poll.deregister(registration);
         }
 
         Err(io::Error::new(io::ErrorKind::Other,"NetworkReadRetry not registered"))
