@@ -1,4 +1,4 @@
- // Copyright 2017 James Bendig. See the COPYRIGHT file at the top-level
+// Copyright 2017 James Bendig. See the COPYRIGHT file at the top-level
 // directory of this distribution.
 //
 // Licensed under:
