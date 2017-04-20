@@ -23,8 +23,9 @@ use chrono::TimeZone;
 use std::any::Any;
 use std::collections::HashMap;
 
+use fix_rs::dictionary::field_types::generic::RepeatingGroupFieldType;
 use fix_rs::dictionary::field_types::other::{EncryptMethod,RateSource,RateSourceType};
-use fix_rs::dictionary::fields::{EncryptMethod as EncryptMethodField,HeartBtInt,MsgSeqNum,SendingTime,SenderCompID,TargetCompID,NoMsgTypeGrp,RawData,RawDataLength,NoRateSources,Symbol,NoOrders,TestReqID,Text,OrigSendingTime};
+use fix_rs::dictionary::fields::{EncryptMethod as EncryptMethodField,HeartBtInt,MsgSeqNum,SendingTime,SenderCompID,TargetCompID,NoMsgTypeGrp,RawData,RawDataLength,Symbol,TestReqID,Text,OrigSendingTime,ClOrdID,AllocAccount,RateSource as RateSourceField,RateSourceType as RateSourceTypeField,ReferencePage as ReferencePageField};
 use fix_rs::dictionary::messages::Heartbeat;
 use fix_rs::field::Field;
 use fix_rs::field_tag::{self,FieldTag};
@@ -40,16 +41,16 @@ const PARSE_MESSAGE_BY_STREAM: bool = true;
 const MAX_MESSAGE_SIZE: u64 = 4096;
 
 define_message!(LogonTest: b"L" => {
-    REQUIRED, encrypt_method: EncryptMethodField,
-    REQUIRED, heart_bt_int: HeartBtInt,
-    REQUIRED, msg_seq_num: MsgSeqNum,
-    NOT_REQUIRED, sending_time: SendingTime,
-    NOT_REQUIRED, sender_comp_id: SenderCompID,
-    NOT_REQUIRED, target_comp_id: TargetCompID,
-    NOT_REQUIRED, raw_data_length: RawDataLength,
-    NOT_REQUIRED, raw_data: RawData,
-    NOT_REQUIRED, msg_type_grp: NoMsgTypeGrp,
-    NOT_REQUIRED, text: Text,
+    REQUIRED, encrypt_method: EncryptMethodField [FIX40..],
+    REQUIRED, heart_bt_int: HeartBtInt [FIX40..],
+    REQUIRED, msg_seq_num: MsgSeqNum [FIX40..],
+    NOT_REQUIRED, sending_time: SendingTime [FIX40..],
+    NOT_REQUIRED, sender_comp_id: SenderCompID [FIX40..],
+    NOT_REQUIRED, target_comp_id: TargetCompID [FIX40..],
+    NOT_REQUIRED, raw_data_length: RawDataLength [FIX40..],
+    NOT_REQUIRED, raw_data: RawData [FIX40..],
+    NOT_REQUIRED, msg_type_grp: NoMsgTypeGrp [FIX40..],
+    NOT_REQUIRED, text: Text [FIX40..],
 });
 
 impl FIXTMessage for LogonTest {
@@ -434,8 +435,8 @@ fn checksum_tag_test() {
 #[test]
 fn length_tag_test() {
     define_message!(LengthTagTestMessage: b"L" => {
-        REQUIRED, raw_data_length: RawDataLength,
-        REQUIRED, raw_data: RawData,
+        REQUIRED, raw_data_length: RawDataLength [FIX40..],
+        REQUIRED, raw_data: RawData [FIX40..],
     });
 
     impl FIXTMessage for LengthTagTestMessage {
@@ -540,9 +541,19 @@ fn length_tag_test() {
 
 #[test]
 fn repeating_groups_test() {
+    define_fields!(
+        NoRateSources: RepeatingGroupFieldType<RateSourceGrp> = 1445,
+    );
+
+    define_message!(RateSourceGrp {
+        REQUIRED, rate_source: RateSourceField [FIX40..],
+        REQUIRED, rate_source_type: RateSourceTypeField [FIX40..],
+        NOT_REQUIRED, reference_page: ReferencePageField [FIX40..],
+    });
+
     define_message!(RepeatingGroupsTestMessage: b"L" => {
-        NOT_REQUIRED, rate_sources: NoRateSources,
-        NOT_REQUIRED, symbol: Symbol,
+        NOT_REQUIRED, rate_sources: NoRateSources [FIX40..],
+        NOT_REQUIRED, symbol: Symbol [FIX40..],
     });
 
     impl FIXTMessage for RepeatingGroupsTestMessage {
@@ -728,8 +739,22 @@ fn repeating_groups_test() {
 
 #[test]
 fn nested_repeating_groups_test() {
+    define_fields!(
+        NoOrders: RepeatingGroupFieldType<Order> = 73,
+        NoAllocs: RepeatingGroupFieldType<Alloc> = 78,
+    );
+
+    define_message!(Alloc {
+        REQUIRED, alloc_account: AllocAccount [FIX40..],
+    });
+
+    define_message!(Order {
+        REQUIRED, cl_ord_id: ClOrdID [FIX40..],
+        NOT_REQUIRED, allocs: NoAllocs [FIX40..],
+    });
+
     define_message!(NestedRepeatingGroupsTestMessage: b"L" => {
-        REQUIRED, orders: NoOrders,
+        REQUIRED, orders: NoOrders [FIX40..],
     });
 
     impl FIXTMessage for NestedRepeatingGroupsTestMessage {

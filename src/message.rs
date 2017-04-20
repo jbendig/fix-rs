@@ -163,11 +163,6 @@ macro_rules! match_message_version {
 
 #[macro_export]
 macro_rules! define_message {
-    //TODO: Remove this helper when version is added to all fields.
-    ( $message_name:ident $( : $message_type:expr => )* { $( $field_required:expr, $field_name:ident : $field_type:ty $(=> REQUIRED_WHEN $required_when_expr:expr)* ),* $(),* } ) => {
-        define_message!($message_name $( : $message_type => )* { $( $field_required, $field_name : $field_type [FIX40..] $(=> REQUIRED_WHEN $required_when_expr)*, )* });
-    };
-
     ( $message_name:ident $( : $message_type:expr => )* { $( $field_required:expr, $field_name:ident : $field_type:ty [$( $version:tt )*] $(=> REQUIRED_WHEN $required_when_expr:expr)* ),* $(),* } ) => {
         #[derive(BuildMessage)]
         pub struct $message_name {
