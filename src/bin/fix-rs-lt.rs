@@ -21,6 +21,7 @@ extern crate mio;
 use clap::{App,Arg};
 use mio::{Events,Poll,PollOpt,Ready,Token};
 use mio::tcp::TcpStream;
+use mio::unix::UnixReady;
 use std::any::Any;
 use std::collections::HashMap;
 use std::net::{Ipv4Addr,SocketAddr,SocketAddrV4};
@@ -260,7 +261,10 @@ impl Connection {
             inbound_buffer: ByteBuffer::with_capacity(16384),
         };
 
-        connection.poll.register(&connection.stream,Token(0),Ready::all(),PollOpt::edge()).unwrap();
+        connection.poll.register(&connection.stream,
+                                 Token(0),
+                                 Ready::readable() | Ready::writable() | UnixReady::hup() | UnixReady::error(),
+                                 PollOpt::edge()).unwrap();
 
         //Logon.
         let mut logon_message = Logon::new();
@@ -512,14 +516,15 @@ fn test_request_load() -> Result<(),io::Error> {
         }
 
         for event in events.iter() {
-            if event.kind().is_writable() {
+            let readiness = event.readiness();
+            if readiness.is_writable() {
                 try!(connection.send_all_messages(&mut iter,|ref message| {
                     //TODO: Maybe check the test_req_id instead to be more general?
                     latency_results[message.msg_seq_num() as usize - 2].begin_send_time = Instant::now();
                 }));
            }
 
-            if event.kind().is_readable() {
+            if readiness.is_readable() {
                 try!(connection.recv_all_messages(|ref message| {
                     latency_results[message.msg_seq_num() as usize - 2].end_parse_time = Instant::now();
 
@@ -530,7 +535,8 @@ fn test_request_load() -> Result<(),io::Error> {
                 }));
             }
 
-            if event.kind().is_hup() {
+            let readiness = UnixReady::from(readiness);
+            if readiness.is_hup() {
                 panic!("Other side closed connection");
             }
         }
@@ -565,7 +571,8 @@ fn test_request_latency() -> Result<(),io::Error> {
         }
 
         for event in events.iter() {
-            if event.kind().is_readable() {
+            let readiness = event.readiness();
+            if readiness.is_readable() {
                 try!(connection.recv_all_messages(|ref message| {
                     latency_results[message.msg_seq_num() as usize - 2].end_parse_time = Instant::now();
 
@@ -576,7 +583,8 @@ fn test_request_latency() -> Result<(),io::Error> {
                 }));
             }
 
-            if event.kind().is_hup() {
+            let readiness = UnixReady::from(readiness);
+            if readiness.is_hup() {
                 panic!("Other side closed connection");
             }
 
