@@ -430,7 +430,18 @@ fn checksum_tag_test() {
     }
 }
 
-/*TODO: Duplicate tag test. */
+#[test]
+fn duplicate_tag_test() {
+    //TODO: Duplicate tags for string lists should be grouped up instead.
+
+    let duplicate_tag_message = b"8=FIX.4.2\x019=70\x0135=L\x0149=SERVER\x0156=CLIENT\x0134=177\x0152=20090107-18:15:16\x0198=0\x0198=0\x01108=30\x0110=040\x01";
+    let result = parse_message::<LogonTest>(duplicate_tag_message);
+    assert!(result.is_err());
+    match result.err().unwrap() {
+        fix_rs::fix::ParseError::DuplicateTag(tag) => assert_eq!(tag,FieldTag(98)),
+        _ => assert!(false),
+    }
+}
 
 #[test]
 fn length_tag_test() {
