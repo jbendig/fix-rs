@@ -115,9 +115,6 @@ impl FIXTMessage for Heartbeat {
         unimplemented!();
     }
 
-    fn set_appl_ver_id(&mut self,_appl_ver_id: MessageVersion) {
-    }
-
     fn is_poss_dup(&self) -> bool {
         unimplemented!();
     }
@@ -177,9 +174,6 @@ impl FIXTMessage for TestRequest {
 
     fn target_comp_id(&self) -> &<<TargetCompID as Field>::Type as FieldType>::Type {
         &self.target_comp_id
-    }
-
-    fn set_appl_ver_id(&mut self,_appl_ver_id: MessageVersion) {
     }
 
     fn is_poss_dup(&self) -> bool {

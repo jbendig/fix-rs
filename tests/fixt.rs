@@ -101,8 +101,7 @@ fn test_1B() {
         message.sender_comp_id = logon_message.sender_comp_id.clone();
         assert_eq!(message.target_comp_id,SERVER_TARGET_COMP_ID);
         message.target_comp_id = logon_message.target_comp_id.clone();
-        assert_eq!(message.appl_ver_id.unwrap(),MessageVersion::FIX50SP2);
-        message.appl_ver_id = logon_message.appl_ver_id.clone();
+        assert_eq!(message.meta.as_ref().unwrap().message_version,MessageVersion::FIX50SP2);
         assert!(message == logon_message);
     }
 
@@ -246,7 +245,7 @@ fn test_1S() {
         assert!((initial_logon_message.sending_time - message.sending_time).num_milliseconds() < 50);
         assert_eq!(message.sender_comp_id,SERVER_SENDER_COMP_ID);
         assert_eq!(message.target_comp_id,SERVER_TARGET_COMP_ID);
-        assert_eq!(message.appl_ver_id.unwrap(),MessageVersion::FIX50SP2);
+        assert_eq!(message.meta.unwrap().message_version,MessageVersion::FIX50SP2);
     }
 
     //a. continued. Same as above except MsgSeqNum is too high so server should send a

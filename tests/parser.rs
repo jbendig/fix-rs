@@ -74,9 +74,6 @@ impl FIXTMessage for LogonTest {
         unimplemented!();
     }
 
-    fn set_appl_ver_id(&mut self,_message_version: MessageVersion) {
-    }
-
     fn is_poss_dup(&self) -> bool {
         unimplemented!();
     }
@@ -143,7 +140,7 @@ fn parse_message_with_ver<T: FIXTMessage + FIXTMessageBuildable + MessageDetails
     }
 
     assert_eq!(parser.messages.len(),1);
-    let mut casted_message = parser.messages.first().unwrap().as_any().downcast_ref::<T>().unwrap().clone();
+    let casted_message = parser.messages.first().unwrap().as_any().downcast_ref::<T>().unwrap().clone();
 
     //Serialize and parse again to help check for potential bugs in the serialization system.
     {
@@ -157,9 +154,7 @@ fn parse_message_with_ver<T: FIXTMessage + FIXTMessageBuildable + MessageDetails
         assert!(result.is_ok());
         assert_eq!(parser.messages.len(),1);
 
-        let mut new_casted_message = parser.messages.first().unwrap().as_any().downcast_ref::<T>().unwrap().clone();
-        casted_message.set_appl_ver_id(message_version);
-        new_casted_message.set_appl_ver_id(message_version);
+        let new_casted_message = parser.messages.first().unwrap().as_any().downcast_ref::<T>().unwrap().clone();
         if casted_message != new_casted_message {
             println!("");
             print_message::<T>(fix_version,message_version,&casted_message);
@@ -471,9 +466,6 @@ fn length_tag_test() {
             unimplemented!();
         }
 
-        fn set_appl_ver_id(&mut self,_message_version: MessageVersion) {
-        }
-
         fn is_poss_dup(&self) -> bool {
             unimplemented!();
         }
@@ -586,9 +578,6 @@ fn repeating_groups_test() {
 
         fn target_comp_id(&self) -> &<<TargetCompID as Field>::Type as FieldType>::Type {
             unimplemented!();
-        }
-
-        fn set_appl_ver_id(&mut self,_message_version: MessageVersion) {
         }
 
         fn is_poss_dup(&self) -> bool {
@@ -787,9 +776,6 @@ fn nested_repeating_groups_test() {
 
         fn target_comp_id(&self) -> &<<TargetCompID as Field>::Type as FieldType>::Type {
             unimplemented!();
-        }
-
-        fn set_appl_ver_id(&mut self,_message_version: MessageVersion) {
         }
 
         fn is_poss_dup(&self) -> bool {

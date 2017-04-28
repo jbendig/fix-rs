@@ -87,10 +87,6 @@ impl FIXTMessage for NullMessage {
         unimplemented!();
     }
 
-    fn set_appl_ver_id(&mut self,_message_version: MessageVersion) {
-        unimplemented!();
-    }
-
     fn is_poss_dup(&self) -> bool {
         unimplemented!();
     }
@@ -120,11 +116,11 @@ impl FIXTMessage for NullMessage {
 }
 
 //FIXT Administrative Messages
-define_fixt_message!(Heartbeat: b"0" => {
+define_fixt_message!(Heartbeat: ADMIN b"0" => {
     NOT_REQUIRED, test_req_id: TestReqID [FIX40..],
 });
 
-define_fixt_message!(Logon: b"A" => {
+define_fixt_message!(Logon: ADMIN b"A" => {
     REQUIRED, encrypt_method: EncryptMethod [FIX40..],
     REQUIRED, heart_bt_int: HeartBtInt [FIX40..],
     NOT_REQUIRED, raw_data_length: RawDataLength [FIX40..],
@@ -151,16 +147,16 @@ define_fixt_message!(Logon: b"A" => {
     NOT_REQUIRED, encoded_text: EncodedText [FIX50SP1..],
 });
 
-define_fixt_message!(TestRequest: b"1" => {
+define_fixt_message!(TestRequest: ADMIN b"1" => {
     REQUIRED, test_req_id: TestReqID [FIX40..],
 });
 
-define_fixt_message!(ResendRequest: b"2" => {
+define_fixt_message!(ResendRequest: ADMIN b"2" => {
     REQUIRED, begin_seq_no: BeginSeqNo [FIX40..],
     REQUIRED, end_seq_no: EndSeqNo [FIX40..],
 });
 
-define_fixt_message!(Reject: b"3" => {
+define_fixt_message!(Reject: ADMIN b"3" => {
     REQUIRED, ref_seq_num: RefSeqNum [FIX40..],
     NOT_REQUIRED, ref_tag_id: RefTagID [FIX42..],
     NOT_REQUIRED, ref_msg_type: RefMsgType [FIX42..],
@@ -173,12 +169,12 @@ define_fixt_message!(Reject: b"3" => {
     NOT_REQUIRED, encoded_text: EncodedText [FIX42..],
 });
 
-define_fixt_message!(SequenceReset: b"4" => {
+define_fixt_message!(SequenceReset: ADMIN b"4" => {
     NOT_REQUIRED, gap_fill_flag: GapFillFlag [FIX40..],
     REQUIRED, new_seq_no: NewSeqNo [FIX40..],
 });
 
-define_fixt_message!(Logout: b"5" => {
+define_fixt_message!(Logout: ADMIN b"5" => {
     NOT_REQUIRED, session_status: SessionStatus [FIX50SP1..],
     NOT_REQUIRED, text: Text [FIX40..],
     NOT_REQUIRED, encoded_text_len: EncodedTextLen [FIX42..],

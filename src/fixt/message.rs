@@ -33,7 +33,6 @@ pub trait FIXTMessage: Message {
     fn msg_seq_num(&self) -> <<MsgSeqNum as Field>::Type as FieldType>::Type;
     fn sender_comp_id(&self) -> &<<SenderCompID as Field>::Type as FieldType>::Type;
     fn target_comp_id(&self) -> &<<TargetCompID as Field>::Type as FieldType>::Type;
-    fn set_appl_ver_id(&mut self,message_version: MessageVersion);
     fn is_poss_dup(&self) -> bool;
     fn set_is_poss_dup(&mut self,is_poss_dup: bool);
     fn sending_time(&self) -> <<SendingTime as Field>::Type as FieldType>::Type;
@@ -60,16 +59,27 @@ impl fmt::Debug for FIXTMessage + Send {
 
 #[macro_export]
 macro_rules! define_fixt_message {
+    ( $message_name:ident $( : ADMIN $message_type:expr => )* { $( $field_required:expr, $field_name:ident : $field_type:ty [$( $version:tt )*] $(=> REQUIRED_WHEN $required_when_expr:expr)* ),* $(),* } ) => {
+        define_fixt_message!($message_name $( : $message_type => )* {
+            //No extra header fields required for admin messages.
+        } { $( $field_required, $field_name : $field_type [$( $version )*] $(=> REQUIRED_WHEN $required_when_expr)*, )* } );
+    };
     ( $message_name:ident $( : $message_type:expr => )* { $( $field_required:expr, $field_name:ident : $field_type:ty [$( $version:tt )*] $(=> REQUIRED_WHEN $required_when_expr:expr)* ),* $(),* } ) => {
+        define_fixt_message!($message_name $( : $message_type => )* {
+            //These extra fields are used for all non-Session Level Messages starting with FIXT
+            //1.1. See FIXT 1.1 page 33.
+            $crate::message::NOT_REQUIRED, appl_ver_id: $crate::dictionary::fields::ApplVerID [FIX40..],  //Must be first here to be 6th field when serialized. Note: This field uses Rule::RequiresFIXVersion(FIXVersion::FIXT_1_1) to be excluded at the FIX level instead of the message level. This way it's processed correctly when using versioned messages. So leave message version as [FIX40..].
+            $crate::message::NOT_REQUIRED, appl_ext_id: $crate::dictionary::fields::ApplExtID [FIX50SP1..],
+            $crate::message::NOT_REQUIRED, cstm_appl_ver_id: $crate::dictionary::fields::CstmApplVerID [FIX50..]
+        } { $( $field_required, $field_name : $field_type [$( $version )*] $(=> REQUIRED_WHEN $required_when_expr)*, )* } );
+    };
+    ( $message_name:ident $( : $message_type:expr => )* { $( $header_field_required:expr, $header_field_name:ident : $header_field_type:ty [$( $header_version:tt )*] $(=> REQUIRED_WHEN $header_required_when_expr:expr)* ),* } { $( $field_required:expr, $field_name:ident : $field_type:ty [$( $version:tt )*] $(=> REQUIRED_WHEN $required_when_expr:expr)* ),* $(),* } ) => {
         define_message!($message_name $( : $message_type => )* {
             //Standard Header
             //Note: BeginStr, BodyLength, and MsgType are built into parser.
             $crate::message::REQUIRED, sender_comp_id: $crate::dictionary::fields::SenderCompID [FIX40..], //Must be first here to be 4th field when serialized.
             $crate::message::REQUIRED, target_comp_id: $crate::dictionary::fields::TargetCompID [FIX40..], //Must be second here to be 5th field when serialized.
-            //TODO: This and the following three tags should not be ever used with Logon, Logout, Reject, ResendRequest, SequenceReset, TestRequest, and Heartbeat.
-            $crate::message::NOT_REQUIRED, appl_ver_id: $crate::dictionary::fields::ApplVerID [FIX40..],  //Must be third here to be 6th field when serialized. Note: This field uses Rule::RequiresFIXVersion(FIXVersion::FIXT_1_1) to be excluded at the FIX level instead of the message level. This way it's processed correctly when using versioned messages. So leave message version as [FIX40..].
-            $crate::message::NOT_REQUIRED, appl_ext_id: $crate::dictionary::fields::ApplExtID [FIX50SP1..],
-            $crate::message::NOT_REQUIRED, cstm_appl_ver_id: $crate::dictionary::fields::CstmApplVerID [FIX50..],
+            $( $header_field_required, $header_field_name : $header_field_type [$( $header_version )*] $(=> REQUIRED_WHEN $header_required_when_expr)*, )*
             $crate::message::NOT_REQUIRED, on_behalf_of_comp_id: $crate::dictionary::fields::OnBehalfOfCompID [FIX40..],
             $crate::message::NOT_REQUIRED, deliver_to_comp_id: $crate::dictionary::fields::DeliverToCompID [FIX40..],
             $crate::message::NOT_REQUIRED, secure_data_len: $crate::dictionary::fields::SecureDataLen [FIX40..],
@@ -131,10 +141,6 @@ macro_rules! define_fixt_message {
 
             fn target_comp_id(&self) -> &<<$crate::dictionary::fields::TargetCompID as $crate::field::Field>::Type as $crate::field_type::FieldType>::Type {
                 &self.target_comp_id
-            }
-
-            fn set_appl_ver_id(&mut self,appl_ver_id: $crate::message_version::MessageVersion) {
-                self.appl_ver_id = Some(appl_ver_id);
             }
 
             fn is_poss_dup(&self) -> bool {

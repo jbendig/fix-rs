@@ -840,7 +840,9 @@ impl Parser {
 
                 //Mark ApplVerID as found so we produce an error if it's encountered anywhere else
                 //in the message.
-                self.current_message.set_appl_ver_id(self.message_version);
+                if self.current_tag == ApplVerID::tag() {
+                    try!(set_message_value(&mut *self.current_message,ApplVerID::tag(),&self.current_bytes[..]));
+                }
                 self.remaining_fields.remove(&ApplVerID::tag());
             }
 
@@ -1007,6 +1009,7 @@ impl Parser {
                 self.current_message.set_meta(Meta {
                     begin_string: self.fix_version,
                     body_length: self.body_length,
+                    message_version: self.message_version,
                     checksum: self.checksum,
                 });
 

@@ -294,7 +294,7 @@ fn test_message_type_default_application_version() {
 
         //Confirm Engine accepted message correctly.
         let message = engine_poll_message!(engine,connection,TestMessage);
-        assert_eq!(message.appl_ver_id,Some(MessageVersion::FIX50SP1)); //Set by parser what it parsed message as.
+        assert_eq!(message.meta.unwrap().message_version,MessageVersion::FIX50SP1); //Set by parser what it parsed message as.
         assert_eq!(message.text,b"test");
     }
 
@@ -308,7 +308,7 @@ fn test_message_type_default_application_version() {
 
         //Confirm Engine accepted message correctly.
         let message = engine_poll_message!(engine,connection,TestMessage);
-        assert_eq!(message.appl_ver_id,Some(MessageVersion::FIX40));
+        assert_eq!(message.meta.unwrap().message_version,MessageVersion::FIX40);
         assert_eq!(message.text.len(),0);
     }
 

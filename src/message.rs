@@ -45,6 +45,7 @@ pub trait MessageDetails {
 pub struct Meta {
     pub begin_string: FIXVersion,
     pub body_length: u64,
+    pub message_version: MessageVersion,
     pub checksum: u8,
 }
 
