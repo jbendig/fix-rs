@@ -450,7 +450,7 @@ impl InternalConnection {
                 );
                 let fix_version = self.fix_version;
                 let message_version = if let Some(message_version) = message.message_version { message_version } else { self.default_message_version };
-                self.outbound_buffer.clear_and_read_all(|ref mut bytes| { message.message.read(fix_version,message_version,bytes); });
+                message.message.read(fix_version,message_version,&mut self.outbound_buffer);
 
                 //TODO: Hold onto message and pass it off to the engine or some callback so the
                 //library user knows exactly which messages have been sent -- although not

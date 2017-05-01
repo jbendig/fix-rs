@@ -44,16 +44,15 @@ pub trait FIXTMessage: Message {
                                  target_comp_id: <<TargetCompID as Field>::Type as FieldType>::Type);
 }
 
-pub fn debug_format_fixt_message(message: &FIXTMessage, f: &mut fmt::Formatter) -> fmt::Result {
-    let mut buffer = Vec::new();
-    message.read(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,&mut buffer);
-    let buffer: Vec<u8> = buffer.into_iter().map(|c| if c == b'\x01' { b'|' } else { c } ).collect();
-    write!(f,"{:?}",String::from_utf8_lossy(&buffer[..]))
+impl fmt::Debug for FIXTMessage {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f,"{}",Message::debug(self,FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2))
+    }
 }
 
 impl fmt::Debug for FIXTMessage + Send {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        debug_format_fixt_message(self,f)
+        write!(f,"{}",Message::debug(self,FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2))
     }
 }
 

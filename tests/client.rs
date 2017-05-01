@@ -29,6 +29,7 @@ use std::sync::atomic::{AtomicBool,Ordering};
 #[macro_use]
 mod common;
 use common::{SERVER_SENDER_COMP_ID,SERVER_TARGET_COMP_ID,TestStream,new_logon_message};
+use fix_rs::byte_buffer::ByteBuffer;
 use fix_rs::dictionary::field_types::other::{MsgDirection,SessionRejectReason};
 use fix_rs::dictionary::fields::{MsgTypeGrp,SenderCompID,TargetCompID,Text};
 use fix_rs::dictionary::messages::{Heartbeat,Logon,Logout,Reject,ResendRequest,SequenceReset,TestRequest};
@@ -42,6 +43,13 @@ use fix_rs::fixt::tests::{AUTO_DISCONNECT_AFTER_INBOUND_RESEND_REQUEST_LOOP_COUN
 use fix_rs::fixt::message::FIXTMessage;
 use fix_rs::message::{self,NOT_REQUIRED,REQUIRED,Message};
 use fix_rs::message_version::{self,MessageVersion};
+
+fn serialize_and_append_message<T: FIXTMessage>(message: &T,fix_version: FIXVersion,message_version: MessageVersion,buffer: &mut Vec<u8>) {
+    let mut bytes = ByteBuffer::new();
+    message.read(fix_version,message_version,&mut bytes);
+
+    buffer.extend_from_slice(bytes.bytes());
+}
 
 #[test]
 fn test_recv_resend_request_invalid_end_seq_no() {
@@ -490,7 +498,7 @@ fn test_overflowing_inbound_messages_buffer_does_resume() {
         test_request_message.msg_seq_num = (x + 2) as u64;
         test_request_message.test_req_id = b"test".to_vec();
 
-        test_request_message.read(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,&mut bytes);
+        serialize_and_append_message(&test_request_message,FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,&mut bytes);
     }
     assert!(bytes.len() < 1400); //Make sure the serialized body is reasonably likely to fit within the MTU.
     assert!(bytes.len() < INBOUND_BYTES_BUFFER_CAPACITY); //Make sure client thread can theoretically store all of the messages in a single recv().
@@ -926,8 +934,8 @@ fn test_respond_to_test_request_immediately_after_logon() {
     test_request_message.test_req_id = b"test".to_vec();
 
     let mut bytes = Vec::new();
-    logon_message.read(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,&mut bytes);
-    test_request_message.read(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,&mut bytes);
+    serialize_and_append_message(&logon_message,FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,&mut bytes);
+    serialize_and_append_message(&test_request_message,FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,&mut bytes);
     assert!(bytes.len() < 1400); //Make sure the serialized body is reasonably likely to fit within the MTU.
     let bytes_written = test_server.stream.write(&bytes).unwrap();
     assert_eq!(bytes_written,bytes.len());
@@ -981,8 +989,8 @@ fn test_respect_default_appl_ver_id_in_test_request_immediately_after_logon() {
     test_message.text = b"test".to_vec();
 
     let mut bytes = Vec::new();
-    logon_message.read(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,&mut bytes);
-    test_message.read(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,&mut bytes);
+    serialize_and_append_message(&logon_message,FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,&mut bytes);
+    serialize_and_append_message(&test_message,FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,&mut bytes);
     assert!(bytes.len() < 1400); //Make sure the serialized body is reasonably likely to fit within the MTU.
     let bytes_written = test_server.stream.write(&bytes).unwrap();
     assert_eq!(bytes_written,bytes.len());
@@ -1031,8 +1039,8 @@ fn test_logout_and_terminate_wrong_versioned_test_request_immediately_after_logo
     test_request_message.test_req_id = b"test".to_vec();
 
     let mut bytes = Vec::new();
-    logon_message.read(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,&mut bytes);
-    test_request_message.read(FIXVersion::FIX_4_2,MessageVersion::FIX42,&mut bytes);
+    serialize_and_append_message(&logon_message,FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,&mut bytes);
+    serialize_and_append_message(&test_request_message,FIXVersion::FIX_4_2,MessageVersion::FIX42,&mut bytes);
     assert!(bytes.len() < 1400); //Make sure the serialized body is reasonably likely to fit within the MTU.
     let bytes_written = test_server.stream.write(&bytes).unwrap();
     assert_eq!(bytes_written,bytes.len());
@@ -1077,9 +1085,8 @@ fn test_max_message_size() {
     );
 
     fn message_length<T: Message>(message: &T) -> u64 {
-        let mut buffer = Vec::new();
-        message.read(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,&mut buffer);
-        buffer.len() as u64
+        let mut buffer = ByteBuffer::new();
+        message.read(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,&mut buffer) as u64
     }
 
     //Make sure exceeding the MaxMessageSize in messages after Logon results in a Reject message.

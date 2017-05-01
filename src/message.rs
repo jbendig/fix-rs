@@ -11,8 +11,12 @@
 
 use std::any::Any;
 use std::collections::{HashMap,HashSet};
+use std::mem;
 use std::io::Write;
+use std::ptr;
 
+use byte_buffer::ByteBuffer;
+use constant::VALUE_END;
 use field_tag::FieldTag;
 use fix_version::FIXVersion;
 use hash::BuildFieldHasher;
@@ -65,51 +69,100 @@ pub trait Message {
     fn new_into_box(&self) -> Box<Message + Send>;
     fn msg_type_header(&self) -> &'static [u8];
     fn read_body(&self,fix_version: FIXVersion,message_version: MessageVersion,buf: &mut Vec<u8>) -> usize;
-    fn read(&self,fix_version: FIXVersion,message_version: MessageVersion,buf: &mut Vec<u8>) -> usize {
-        //TODO: Try and avoid reallocations by providing a start offset and then inserting
-        //the header in a reserved space at the beginning.
+
+    fn read(&self,fix_version: FIXVersion,message_version: MessageVersion,buf: &mut ByteBuffer) -> usize {
+        const HEADER_PADDING_LEN: usize = 32;
+
+        //Leave rooom at beginning of buffer for header.
+        buf.clear();
+        buf.bytes.resize(HEADER_PADDING_LEN,0);
 
         //Read entire body first so we can get the body length.
-        let mut body = Vec::new();
-        self.read_body(fix_version,message_version,&mut body);
+        self.read_body(fix_version,message_version,&mut buf.bytes);
 
         //Prepare header.
         let message_type = self.msg_type_header();
         let message_type_len = message_type.len();
-        let body_length_str = (body.len() + message_type_len).to_string();
+        let body_len_str = (buf.bytes.len() - HEADER_PADDING_LEN + message_type_len).to_string();
+        let header_len = 2 + fix_version.begin_string().len() + 1 + //8=<FIXVersion>\x01
+                         2 + body_len_str.as_bytes().len() + 1 +    //9=<BodyLength>\x01
+                         message_type_len;                          //35=<MessageType>\x01
 
-        //Write header and body of message.
-        let write_start_offset = buf.len();
-        let mut byte_count = buf.write(b"8=").unwrap();
-        byte_count += buf.write(fix_version.begin_string()).unwrap();
-        byte_count += buf.write(b"\x01").unwrap();
-        byte_count += buf.write(b"9=").unwrap();
-        byte_count += buf.write(body_length_str.as_bytes()).unwrap();
-        byte_count += buf.write(b"\x01").unwrap();
-        byte_count += buf.write(message_type).unwrap();
-        byte_count += buf.write(body.as_slice()).unwrap();
+        //If the header won't fit in the room reserved at the beginning, make room for it. This
+        //is much slower but shouldn't happen in practice because BodyLength would have to be in
+        //the Petabyte range AND/OR the MessageType would have to be custom and several times
+        //larger than normal.
+        if header_len > HEADER_PADDING_LEN {
+            let body_len = buf.bytes.len() - HEADER_PADDING_LEN;
+            const CHECKSUM_LEN: usize = 7; //10=000\x01
+            let message_len = header_len + body_len + CHECKSUM_LEN;
+
+            //Create a new buffer with room for the header.
+            let body_bytes = mem::replace(&mut buf.bytes,Vec::with_capacity(message_len));
+
+            //Copy body from old buffer to new buffer.
+            unsafe {
+                buf.bytes.set_len(message_len);
+                ptr::copy(body_bytes.as_ptr().offset(HEADER_PADDING_LEN as isize),
+                          buf.bytes.as_mut_ptr().offset(header_len as isize),
+                          body_len);
+            }
+        }
+
+        //Write header to start of buffer.
+        buf.valid_bytes_begin = HEADER_PADDING_LEN - header_len;
+        unsafe {
+            unsafe fn copy_and_advance<T>(src: *const T,dst: &mut *mut T,count: usize) {
+                ptr::copy(src,*dst,count);
+                *dst = dst.offset(count as isize);
+            }
+            unsafe fn copy_slice_and_advance(src: &[u8],dst: &mut *mut u8) {
+                copy_and_advance(src.as_ptr(),dst,src.len());
+            }
+
+            let mut bytes_ptr = buf.bytes.as_mut_ptr().offset(buf.valid_bytes_begin as isize);
+            copy_slice_and_advance(b"8=",&mut bytes_ptr);
+            copy_slice_and_advance(fix_version.begin_string(),&mut bytes_ptr);
+            copy_slice_and_advance(b"\x019=",&mut bytes_ptr);
+            copy_slice_and_advance(body_len_str.as_bytes(),&mut bytes_ptr);
+            copy_slice_and_advance(b"\x01",&mut bytes_ptr);
+            copy_slice_and_advance(message_type,&mut bytes_ptr);
+        }
 
         //Calculate checksum.
         let mut checksum: u8 = 0;
-        for byte in buf.iter().skip(write_start_offset) {
+        for byte in buf.bytes.iter().skip(buf.valid_bytes_begin) {
             checksum = checksum.overflowing_add(*byte).0;
         }
         let checksum_str = checksum.to_string();
 
-        //Write checksum.
-        byte_count += buf.write(b"10=").unwrap();
+        //Write checksum at the end.
+        buf.bytes.write(b"10=").unwrap();
         if checksum < 100 {
             //Checksum must always have a length of 3.
             //FIXT version 1.1, page 55.
-            buf.write(b"0").unwrap();
+            buf.bytes.write(b"0").unwrap();
             if checksum < 10 {
-                buf.write(b"0").unwrap();
+                buf.bytes.write(b"0").unwrap();
             }
         }
-        byte_count += buf.write(checksum_str.as_bytes()).unwrap();
-        byte_count += buf.write(b"\x01").unwrap();
+        buf.bytes.write(checksum_str.as_bytes()).unwrap();
+        buf.bytes.write(b"\x01").unwrap();
 
-        byte_count
+        //Mark end of buffer.
+        buf.valid_bytes_end = buf.bytes.len();
+
+        buf.len()
+    }
+
+    fn debug(&self,fix_version: FIXVersion,message_version: MessageVersion) -> String {
+        let mut buffer = ByteBuffer::with_capacity(512);
+        self.read(fix_version,message_version,&mut buffer);
+
+        //Replace SOH characters with | to be human readable.
+        let buffer: Vec<u8> = buffer.bytes().into_iter().map(|c| if *c == VALUE_END { b'|' } else { *c } ).collect();
+
+        String::from_utf8_lossy(&buffer[..]).into_owned()
     }
 }
 

@@ -23,6 +23,7 @@ use chrono::TimeZone;
 use std::any::Any;
 use std::collections::HashMap;
 
+use fix_rs::byte_buffer::ByteBuffer;
 use fix_rs::dictionary::field_types::generic::RepeatingGroupFieldType;
 use fix_rs::dictionary::field_types::other::{EncryptMethod,RateSource,RateSourceType};
 use fix_rs::dictionary::fields::{EncryptMethod as EncryptMethodField,HeartBtInt,MsgSeqNum,SendingTime,SenderCompID,TargetCompID,NoMsgTypeGrp,RawData,RawDataLength,Symbol,TestReqID,Text,OrigSendingTime,ClOrdID,AllocAccount,RateSource as RateSourceField,RateSourceType as RateSourceTypeField,ReferencePage as ReferencePageField};
@@ -102,13 +103,6 @@ impl FIXTMessage for LogonTest {
     }
 }
 
-fn print_message<T: FIXTMessage>(fix_version: FIXVersion,message_version: MessageVersion,message: &T) {
-    let mut buffer = Vec::new();
-    message.read(fix_version,message_version,&mut buffer);
-    let buffer: Vec<u8> = buffer.into_iter().map(|c| if c == b'\x01' { b'|' } else { c } ).collect();
-    println!("{:?}",String::from_utf8_lossy(&buffer[..]))
-}
-
 fn parse_message_with_ver<T: FIXTMessage + FIXTMessageBuildable + MessageDetails + Default + Any + Clone + PartialEq + Send>(fix_version: FIXVersion,message_version: MessageVersion,message: &[u8]) -> Result<T,ParseError> {
     let mut message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>> = HashMap::new();
     let builder: Box<BuildFIXTMessage + Send> = <T as Default>::default().builder();
@@ -144,10 +138,10 @@ fn parse_message_with_ver<T: FIXTMessage + FIXTMessageBuildable + MessageDetails
 
     //Serialize and parse again to help check for potential bugs in the serialization system.
     {
-        let mut new_message_bytes = Vec::new();
+        let mut new_message_bytes = ByteBuffer::new();
         casted_message.read(fix_version,message_version,&mut new_message_bytes);
         parser.messages.clear();
-        let(_,result) = parser.parse(&new_message_bytes);
+        let(_,result) = parser.parse(new_message_bytes.bytes());
         if result.is_err() {
             println!("{:?}",result.as_ref().err().unwrap());
         }
@@ -157,8 +151,8 @@ fn parse_message_with_ver<T: FIXTMessage + FIXTMessageBuildable + MessageDetails
         let new_casted_message = parser.messages.first().unwrap().as_any().downcast_ref::<T>().unwrap().clone();
         if casted_message != new_casted_message {
             println!("");
-            print_message::<T>(fix_version,message_version,&casted_message);
-            print_message::<T>(fix_version,message_version,&new_casted_message);
+            println!("{}",casted_message.debug(fix_version,message_version));
+            println!("{}",new_casted_message.debug(fix_version,message_version));
         }
         assert!(casted_message == new_casted_message);
     }

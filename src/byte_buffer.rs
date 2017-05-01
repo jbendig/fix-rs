@@ -12,9 +12,12 @@
 use std::io::{Read,Result,Write};
 
 pub struct ByteBuffer {
-    bytes: Vec<u8>,
-    valid_bytes_begin: usize,
-    valid_bytes_end: usize,
+    #[doc(hidden)]
+    pub bytes: Vec<u8>,
+    #[doc(hidden)]
+    pub valid_bytes_begin: usize,
+    #[doc(hidden)]
+    pub valid_bytes_end: usize,
 }
 
 impl ByteBuffer {
@@ -70,6 +73,10 @@ impl ByteBuffer {
 
     pub fn is_empty(&self) -> bool {
         self.valid_bytes_begin == self.valid_bytes_end
+    }
+
+    pub fn len(&self) -> usize {
+        self.valid_bytes_end - self.valid_bytes_begin
     }
 
     pub fn write<T: Write>(&mut self,writer: &mut T) -> Result<usize> {

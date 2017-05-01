@@ -17,6 +17,7 @@ extern crate test;
 
 use test::Bencher;
 
+use fix_rs::byte_buffer::ByteBuffer;
 use fix_rs::dictionary::messages::NewOrderSingle;
 use fix_rs::fix::Parser;
 use fix_rs::fix_version::FIXVersion;
@@ -52,10 +53,9 @@ fn serialize_simple_message_bench(b: &mut Bencher) {
     assert!(bytes_read == MESSAGE_BYTES.len());
     match message_to_enum(&**(parser.messages.first().unwrap())) {
         MessageEnum::NewOrderSingle(message) => {
-            let serialize_func = || {
-                let mut data = Vec::new();
-                message.read(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,&mut data);
-                data.len() as u64
+            let mut data = ByteBuffer::with_capacity(512);
+            let mut serialize_func = || {
+                message.read(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,&mut data) as u64
             };
 
             b.bytes = serialize_func();

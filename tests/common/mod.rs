@@ -19,11 +19,12 @@ use mio::unix::UnixReady;
 use std::any::Any;
 use std::collections::HashMap;
 use std::net::{Ipv4Addr,SocketAddr,SocketAddrV4};
-use std::io::{Read,Write};
+use std::io::Read;
 use std::sync::atomic::{AtomicUsize,Ordering};
 use std::thread;
 use std::time::{Duration,Instant};
 
+use fix_rs::byte_buffer::ByteBuffer;
 use fix_rs::dictionary::CloneDictionary;
 use fix_rs::dictionary::field_types::other::EncryptMethod;
 use fix_rs::dictionary::messages::Logon;
@@ -190,26 +191,22 @@ pub fn recv_bytes_with_timeout(stream: &mut TcpStream,timeout: Duration) -> Opti
 }
 
 pub fn send_message_with_timeout(stream: &mut TcpStream,fix_version: FIXVersion,message_version: MessageVersion,message: Box<FIXTMessage + Send>,timeout: Option<Duration>) -> Result<(),usize> {
-    let mut bytes = Vec::new();
+    let mut bytes = ByteBuffer::with_capacity(512);
     message.read(fix_version,message_version,&mut bytes);
 
     let now = Instant::now();
-    let mut bytes_written_total = 0;
-    while bytes_written_total < bytes.len() {
+    while !bytes.is_empty() {
         if let Some(timeout) = timeout {
             if now.elapsed() > timeout {
-                return Err(bytes.len() - bytes_written_total);
+                return Err(bytes.len());
             }
         }
 
-        match stream.write(&bytes[bytes_written_total..bytes.len()]) {
-            Ok(bytes_written) => bytes_written_total += bytes_written,
-            Err(e) => {
-                if e.kind() == ::std::io::ErrorKind::WouldBlock {
-                    continue;
-                }
-                panic!("Could not write bytes: {}",e);
-            },
+        if let Err(e) = bytes.write(stream) {
+            if e.kind() == ::std::io::ErrorKind::WouldBlock {
+                continue;
+            }
+            panic!("Could not write bytes: {}",e);
         }
     }
 

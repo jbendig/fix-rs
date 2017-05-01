@@ -27,7 +27,7 @@ use std::time::{Duration,Instant};
 
 use dictionary::messages::Logon;
 use fixt::engine_thread::{CONNECTION_COUNT_MAX,BASE_CONNECTION_TOKEN,INTERNAL_ENGINE_EVENT_TOKEN,InternalEngineToThreadEvent,internal_engine_thread};
-use fixt::message::{BuildFIXTMessage,FIXTMessage,debug_format_fixt_message};
+use fixt::message::{BuildFIXTMessage,FIXTMessage};
 use fix::ParseError;
 use fix_version::FIXVersion;
 use message_version::MessageVersion;
@@ -135,9 +135,7 @@ impl fmt::Debug for EngineEvent {
             EngineEvent::ConnectionTerminated(connection,ref reason) => write!(f,"EngineEvent::ConnectionTerminated({:?},{:?})",connection,reason),
             EngineEvent::ConnectionDropped(connection,addr) => write!(f,"EngineEvent::ConnectionDropped({:?},{:?})",connection,addr),
             EngineEvent::ConnectionAccepted(listener,connection,addr) => write!(f,"EngineEvent::ConnectionAccepted({:?},{:?},{:?})",listener,connection,addr),
-            EngineEvent::ConnectionLoggingOn(listener,connection,ref message) => write!(f,"EngineEvent::ConnectionLoggingOn({:?},{:?},",listener,connection)
-                                                                                 .and_then(|_| debug_format_fixt_message(&**message as &FIXTMessage,f))
-                                                                                 .and_then(|_| write!(f,")")),
+            EngineEvent::ConnectionLoggingOn(listener,connection,ref message) => write!(f,"EngineEvent::ConnectionLoggingOn({:?},{:?},{:?})",listener,connection,&**message as &FIXTMessage),
             EngineEvent::SessionEstablished(connection) => write!(f,"EngineEvent::SessionEstablished({:?})",connection),
             EngineEvent::ListenerFailed(listener,ref error) => write!(f,"EngineEvent::ListenerFailed({:?},{:?})",listener,error),
             EngineEvent::ListenerAcceptFailed(listener,ref error) => write!(f,"EngineEvent::ListenerAcceptFailed({:?},{:?})",listener,error),
