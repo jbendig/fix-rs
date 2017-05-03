@@ -95,7 +95,7 @@ fn test_1B() {
         //Make sure message received is identical to the one sent. Sending time is tested
         //separately because Engine changes this field before it's sent.
         let mut message = engine_poll_message!(client,connection,Logon);
-        assert!((logon_message.sending_time - message.sending_time).num_milliseconds() < 50);
+        assert!(logon_message.sending_time.signed_duration_since(message.sending_time).num_milliseconds() < 50);
         message.sending_time = logon_message.sending_time;
         assert_eq!(message.sender_comp_id,SERVER_SENDER_COMP_ID);
         message.sender_comp_id = logon_message.sender_comp_id.clone();
@@ -242,7 +242,7 @@ fn test_1S() {
 
         let message = test_client.recv_message::<Logon>();
         assert_eq!(message.msg_seq_num,1);
-        assert!((initial_logon_message.sending_time - message.sending_time).num_milliseconds() < 50);
+        assert!(initial_logon_message.sending_time.signed_duration_since(message.sending_time).num_milliseconds() < 50);
         assert_eq!(message.sender_comp_id,SERVER_SENDER_COMP_ID);
         assert_eq!(message.target_comp_id,SERVER_TARGET_COMP_ID);
         assert_eq!(message.meta.unwrap().message_version,MessageVersion::FIX50SP2);
