@@ -25,7 +25,7 @@ use mio::unix::UnixReady;
 use std::any::Any;
 use std::collections::HashMap;
 use std::net::{Ipv4Addr,SocketAddr,SocketAddrV4};
-use std::io::{self,Read,Write};
+use std::io::{self,Read};
 use std::marker::PhantomData;
 use std::mem;
 use std::thread;
@@ -281,27 +281,23 @@ impl Connection {
     /// Try to send an entire message within SEND_MESSAGE_TIMEOUT_SECS seconds. Failing to send all
     /// bytes before the timeout triggers a panic.
     fn send_message<T: FIXTMessage + Any + Send>(&mut self,message: T) -> Result<(),io::Error> {
-        let mut bytes = Vec::new();
+        let mut bytes = ByteBuffer::new();
         message.read(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,&mut bytes);
 
         let now = Instant::now();
         let timeout = Some(Duration::from_secs(SEND_MESSAGE_TIMEOUT_SECS));
-        let mut bytes_written_total = 0;
-        while bytes_written_total < bytes.len() {
+        while !bytes.is_empty() {
             if let Some(timeout) = timeout {
                 if now.elapsed() > timeout {
                     panic!("Did not write all bytes");
                 }
             }
 
-            match self.stream.write(&bytes[bytes_written_total..bytes.len()]) {
-                Ok(bytes_written) => bytes_written_total += bytes_written,
-                Err(e) => {
-                    if e.kind() == ::std::io::ErrorKind::WouldBlock {
-                        continue;
-                    }
-                    panic!("Could not write bytes: {}",e);
-                },
+            if let Err(e) = bytes.write(&mut self.stream) {
+                if e.kind() == ::std::io::ErrorKind::WouldBlock {
+                    continue;
+                }
+                panic!("Could not write bytes: {}",e);
             }
         }
 
@@ -356,9 +352,7 @@ impl Connection {
         where F: FnMut(&TestRequest) {
         if self.outbound_buffer.is_empty() {
             if let Some(next_message) = iter.next() {
-                self.outbound_buffer.clear_and_read_all(|ref mut bytes| {
-                    next_message.read(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,bytes);
-                });
+                next_message.read(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,&mut self.outbound_buffer);
                 sending_message_func(&next_message);
             }
         }
