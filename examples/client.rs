@@ -85,7 +85,7 @@ fn main() {
                 //define_dictionary!() macro above. In this case, these are all administrative
                 //messages that are handled by the Engine automatically but are passed along here
                 //for logging purposes.
-                match message_to_enum(&*message) {
+                match message_to_enum(message) {
                     MessageEnum::BusinessMessageReject(message) => {},
                     MessageEnum::Heartbeat(message) => {},
                     MessageEnum::Logon(message) => {},

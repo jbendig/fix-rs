@@ -943,14 +943,18 @@ impl<T: Message + MessageBuildable + Any + Clone + Default + PartialEq + Send + 
         Default::default()
     }
 
-    fn set_groups(field: &mut Self::Type,groups: &[Box<Message>]) -> bool {
+    fn set_groups(field: &mut Self::Type,mut groups: Vec<Box<Message>>) -> bool {
         field.clear();
 
-        for group in groups {
-            match group.as_any().downcast_ref::<T>() {
-                //TODO: Avoid the clone below.
-                Some(casted_group) => field.push(Box::new(casted_group.clone())),
-                None => return false,
+        for group in groups.drain(0..) {
+            if group.as_any().is::<T>() {
+                let group_ptr = Box::into_raw(group);
+                field.push(unsafe {
+                    Box::from_raw(group_ptr as *mut T)
+                });
+            }
+            else {
+                return false;
             }
         }
 

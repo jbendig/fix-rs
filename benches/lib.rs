@@ -51,7 +51,7 @@ fn serialize_simple_message_bench(b: &mut Bencher) {
     let (bytes_read,result) = parser.parse(MESSAGE_BYTES);
     assert!(result.is_ok());
     assert!(bytes_read == MESSAGE_BYTES.len());
-    match message_to_enum(&**(parser.messages.first().unwrap())) {
+    match message_to_enum(parser.messages.remove(0)) {
         MessageEnum::NewOrderSingle(message) => {
             let mut data = ByteBuffer::with_capacity(512);
             let mut serialize_func = || {

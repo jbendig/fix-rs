@@ -27,7 +27,7 @@ pub trait FieldType {
         Err(SetValueError::WrongFormat)
     }
 
-    fn set_groups(_field: &mut Self::Type,_groups: &[Box<Message>]) -> bool {
+    fn set_groups(_field: &mut Self::Type,_groups: Vec<Box<Message>>) -> bool {
         false
     }
 

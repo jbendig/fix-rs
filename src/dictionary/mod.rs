@@ -35,16 +35,18 @@ macro_rules! define_dictionary {
         #[allow(dead_code)]
         enum MessageEnum
         {
-            $( $msg($msg), )*
+            $( $msg(Box<$msg>), )*
         };
 
         #[allow(dead_code)]
-        fn message_to_enum(message: &$crate::fixt::message::FIXTMessage) -> MessageEnum {
+        fn message_to_enum(message: Box<$crate::fixt::message::FIXTMessage>) -> MessageEnum {
             if false {
             }
             $( else if message.as_any().is::<$msg>() {
-                //TODO: Avoid the clone.
-                return MessageEnum::$msg(message.as_any().downcast_ref::<$msg>().unwrap().clone());
+                let message_ptr = Box::into_raw(message);
+                return MessageEnum::$msg(unsafe {
+                    Box::from_raw(message_ptr as *mut $msg)
+                });
             } )*
 
             panic!("Unsupported message");

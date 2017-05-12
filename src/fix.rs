@@ -647,7 +647,7 @@ impl Parser {
                             let mut groups = mem::replace(&mut prgs.groups,Vec::new());
                             parent_prgs.groups.last_mut().unwrap().message.set_groups(
                                 prgs.number_of_tag,
-                                &Vec::from_iter(groups.drain(0..).map(|group| { group.message }))
+                                Vec::from_iter(groups.drain(0..).map(|group| { group.message }))
                             );
                             folded_down = true;
                         }
@@ -657,7 +657,7 @@ impl Parser {
                         let mut groups = mem::replace(&mut prgs.groups,Vec::new());
                         self.current_message.set_groups(
                             prgs.number_of_tag,
-                            &Vec::from_iter(groups.drain(0..).map(|group| { group.message }))
+                            Vec::from_iter(groups.drain(0..).map(|group| { group.message }))
                         );
                         folded_down = true;
                     }

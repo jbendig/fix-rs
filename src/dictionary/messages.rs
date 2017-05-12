@@ -41,7 +41,7 @@ impl Message for NullMessage {
         unimplemented!();
     }
 
-    fn set_groups(&mut self,_key: FieldTag,_group: &[Box<Message>]) -> bool {
+    fn set_groups(&mut self,_key: FieldTag,_group: Vec<Box<Message>>) -> bool {
         unimplemented!();
     }
 

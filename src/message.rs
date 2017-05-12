@@ -63,7 +63,7 @@ pub trait Message {
     fn meta(&self) -> &Option<Meta>;
     fn set_meta(&mut self,meta: Meta);
     fn set_value(&mut self,key: FieldTag,value: &[u8]) -> Result<(),SetValueError>;
-    fn set_groups(&mut self,key: FieldTag,groups: &[Box<Message>]) -> bool;
+    fn set_groups(&mut self,key: FieldTag,groups: Vec<Box<Message>>) -> bool;
     fn as_any(&self) -> &Any;
     fn as_any_mut(&mut self) -> &mut Any;
     fn new_into_box(&self) -> Box<Message + Send>;
@@ -341,7 +341,7 @@ macro_rules! define_message {
                 }
             }
 
-            fn set_groups(&mut self,key: $crate::field_tag::FieldTag,groups: &[Box<$crate::message::Message>]) -> bool {
+            fn set_groups(&mut self,key: $crate::field_tag::FieldTag,groups: Vec<Box<$crate::message::Message>>) -> bool {
                 use $crate::field::Field;
                 use $crate::field_type::FieldType;
 
