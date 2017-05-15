@@ -60,9 +60,6 @@ pub trait CloneDictionary {
 
 impl CloneDictionary for HashMap<&'static [u8],Box<BuildFIXTMessage + Send>> {
     fn clone(&self) -> HashMap<&'static [u8],Box<BuildFIXTMessage + Send>> {
-        //TODO: This function wastes a lot of time and memory. Probably better to change Parser
-        //so it isn't needed.
-
         let mut result = HashMap::<&'static [u8],Box<BuildFIXTMessage + Send>>::new();
         for (key,value) in self {
             result.insert(key,BuildFIXTMessage::new_into_box(&**value));
