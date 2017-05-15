@@ -124,7 +124,7 @@ pub enum EngineEvent {
     ResendRequested(Connection,Range<u64>), //Range of messages by MsgSeqNum that are requested to be resent. [Range::start,Range::end)
     SequenceResetResetHasNoEffect(Connection),
     SequenceResetResetInThePast(Connection),
-    FatalError(&'static str,io::Error), //TODO: Probably should have an error type instead of static str here.
+    FatalError(&'static str,io::Error), //A critical error has occurred. No more events can be received and no more messages will be sent.
 }
 
 impl fmt::Debug for EngineEvent {
