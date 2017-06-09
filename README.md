@@ -15,9 +15,7 @@
 
 ## Status
 
-This project is an early work in progress and still under heavy development.
-
-Current progress is focused on evaluating whether to support [tokio](https://tokio.rs).
+Development was **suspended** as of 2017-06-09. I feel that Rust is not mature enough for this type of project. Largely because of long compile times, poor networking libraries, and difficulty eliminating allocations while remaining ergonomic.
 
 ## Examples
 
