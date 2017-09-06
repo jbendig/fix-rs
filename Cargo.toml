@@ -18,7 +18,7 @@ load-testing = ["clap"]
 [dependencies]
 "fix-rs-macros" = { path = "fix-rs-macros", version = "0.2.1" }
 "mio" = "0.6.6"
-"chrono" = "0.3.1"
+"chrono" = "0.3.0"
 "time" = "0.1"
 "phf" = "0.7.21"
 "phf_macros" = "0.7.21"
