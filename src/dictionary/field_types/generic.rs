@@ -10,9 +10,9 @@
 // except according to those terms.
 
 use chrono::{Datelike,Local,NaiveDate,NaiveTime,Timelike};
-use chrono::datetime::DateTime;
-use chrono::offset::utc::UTC;
-use chrono::naive::datetime::NaiveDateTime;
+use chrono::DateTime;
+use chrono::offset::Utc;
+use chrono::naive::NaiveDateTime;
 use std::any::Any;
 use std::marker::PhantomData;
 use std::io::Write;
@@ -785,7 +785,7 @@ impl MonthYear {
     }
 
     pub fn new_now() -> MonthYear {
-        let datetime = UTC::now();
+        let datetime = Utc::now();
 
         MonthYear {
             year: datetime.year() as i16,
@@ -795,7 +795,7 @@ impl MonthYear {
     }
 
     pub fn new_now_day() -> MonthYear {
-        let datetime = UTC::now();
+        let datetime = Utc::now();
 
         MonthYear {
             year: datetime.year() as i16,
@@ -805,7 +805,7 @@ impl MonthYear {
     }
 
     pub fn new_now_with_week(week: u8) -> MonthYear {
-        let datetime = UTC::now();
+        let datetime = Utc::now();
 
         MonthYear {
             year: datetime.year() as i16,
@@ -1058,21 +1058,21 @@ impl UTCTimestampFieldType {
         nsec -= nsec % 1_000_000;
 
         let naive = NaiveDateTime::from_timestamp(spec.sec,nsec);
-        DateTime::from_utc(naive,UTC)
+        DateTime::from_utc(naive,Utc)
     }
 
     pub fn new_empty() -> <UTCTimestampFieldType as FieldType>::Type {
         //Create a new time stamp that can be considered empty. An Option<_> might be preferred
         //but that would make using the timestamp needlessly complicated.
-        DateTime::<UTC>::from_utc(
+        DateTime::<Utc>::from_utc(
             NaiveDate::from_ymd(-1,1,1).and_hms(0,0,0),
-            UTC
+            Utc
         )
     }
 }
 
 impl FieldType for UTCTimestampFieldType {
-    type Type = DateTime<UTC>;
+    type Type = DateTime<Utc>;
 
     fn default_value() -> Self::Type {
         UTCTimestampFieldType::new_empty()
@@ -1103,10 +1103,10 @@ impl FieldType for UTCTimestampFieldType {
             return Err(SetValueError::WrongFormat);
         };
 
-        *field = DateTime::<UTC>::from_utc(
+        *field = DateTime::<Utc>::from_utc(
             NaiveDate::from_ymd(year,month,day)
                        .and_hms_milli(hours,minutes,seconds,milliseconds),
-            UTC
+            Utc
         );
 
         Ok(())
