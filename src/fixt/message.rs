@@ -11,48 +11,63 @@
 
 use std::fmt;
 
-use dictionary::fields::{MsgSeqNum,OrigSendingTime,SenderCompID,SendingTime,TargetCompID};
-use field::Field;
-use field_type::FieldType;
-use fix_version::FIXVersion;
-use message::{BuildMessage,Message};
-use message_version::MessageVersion;
+use crate::dictionary::fields::{
+    MsgSeqNum, OrigSendingTime, SenderCompID, SendingTime, TargetCompID,
+};
+use crate::field::Field;
+use crate::field_type::FieldType;
+use crate::fix_version::FIXVersion;
+use crate::message::{BuildMessage, Message};
+use crate::message_version::MessageVersion;
 
 pub trait BuildFIXTMessage: BuildMessage {
-    fn new_into_box(&self) -> Box<BuildFIXTMessage + Send>;
-    fn build(&self) -> Box<FIXTMessage + Send>;
+    fn new_into_box(&self) -> Box<dyn BuildFIXTMessage + Send>;
+    fn build(&self) -> Box<dyn FIXTMessage + Send>;
 }
 
 pub trait FIXTMessageBuildable {
-    fn builder(&self) -> Box<BuildFIXTMessage + Send>;
+    fn builder(&self) -> Box<dyn BuildFIXTMessage + Send>;
 }
 
 pub trait FIXTMessage: Message {
-    fn new_into_box(&self) -> Box<FIXTMessage + Send>;
+    fn new_into_box(&self) -> Box<dyn FIXTMessage + Send>;
     fn msg_type(&self) -> &'static [u8];
     fn msg_seq_num(&self) -> <<MsgSeqNum as Field>::Type as FieldType>::Type;
     fn sender_comp_id(&self) -> &<<SenderCompID as Field>::Type as FieldType>::Type;
     fn target_comp_id(&self) -> &<<TargetCompID as Field>::Type as FieldType>::Type;
     fn is_poss_dup(&self) -> bool;
-    fn set_is_poss_dup(&mut self,is_poss_dup: bool);
+    fn set_is_poss_dup(&mut self, is_poss_dup: bool);
     fn sending_time(&self) -> <<SendingTime as Field>::Type as FieldType>::Type;
     fn orig_sending_time(&self) -> <<OrigSendingTime as Field>::Type as FieldType>::Type;
-    fn set_orig_sending_time(&mut self,orig_sending_time: <<OrigSendingTime as Field>::Type as FieldType>::Type);
-    fn setup_fixt_session_header(&mut self,
-                                 msg_seq_num: Option<<<MsgSeqNum as Field>::Type as FieldType>::Type>,
-                                 sender_comp_id: <<SenderCompID as Field>::Type as FieldType>::Type,
-                                 target_comp_id: <<TargetCompID as Field>::Type as FieldType>::Type);
+    fn set_orig_sending_time(
+        &mut self,
+        orig_sending_time: <<OrigSendingTime as Field>::Type as FieldType>::Type,
+    );
+    fn setup_fixt_session_header(
+        &mut self,
+        msg_seq_num: Option<<<MsgSeqNum as Field>::Type as FieldType>::Type>,
+        sender_comp_id: <<SenderCompID as Field>::Type as FieldType>::Type,
+        target_comp_id: <<TargetCompID as Field>::Type as FieldType>::Type,
+    );
 }
 
-impl fmt::Debug for FIXTMessage {
+impl fmt::Debug for dyn FIXTMessage {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f,"{}",Message::debug(self,FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2))
+        write!(
+            f,
+            "{}",
+            Message::debug(self, FIXVersion::FIXT_1_1, MessageVersion::FIX50SP2)
+        )
     }
 }
 
-impl fmt::Debug for FIXTMessage + Send {
+impl fmt::Debug for dyn FIXTMessage + Send {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f,"{}",Message::debug(self,FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2))
+        write!(
+            f,
+            "{}",
+            Message::debug(self, FIXVersion::FIXT_1_1, MessageVersion::FIX50SP2)
+        )
     }
 }
 
@@ -122,7 +137,7 @@ macro_rules! define_fixt_message {
         }
 
         impl $crate::fixt::message::FIXTMessage for $message_name {
-            fn new_into_box(&self) -> Box<$crate::fixt::message::FIXTMessage + Send> {
+            fn new_into_box(&self) -> Box<dyn $crate::fixt::message::FIXTMessage + Send> {
                 Box::new($message_name::new())
             }
 
@@ -176,4 +191,3 @@ macro_rules! define_fixt_message {
         }
     };
 }
-

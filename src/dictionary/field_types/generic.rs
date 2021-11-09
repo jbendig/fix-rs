@@ -9,25 +9,25 @@
 // at your option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use chrono::{Datelike,Local,NaiveDate,NaiveTime,Timelike};
-use chrono::datetime::DateTime;
-use chrono::offset::utc::UTC;
-use chrono::naive::datetime::NaiveDateTime;
+use chrono::offset::Utc;
+use chrono::{DateTime, NaiveDateTime};
+use chrono::{Datelike, Local, NaiveDate, NaiveTime, Timelike};
 use std::any::Any;
-use std::marker::PhantomData;
 use std::io::Write;
+use std::marker::PhantomData;
 use std::str::FromStr;
+use std::time::{SystemTime, UNIX_EPOCH};
 
-use constant::VALUE_END;
-use field_type::FieldType;
-use fix_version::FIXVersion;
-use message::{Message,MessageBuildable,SetValueError};
-use message_version::MessageVersion;
-use rule::Rule;
+use crate::constant::VALUE_END;
+use crate::field_type::FieldType;
+use crate::fix_version::FIXVersion;
+use crate::message::{Message, MessageBuildable, SetValueError};
+use crate::message_version::MessageVersion;
+use crate::rule::Rule;
 
 //Helper function(s)
 
-fn slice_to_int<T: FromStr>(bytes: &[u8]) -> Result<T,SetValueError> {
+fn slice_to_int<T: FromStr>(bytes: &[u8]) -> Result<T, SetValueError> {
     //Safe version.
     /*let string = String::from_utf8_lossy(bytes);
     T::from_str(string.as_ref()).map_err(|_| SetValueError::WrongFormat)*/
@@ -50,7 +50,7 @@ impl FieldType for BoolTrueOrBlankFieldType {
         false
     }
 
-    fn set_value(field: &mut Self::Type,bytes: &[u8]) -> Result<(),SetValueError> {
+    fn set_value(field: &mut Self::Type, bytes: &[u8]) -> Result<(), SetValueError> {
         if bytes.len() == 1 {
             *field = match bytes[0] {
                 b'Y' => true,
@@ -58,7 +58,7 @@ impl FieldType for BoolTrueOrBlankFieldType {
                 _ => return Err(SetValueError::WrongFormat),
             };
 
-            return Ok(())
+            return Ok(());
         }
 
         Err(SetValueError::WrongFormat)
@@ -72,7 +72,12 @@ impl FieldType for BoolTrueOrBlankFieldType {
         1
     }
 
-    fn read(field: &Self::Type,_fix_version: FIXVersion,_message_version: MessageVersion,buf: &mut Vec<u8>) -> usize {
+    fn read(
+        field: &Self::Type,
+        _fix_version: FIXVersion,
+        _message_version: MessageVersion,
+        buf: &mut Vec<u8>,
+    ) -> usize {
         buf.write(if *field { b"Y" } else { b"N" }).unwrap()
     }
 }
@@ -86,12 +91,11 @@ impl FieldType for CharFieldType {
         Default::default()
     }
 
-    fn set_value(field: &mut Self::Type,bytes: &[u8]) -> Result<(),SetValueError> {
+    fn set_value(field: &mut Self::Type, bytes: &[u8]) -> Result<(), SetValueError> {
         if bytes.len() == 1 {
             *field = bytes[0];
             Ok(())
-        }
-        else {
+        } else {
             Err(SetValueError::WrongFormat)
         }
     }
@@ -104,7 +108,12 @@ impl FieldType for CharFieldType {
         1
     }
 
-    fn read(field: &Self::Type,_fix_version: FIXVersion,_message_version: MessageVersion,buf: &mut Vec<u8>) -> usize {
+    fn read(
+        field: &Self::Type,
+        _fix_version: FIXVersion,
+        _message_version: MessageVersion,
+        buf: &mut Vec<u8>,
+    ) -> usize {
         buf.write(&[*field]).unwrap()
     }
 }
@@ -562,8 +571,8 @@ impl FieldType for DataFieldType {
         Default::default()
     }
 
-    fn set_value(field: &mut Self::Type,bytes: &[u8]) -> Result<(),SetValueError> {
-        field.resize(bytes.len(),0);
+    fn set_value(field: &mut Self::Type, bytes: &[u8]) -> Result<(), SetValueError> {
+        field.resize(bytes.len(), 0);
         field.copy_from_slice(bytes);
         Ok(())
     }
@@ -576,7 +585,12 @@ impl FieldType for DataFieldType {
         field.len()
     }
 
-    fn read(field: &Self::Type,_fix_version: FIXVersion,_message_version: MessageVersion,buf: &mut Vec<u8>) -> usize {
+    fn read(
+        field: &Self::Type,
+        _fix_version: FIXVersion,
+        _message_version: MessageVersion,
+        buf: &mut Vec<u8>,
+    ) -> usize {
         buf.write(field).unwrap()
     }
 }
@@ -590,8 +604,8 @@ impl FieldType for DayOfMonthFieldType {
         None
     }
 
-    fn set_value(field: &mut Self::Type,bytes: &[u8]) -> Result<(),SetValueError> {
-        let new_value = try!(slice_to_int::<u8>(bytes));
+    fn set_value(field: &mut Self::Type, bytes: &[u8]) -> Result<(), SetValueError> {
+        let new_value = (slice_to_int::<u8>(bytes))?;
         if new_value < 1 || new_value > 31 {
             return Err(SetValueError::OutOfRange);
         }
@@ -609,10 +623,15 @@ impl FieldType for DayOfMonthFieldType {
         0
     }
 
-    fn read(field: &Self::Type,_fix_version: FIXVersion,_message_version: MessageVersion,buf: &mut Vec<u8>) -> usize {
+    fn read(
+        field: &Self::Type,
+        _fix_version: FIXVersion,
+        _message_version: MessageVersion,
+        buf: &mut Vec<u8>,
+    ) -> usize {
         if let Some(value) = *field {
             let value_string = value.to_string();
-            return buf.write(value_string.as_bytes()).unwrap()
+            return buf.write(value_string.as_bytes()).unwrap();
         }
 
         0
@@ -630,8 +649,8 @@ impl FieldType for IntFieldType {
         0
     }
 
-    fn set_value(field: &mut Self::Type,bytes: &[u8]) -> Result<(),SetValueError> {
-        *field = try!(slice_to_int::<Self::Type>(bytes));
+    fn set_value(field: &mut Self::Type, bytes: &[u8]) -> Result<(), SetValueError> {
+        *field = slice_to_int::<Self::Type>(bytes)?;
 
         Ok(())
     }
@@ -645,7 +664,12 @@ impl FieldType for IntFieldType {
         0
     }
 
-    fn read(field: &Self::Type,_fix_version: FIXVersion,_message_version: MessageVersion,buf: &mut Vec<u8>) -> usize {
+    fn read(
+        field: &Self::Type,
+        _fix_version: FIXVersion,
+        _message_version: MessageVersion,
+        buf: &mut Vec<u8>,
+    ) -> usize {
         let value_string = field.to_string();
         buf.write(value_string.as_bytes()).unwrap()
     }
@@ -663,7 +687,7 @@ impl LocalMktDateFieldType {
 
     pub fn new_empty() -> <LocalMktDateFieldType as FieldType>::Type {
         //Create a new time stamp that can be considered empty.
-        NaiveDate::from_ymd(-1,1,1)
+        NaiveDate::from_ymd(-1, 1, 1)
     }
 }
 
@@ -674,16 +698,16 @@ impl FieldType for LocalMktDateFieldType {
         LocalMktDateFieldType::new_empty()
     }
 
-    fn set_value(field: &mut Self::Type,bytes: &[u8]) -> Result<(),SetValueError> {
+    fn set_value(field: &mut Self::Type, bytes: &[u8]) -> Result<(), SetValueError> {
         if bytes.len() != 8 {
             return Err(SetValueError::WrongFormat);
         }
 
-        let year = try!(slice_to_int::<i32>(&bytes[0..4]));
-        let month = try!(slice_to_int::<u32>(&bytes[4..6]));
-        let day = try!(slice_to_int::<u32>(&bytes[6..8]));
+        let year = (slice_to_int::<i32>(&bytes[0..4]))?;
+        let month = (slice_to_int::<u32>(&bytes[4..6]))?;
+        let day = (slice_to_int::<u32>(&bytes[6..8]))?;
 
-        *field = NaiveDate::from_ymd(year,month,day);
+        *field = NaiveDate::from_ymd(year, month, day);
 
         Ok(())
     }
@@ -696,7 +720,12 @@ impl FieldType for LocalMktDateFieldType {
         0
     }
 
-    fn read(field: &Self::Type,_fix_version: FIXVersion,_message_version: MessageVersion,buf: &mut Vec<u8>) -> usize {
+    fn read(
+        field: &Self::Type,
+        _fix_version: FIXVersion,
+        _message_version: MessageVersion,
+        buf: &mut Vec<u8>,
+    ) -> usize {
         assert!(!Self::is_empty(&field)); //Was required field not set?
 
         let value_string = field.format("%Y%m%d").to_string();
@@ -721,18 +750,23 @@ impl FieldType for NoneFieldType {
         0
     }
 
-    fn read(_field: &Self::Type,_fix_version: FIXVersion,_message_version: MessageVersion,_buf: &mut Vec<u8>) -> usize {
+    fn read(
+        _field: &Self::Type,
+        _fix_version: FIXVersion,
+        _message_version: MessageVersion,
+        _buf: &mut Vec<u8>,
+    ) -> usize {
         0
     }
 }
 
-#[derive(Clone,PartialEq)]
+#[derive(Clone, PartialEq)]
 pub enum MonthYearRemainder {
     Day(u8),
     Week(u8),
 }
 
-#[derive(Clone,PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct MonthYear {
     year: i16,
     month: u8,
@@ -747,12 +781,20 @@ impl MonthYear {
 
         let value_string = String::from_utf8_lossy(bytes).into_owned();
 
-        let year = if let Ok(year) = i16::from_str(&value_string[0..4]) { year } else { return None };
+        let year = if let Ok(year) = i16::from_str(&value_string[0..4]) {
+            year
+        } else {
+            return None;
+        };
         if year < 0 || year > 9999 {
             return None;
         }
 
-        let month = if let Ok(month) = u8::from_str(&value_string[4..5]) { month } else { return None };
+        let month = if let Ok(month) = u8::from_str(&value_string[4..5]) {
+            month
+        } else {
+            return None;
+        };
         if month < 1 || month > 12 {
             return None;
         }
@@ -765,15 +807,13 @@ impl MonthYear {
                     Ok(week) if week >= 1 && week <= 5 => week,
                     _ => return None,
                 })
-            }
-            else {
+            } else {
                 MonthYearRemainder::Day(match u8::from_str(&value_string[6..7]) {
                     Ok(day) if day >= 1 && day <= 31 => day,
                     _ => return None,
                 })
             })
-        }
-        else {
+        } else {
             None
         };
 
@@ -785,7 +825,7 @@ impl MonthYear {
     }
 
     pub fn new_now() -> MonthYear {
-        let datetime = UTC::now();
+        let datetime = Utc::now();
 
         MonthYear {
             year: datetime.year() as i16,
@@ -795,7 +835,7 @@ impl MonthYear {
     }
 
     pub fn new_now_day() -> MonthYear {
-        let datetime = UTC::now();
+        let datetime = Utc::now();
 
         MonthYear {
             year: datetime.year() as i16,
@@ -805,7 +845,7 @@ impl MonthYear {
     }
 
     pub fn new_now_with_week(week: u8) -> MonthYear {
-        let datetime = UTC::now();
+        let datetime = Utc::now();
 
         MonthYear {
             year: datetime.year() as i16,
@@ -820,7 +860,6 @@ impl MonthYear {
             month: 1,
             remainder: None,
         }
-
     }
 }
 
@@ -833,7 +872,7 @@ impl FieldType for MonthYearFieldType {
         Self::Type::new_empty()
     }
 
-    fn set_value(field: &mut Self::Type,bytes: &[u8]) -> Result<(),SetValueError> {
+    fn set_value(field: &mut Self::Type, bytes: &[u8]) -> Result<(), SetValueError> {
         if let Some(value) = Self::Type::new(bytes) {
             *field = value;
             return Ok(());
@@ -843,21 +882,26 @@ impl FieldType for MonthYearFieldType {
     }
 
     fn is_empty(field: &Self::Type) -> bool {
-        return field.year < 0
+        return field.year < 0;
     }
 
     fn len(_field: &Self::Type) -> usize {
         0
     }
 
-    fn read(field: &Self::Type,_fix_version: FIXVersion,_message_version: MessageVersion,buf: &mut Vec<u8>) -> usize {
-        let month_year_string = format!("{:04}{:02}",field.year,field.month);
+    fn read(
+        field: &Self::Type,
+        _fix_version: FIXVersion,
+        _message_version: MessageVersion,
+        buf: &mut Vec<u8>,
+    ) -> usize {
+        let month_year_string = format!("{:04}{:02}", field.year, field.month);
         let mut result = buf.write(month_year_string.as_bytes()).unwrap();
 
         if let Some(ref remainder) = field.remainder {
             let remainder_string = match remainder {
                 &MonthYearRemainder::Day(day) => day.to_string(),
-                &MonthYearRemainder::Week(week) => format!("w{}",week),
+                &MonthYearRemainder::Week(week) => format!("w{}", week),
             };
             result += buf.write(remainder_string.as_bytes()).unwrap();
         }
@@ -877,8 +921,8 @@ impl FieldType for SeqNumFieldType {
         0
     }
 
-    fn set_value(field: &mut Self::Type,bytes: &[u8]) -> Result<(),SetValueError> {
-        *field = try!(slice_to_int::<Self::Type>(bytes));
+    fn set_value(field: &mut Self::Type, bytes: &[u8]) -> Result<(), SetValueError> {
+        *field = (slice_to_int::<Self::Type>(bytes))?;
 
         Ok(())
     }
@@ -893,7 +937,12 @@ impl FieldType for SeqNumFieldType {
         0
     }
 
-    fn read(field: &Self::Type,_fix_version: FIXVersion,_message_version: MessageVersion,buf: &mut Vec<u8>) -> usize {
+    fn read(
+        field: &Self::Type,
+        _fix_version: FIXVersion,
+        _message_version: MessageVersion,
+        buf: &mut Vec<u8>,
+    ) -> usize {
         let value_string = field.to_string();
         buf.write(value_string.as_bytes()).unwrap()
     }
@@ -908,7 +957,7 @@ impl FieldType for StringFieldType {
         Default::default()
     }
 
-    fn set_value(field: &mut Self::Type,bytes: &[u8]) -> Result<(),SetValueError> {
+    fn set_value(field: &mut Self::Type, bytes: &[u8]) -> Result<(), SetValueError> {
         field.clear();
         field.extend_from_slice(bytes);
         Ok(())
@@ -922,7 +971,12 @@ impl FieldType for StringFieldType {
         field.len()
     }
 
-    fn read(field: &Self::Type,_fix_version: FIXVersion,_message_version: MessageVersion,buf: &mut Vec<u8>) -> usize {
+    fn read(
+        field: &Self::Type,
+        _fix_version: FIXVersion,
+        _message_version: MessageVersion,
+        buf: &mut Vec<u8>,
+    ) -> usize {
         buf.write(&field[..]).unwrap()
     }
 }
@@ -931,29 +985,30 @@ pub struct RepeatingGroupFieldType<T: Message + PartialEq> {
     message_type: PhantomData<T>,
 }
 
-impl<T: Message + MessageBuildable + Any + Clone + Default + PartialEq + Send + Sized> FieldType for RepeatingGroupFieldType<T> {
+impl<T: Message + MessageBuildable + Any + Clone + Default + PartialEq + Send + Sized> FieldType
+    for RepeatingGroupFieldType<T>
+{
     type Type = Vec<Box<T>>;
 
     fn rule() -> Option<Rule> {
         let message = <T as Default>::default();
-        Some(Rule::BeginGroup{ builder_func: <T as MessageBuildable>::builder_func(&message) })
+        Some(Rule::BeginGroup {
+            builder_func: <T as MessageBuildable>::builder_func(&message),
+        })
     }
 
     fn default_value() -> Self::Type {
         Default::default()
     }
 
-    fn set_groups(field: &mut Self::Type,mut groups: Vec<Box<Message>>) -> bool {
+    fn set_groups(field: &mut Self::Type, mut groups: Vec<Box<dyn Message>>) -> bool {
         field.clear();
 
         for group in groups.drain(0..) {
             if group.as_any().is::<T>() {
                 let group_ptr = Box::into_raw(group);
-                field.push(unsafe {
-                    Box::from_raw(group_ptr as *mut T)
-                });
-            }
-            else {
+                field.push(unsafe { Box::from_raw(group_ptr as *mut T) });
+            } else {
                 return false;
             }
         }
@@ -969,7 +1024,12 @@ impl<T: Message + MessageBuildable + Any + Clone + Default + PartialEq + Send + 
         field.len()
     }
 
-    fn read(field: &Self::Type,fix_version: FIXVersion,message_version: MessageVersion,buf: &mut Vec<u8>) -> usize {
+    fn read(
+        field: &Self::Type,
+        fix_version: FIXVersion,
+        message_version: MessageVersion,
+        buf: &mut Vec<u8>,
+    ) -> usize {
         let group_count_str = field.len().to_string();
         let mut result = 1;
 
@@ -977,7 +1037,7 @@ impl<T: Message + MessageBuildable + Any + Clone + Default + PartialEq + Send + 
         buf.push(VALUE_END);
 
         for group in field {
-            result += group.read_body(fix_version,message_version,buf);
+            result += group.read_body(fix_version, message_version, buf);
         }
 
         result
@@ -988,13 +1048,17 @@ pub struct UTCTimeOnlyFieldType;
 
 impl UTCTimeOnlyFieldType {
     pub fn new_now() -> <UTCTimeOnlyFieldType as FieldType>::Type {
-        let spec = ::time::get_time();
+        let start = SystemTime::now();
+        let since_the_epoch = start
+            .duration_since(UNIX_EPOCH)
+            .expect("Time went backwards");
+        //Strip nanoseconds so only whole milliseconds remain (with truncation based rounding).
+        //This is because UTCTimestamp does not support sub-millisecond precision.
+        let hours = since_the_epoch.as_secs() % (24 * 60 * 60);
+        let minutes = since_the_epoch.as_secs() % (60 * 60);
+        let seconds = since_the_epoch.as_secs() % 60;
 
-        let hours = spec.sec % (24 * 60 * 60);
-        let minutes = spec.sec % (60 * 60);
-        let seconds = spec.sec % 60;
-
-        NaiveTime::from_hms(hours as u32,minutes as u32,seconds as u32)
+        NaiveTime::from_hms(hours as u32, minutes as u32, seconds as u32)
     }
 }
 
@@ -1005,29 +1069,27 @@ impl FieldType for UTCTimeOnlyFieldType {
         UTCTimeOnlyFieldType::new_now()
     }
 
-    fn set_value(field: &mut Self::Type,bytes: &[u8]) -> Result<(),SetValueError> {
+    fn set_value(field: &mut Self::Type, bytes: &[u8]) -> Result<(), SetValueError> {
         if bytes.len() < 8 || bytes[2] != b':' || bytes[5] != b':' {
             return Err(SetValueError::WrongFormat);
         }
 
-        let hours = try!(slice_to_int::<u32>(&bytes[0..2]));
-        let minutes = try!(slice_to_int::<u32>(&bytes[3..5]));
-        let seconds = try!(slice_to_int::<u32>(&bytes[6..8]));
+        let hours = (slice_to_int::<u32>(&bytes[0..2]))?;
+        let minutes = (slice_to_int::<u32>(&bytes[3..5]))?;
+        let seconds = (slice_to_int::<u32>(&bytes[6..8]))?;
         let milliseconds = if bytes.len() == 8 {
             0
-        }
-        else if bytes.len() == 12 {
+        } else if bytes.len() == 12 {
             if bytes[8] != b'.' {
                 return Err(SetValueError::WrongFormat);
             }
 
-            try!(slice_to_int::<u32>(&bytes[9..12]))
-        }
-        else {
+            (slice_to_int::<u32>(&bytes[9..12]))?
+        } else {
             return Err(SetValueError::WrongFormat);
         };
 
-        *field = NaiveTime::from_hms_milli(hours,minutes,seconds,milliseconds);
+        *field = NaiveTime::from_hms_milli(hours, minutes, seconds, milliseconds);
 
         Ok(())
     }
@@ -1040,7 +1102,12 @@ impl FieldType for UTCTimeOnlyFieldType {
         0
     }
 
-    fn read(field: &Self::Type,_fix_version: FIXVersion,_message_version: MessageVersion,buf: &mut Vec<u8>) -> usize {
+    fn read(
+        field: &Self::Type,
+        _fix_version: FIXVersion,
+        _message_version: MessageVersion,
+        buf: &mut Vec<u8>,
+    ) -> usize {
         let value_string = field.format("%T%.3f").to_string();
         buf.write(value_string.as_bytes()).unwrap()
     }
@@ -1050,63 +1117,64 @@ pub struct UTCTimestampFieldType;
 
 impl UTCTimestampFieldType {
     pub fn new_now() -> <UTCTimestampFieldType as FieldType>::Type {
-        let spec = ::time::get_time();
-
+        let start = SystemTime::now();
+        let since_the_epoch = start
+            .duration_since(UNIX_EPOCH)
+            .expect("Time went backwards");
         //Strip nanoseconds so only whole milliseconds remain (with truncation based rounding).
         //This is because UTCTimestamp does not support sub-millisecond precision.
-        let mut nsec = spec.nsec as u32;
+        let mut nsec = since_the_epoch.as_nanos();
         nsec -= nsec % 1_000_000;
 
-        let naive = NaiveDateTime::from_timestamp(spec.sec,nsec);
-        DateTime::from_utc(naive,UTC)
+        let naive = NaiveDateTime::from_timestamp(since_the_epoch.as_secs(), nsec);
+        DateTime::from_utc(naive, Utc)
     }
 
     pub fn new_empty() -> <UTCTimestampFieldType as FieldType>::Type {
         //Create a new time stamp that can be considered empty. An Option<_> might be preferred
         //but that would make using the timestamp needlessly complicated.
-        DateTime::<UTC>::from_utc(
-            NaiveDate::from_ymd(-1,1,1).and_hms(0,0,0),
-            UTC
-        )
+        DateTime::<Utc>::from_utc(NaiveDate::from_ymd(-1, 1, 1).and_hms(0, 0, 0), Utc)
     }
 }
 
 impl FieldType for UTCTimestampFieldType {
-    type Type = DateTime<UTC>;
+    type Type = DateTime<Utc>;
 
     fn default_value() -> Self::Type {
         UTCTimestampFieldType::new_empty()
     }
 
-    fn set_value(field: &mut Self::Type,bytes: &[u8]) -> Result<(),SetValueError> {
+    fn set_value(field: &mut Self::Type, bytes: &[u8]) -> Result<(), SetValueError> {
         if bytes.len() < 17 || bytes[8] != b'-' || bytes[11] != b':' || bytes[14] != b':' {
             return Err(SetValueError::WrongFormat);
         }
 
-        let year = try!(slice_to_int::<i32>(&bytes[0..4]));
-        let month = try!(slice_to_int::<u32>(&bytes[4..6]));
-        let day = try!(slice_to_int::<u32>(&bytes[6..8]));
-        let hours = try!(slice_to_int::<u32>(&bytes[9..11]));
-        let minutes = try!(slice_to_int::<u32>(&bytes[12..14]));
-        let seconds = try!(slice_to_int::<u32>(&bytes[15..17]));
+        let year = (slice_to_int::<i32>(&bytes[0..4]))?;
+        let month = (slice_to_int::<u32>(&bytes[4..6]))?;
+        let day = (slice_to_int::<u32>(&bytes[6..8]))?;
+        let hours = (slice_to_int::<u32>(&bytes[9..11]))?;
+        let minutes = (slice_to_int::<u32>(&bytes[12..14]))?;
+        let seconds = (slice_to_int::<u32>(&bytes[15..17]))?;
         let milliseconds = if bytes.len() == 17 {
             0
-        }
-        else if bytes.len() == 21 {
+        } else if bytes.len() == 21 {
             if bytes[17] != b'.' {
                 return Err(SetValueError::WrongFormat);
             }
 
-            try!(slice_to_int::<u32>(&bytes[18..21]))
-        }
-        else {
+            (slice_to_int::<u32>(&bytes[18..21]))?
+        } else {
             return Err(SetValueError::WrongFormat);
         };
 
-        *field = DateTime::<UTC>::from_utc(
-            NaiveDate::from_ymd(year,month,day)
-                       .and_hms_milli(hours,minutes,seconds,milliseconds),
-            UTC
+        *field = DateTime::<Utc>::from_utc(
+            NaiveDate::from_ymd(year, month, day).and_hms_milli(
+                hours,
+                minutes,
+                seconds,
+                milliseconds,
+            ),
+            Utc,
         );
 
         Ok(())
@@ -1120,22 +1188,29 @@ impl FieldType for UTCTimestampFieldType {
         0
     }
 
-    fn read(field: &Self::Type,_fix_version: FIXVersion,_message_version: MessageVersion,buf: &mut Vec<u8>) -> usize {
+    fn read(
+        field: &Self::Type,
+        _fix_version: FIXVersion,
+        _message_version: MessageVersion,
+        buf: &mut Vec<u8>,
+    ) -> usize {
         assert!(!Self::is_empty(&field)); //Was required field not set?
 
         buf.reserve(21);
         let naive_utc = field.naive_utc();
-        write!(buf,
-               "{:04}{:02}{:02}-{:02}:{:02}:{:02}.{:03}",
-               naive_utc.year(),
-               naive_utc.month(),
-               naive_utc.day(),
-               naive_utc.hour(),
-               naive_utc.minute(),
-               naive_utc.second(),
-               naive_utc.nanosecond() / 1_000_000).unwrap();
+        write!(
+            buf,
+            "{:04}{:02}{:02}-{:02}:{:02}:{:02}.{:03}",
+            naive_utc.year(),
+            naive_utc.month(),
+            naive_utc.day(),
+            naive_utc.hour(),
+            naive_utc.minute(),
+            naive_utc.second(),
+            naive_utc.nanosecond() / 1_000_000
+        )
+        .unwrap();
 
         21
     }
 }
-

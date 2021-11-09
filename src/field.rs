@@ -9,11 +9,11 @@
 // at your option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use field_tag::FieldTag;
-use field_type::FieldType;
-use fix_version::FIXVersion;
-use message_version::MessageVersion;
-use rule::Rule;
+use crate::field_tag::FieldTag;
+use crate::field_type::FieldType;
+use crate::fix_version::FIXVersion;
+use crate::message_version::MessageVersion;
+use crate::rule::Rule;
 
 pub trait Field {
     type Type;

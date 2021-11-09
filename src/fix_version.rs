@@ -9,8 +9,8 @@
 // at your option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use constant::{FIX_4_0_BEGIN_STRING,FIX_4_1_BEGIN_STRING,FIX_4_2_BEGIN_STRING,FIX_4_3_BEGIN_STRING,FIX_4_4_BEGIN_STRING,FIXT_1_1_BEGIN_STRING};
-use message_version::MessageVersion;
+use crate::constant::{FIX_4_0_BEGIN_STRING,FIX_4_1_BEGIN_STRING,FIX_4_2_BEGIN_STRING,FIX_4_3_BEGIN_STRING,FIX_4_4_BEGIN_STRING,FIXT_1_1_BEGIN_STRING};
+use crate::message_version::MessageVersion;
 
 #[derive(Clone,Copy,Debug,PartialEq)]
 #[allow(non_camel_case_types)]

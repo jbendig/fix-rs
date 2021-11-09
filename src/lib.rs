@@ -26,9 +26,6 @@
 #![feature(attr_literals)]
 #![feature(plugin)]
 #![feature(proc_macro)]
-
-#![plugin(phf_macros)]
-
 #![allow(unknown_lints)]
 
 extern crate chrono;

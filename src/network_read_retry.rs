@@ -74,7 +74,7 @@ impl Evented for NetworkReadRetry {
         }
 
         let (registration,set_readiness) = Registration::new2();
-        try!(registration.register(poll,token,interest,opts));
+        registration.register(poll,token,interest,opts)?;
         *self.registration.borrow_mut() = Some(registration);
         *self.set_readiness.borrow_mut() = Some(set_readiness);
 
