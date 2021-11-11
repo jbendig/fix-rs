@@ -1126,7 +1126,7 @@ impl UTCTimestampFieldType {
         let mut nsec = since_the_epoch.as_nanos();
         nsec -= nsec % 1_000_000;
 
-        let naive = NaiveDateTime::from_timestamp(since_the_epoch.as_secs(), nsec);
+        let naive = NaiveDateTime::from_timestamp(since_the_epoch.as_secs() as i64, nsec as u32);
         DateTime::from_utc(naive, Utc)
     }
 

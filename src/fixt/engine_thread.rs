@@ -544,7 +544,7 @@ impl InternalConnection {
     fn read(
         &mut self,
         timer: &mut Timer<(TimeoutType, Token)>,
-    ) -> Result<(Vec<ConnectionReadMessage>), ::std::io::Error> {
+    ) -> Result<Vec<ConnectionReadMessage>, ::std::io::Error> {
         fn parse_bytes(
             connection: &mut InternalConnection,
             messages: &mut Vec<ConnectionReadMessage>,

@@ -1082,7 +1082,7 @@ impl Parser {
                 //encountered. As a side effect, we also handle any tag specific
                 //rules in consequence of being encountered.
                 if let Some(rule) = self.remaining_fields.remove(&self.current_tag) {
-                    skip_set_value = (self.handle_rule_after_value(&rule));
+                    skip_set_value = (self.handle_rule_after_value(&rule))?;
                 } else {
                     if self.is_current_tag_known() {
                         let current_message_builder = self

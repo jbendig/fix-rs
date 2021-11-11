@@ -17,9 +17,13 @@ extern crate proc_macro;
 extern crate proc_macro2;
 extern crate syn;
 
-use proc_macro2::TokenStream;
+use proc_macro2::{Span, TokenStream};
 use quote::ToTokens;
-use syn::DeriveInput;
+use syn::{parse_macro_input, DeriveInput};
+
+fn str_to_ident(input: &str) -> syn::Ident {
+    syn::Ident::new(input, Span::call_site())
+}
 
 fn str_to_tokens(input: &str) -> TokenStream {
     let tokens: proc_macro2::TokenStream = {
@@ -48,10 +52,17 @@ fn extract_attribute_value(
                 continue;
             }
             for attr in &field.attrs {
-                //todo if the field has attribute "message_type", skip
-                //todo attr_ident is "message_type"
-                //todo this is somewhat problematic since syn1.0 now regards attributes as tokenstreams.
-                // println!("attr token: {:?}", attr.tokens.to_string());
+                //todo if the field has attribute not equal to attr_ident, skip
+                //todo this is somewhat problematic since syn1.0 now regards attributes as tokenstreams
+                //todo so for now, we just use good old contains with strings but this is NOT GOOD
+                // println!(
+                //     "attr token includes attr ident: {:?}",
+                //     attr.into_token_stream().to_string().contains(attr_ident)
+                // );
+                if !attr.into_token_stream().to_string().contains(attr_ident) {
+                    continue;
+                }
+                // println!("attr ident: {:?}", attr_ident);
                 // let attr = attr.parse_args::<TokenStream>(); //this has to be s
                 // if attr.tokens.to_string() != attr_ident {
                 //     continue;
@@ -140,24 +151,24 @@ pub fn build_message(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
     message_type_header += "\\x01\"";
 
     //Convert symbols into tokens so quote's ToTokens trait doesn't quote them.
-    let build_message_name = str_to_tokens(&build_message_name[..]);
+    let build_message_name = str_to_ident(&build_message_name[..]);
     let message_type_header = str_to_tokens(&message_type_header[..]);
 
     let mut tokens = quote! {
         impl #message_name {
             fn msg_type_header() -> &'static [u8] {
-                #message_type_header
+                (#message_type_header).as_bytes()
             }
         }
 
         pub struct #build_message_name {
-            cache: $crate::message::BuildMessageInternalCache,
+            cache: crate::message::BuildMessageInternalCache,
         }
 
         impl #build_message_name {
             fn new() -> #build_message_name {
                 #build_message_name {
-                    cache: $crate::message::BuildMessageInternalCache {
+                    cache: crate::message::BuildMessageInternalCache {
                         fields_fix40: None,
                         fields_fix41: None,
                         fields_fix42: None,
@@ -170,23 +181,23 @@ pub fn build_message(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
                 }
             }
 
-            fn new_into_box() -> Box<dyn $crate::message::BuildMessage + Send> {
+            fn new_into_box() -> Box<dyn crate::message::BuildMessage + Send> {
                 Box::new(#build_message_name::new())
             }
         }
 
-        impl $crate::message::BuildMessage for #build_message_name {
-            fn first_field(&self,version: $crate::message_version::MessageVersion) -> $crate::field_tag::FieldTag {
+        impl crate::message::BuildMessage for #build_message_name {
+            fn first_field(&self, version: crate::message_version::MessageVersion) -> crate::field_tag::FieldTag {
                 #message_name::first_field(version)
             }
 
-            fn field_count(&self,version: $crate::message_version::MessageVersion) -> usize {
+            fn field_count(&self, version: crate::message_version::MessageVersion) -> usize {
                 #message_name::field_count(version)
             }
 
-            fn fields(&mut self,version: $crate::message_version::MessageVersion) -> $crate::message::FieldHashMap {
-                fn get_or_set_fields(option_fields: &mut Option<$crate::message::FieldHashMap>,
-                                     version: $crate::message_version::MessageVersion) -> $crate::message::FieldHashMap {
+            fn fields(&mut self,version: crate::message_version::MessageVersion) -> crate::message::FieldHashMap {
+                fn get_or_set_fields(option_fields: &mut Option<crate::message::FieldHashMap>,
+                                     version: crate::message_version::MessageVersion) -> crate::message::FieldHashMap {
                     if option_fields.is_none() {
                         let fields = #message_name::fields(version);
                         *option_fields = Some(fields);
@@ -196,36 +207,36 @@ pub fn build_message(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
                 }
 
                 match version {
-                    $crate::message_version::MessageVersion::FIX40 => get_or_set_fields(&mut self.cache.fields_fix40,version),
-                    $crate::message_version::MessageVersion::FIX41 => get_or_set_fields(&mut self.cache.fields_fix41,version),
-                    $crate::message_version::MessageVersion::FIX42 => get_or_set_fields(&mut self.cache.fields_fix42,version),
-                    $crate::message_version::MessageVersion::FIX43 => get_or_set_fields(&mut self.cache.fields_fix43,version),
-                    $crate::message_version::MessageVersion::FIX44 => get_or_set_fields(&mut self.cache.fields_fix44,version),
-                    $crate::message_version::MessageVersion::FIX50 => get_or_set_fields(&mut self.cache.fields_fix50,version),
-                    $crate::message_version::MessageVersion::FIX50SP1 => get_or_set_fields(&mut self.cache.fields_fix50sp1,version),
-                    $crate::message_version::MessageVersion::FIX50SP2 => get_or_set_fields(&mut self.cache.fields_fix50sp2,version),
+                    crate::message_version::MessageVersion::FIX40 => get_or_set_fields(&mut self.cache.fields_fix40,version),
+                    crate::message_version::MessageVersion::FIX41 => get_or_set_fields(&mut self.cache.fields_fix41,version),
+                    crate::message_version::MessageVersion::FIX42 => get_or_set_fields(&mut self.cache.fields_fix42,version),
+                    crate::message_version::MessageVersion::FIX43 => get_or_set_fields(&mut self.cache.fields_fix43,version),
+                    crate::message_version::MessageVersion::FIX44 => get_or_set_fields(&mut self.cache.fields_fix44,version),
+                    crate::message_version::MessageVersion::FIX50 => get_or_set_fields(&mut self.cache.fields_fix50,version),
+                    crate::message_version::MessageVersion::FIX50SP1 => get_or_set_fields(&mut self.cache.fields_fix50sp1,version),
+                    crate::message_version::MessageVersion::FIX50SP2 => get_or_set_fields(&mut self.cache.fields_fix50sp2,version),
                 }
             }
 
-            fn required_fields(&self,version: $crate::message_version::MessageVersion) -> $crate::message::FieldHashSet {
+            fn required_fields(&self,version: crate::message_version::MessageVersion) -> crate::message::FieldHashSet {
                 #message_name::required_fields(version)
             }
 
-            fn new_into_box(&self) -> Box<dyn $crate::message::BuildMessage + Send> {
+            fn new_into_box(&self) -> Box<dyn crate::message::BuildMessage + Send> {
                 #build_message_name::new_into_box()
             }
 
-            fn build(&self) -> Box<dyn $crate::message::Message + Send> {
+            fn build(&self) -> Box<dyn crate::message::Message + Send> {
                 Box::new(#message_name::new())
             }
         }
 
-        impl $crate::message::MessageBuildable for #message_name {
-            fn builder(&self) -> Box<dyn $crate::message::BuildMessage + Send> {
+        impl crate::message::MessageBuildable for #message_name {
+            fn builder(&self) -> Box<dyn crate::message::BuildMessage + Send> {
                 #build_message_name::new_into_box()
             }
 
-            fn builder_func(&self) -> fn() -> Box<dyn $crate::message::BuildMessage + Send> {
+            fn builder_func(&self) -> fn() -> Box<dyn crate::message::BuildMessage + Send> {
                 #build_message_name::new_into_box
             }
         }
@@ -233,18 +244,18 @@ pub fn build_message(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
 
     if is_fixt_message {
         let extra_tokens = quote! {
-            impl $crate::fixt::message::BuildFIXTMessage for #build_message_name {
-                fn new_into_box(&self) -> Box<fixt::message::BuildFIXTMessage + Send> {
+            impl crate::fixt::message::BuildFIXTMessage for #build_message_name {
+                fn new_into_box(&self) -> Box<dyn crate::fixt::message::BuildFIXTMessage + Send> {
                     Box::new(#build_message_name::new())
                 }
 
-                fn build(&self) -> Box<$crate::fixt::message::FIXTMessage + Send> {
+                fn build(&self) -> Box<dyn crate::fixt::message::FIXTMessage + Send> {
                     Box::new(#message_name::new())
                 }
             }
 
-            impl $crate::fixt::message::FIXTMessageBuildable for #message_name {
-                fn builder(&self) -> Box<$crate::fixt::message::BuildFIXTMessage + Send> {
+            impl crate::fixt::message::FIXTMessageBuildable for #message_name {
+                fn builder(&self) -> Box<dyn crate::fixt::message::BuildFIXTMessage + Send> {
                     Box::new(#build_message_name::new())
                 }
             }
@@ -257,8 +268,9 @@ pub fn build_message(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
 
 #[proc_macro_derive(BuildField, attributes(tag))]
 pub fn build_field(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let ast = syn::parse(input).unwrap();
-
+    // println!("input is:{:?}", input);
+    let ast: DeriveInput = syn::parse(input).unwrap();
+    // println!("reached here start");
     let tag = match extract_attribute_int(&ast, "_tag_gen", "tag") {
         Ok(bytes) => bytes,
         Err(ExtractAttributeError::BodyNotStruct) => {
@@ -275,27 +287,31 @@ pub fn build_field(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             "#[derive(BuildField)] tag attribute must be as an unsigned integer like #[tag=1234]"
         ),
     };
+    // println!("tag: {}", tag);
+    let tag_u64 = tag;
     let tag = tag.to_string();
 
     let mut tag_bytes = "b\"".to_string();
     tag_bytes += &tag[..];
     tag_bytes += "\"";
 
-    let field_name = ast.ident;
+    let field_name = ast.ident.to_token_stream(); //todo is this the write way?
+                                                  // println!("field_name is:{}", field_name);
     let tag = str_to_tokens(&tag[..]);
     let tag_bytes = str_to_tokens(&tag_bytes[..]);
-
+    // println!("tag bytes: {}",tag_bytes);
+    // let tag_bytes = "aa".as_bytes();
     let tokens = quote! {
         impl #field_name {
             fn tag_bytes() -> &'static [u8] {
-                #tag_bytes
+                (#tag_bytes).as_bytes()
             }
 
-            fn tag() -> $crate::field_tag::FieldTag {
-                $crate::field_tag::FieldTag(#tag)
+            fn tag() -> crate::field_tag::FieldTag {
+                crate::field_tag::FieldTag(#tag_u64)
             }
         }
     };
-
+    // println!("reached here end");
     proc_macro::TokenStream::from(tokens)
 }

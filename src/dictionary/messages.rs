@@ -13,13 +13,12 @@ use std::any::Any;
 
 use crate::dictionary::fields::*;
 use crate::field::Field;
-use crate::field_tag::{self, FieldTag};
+use crate::field_tag::FieldTag;
 use crate::field_type::FieldType;
 use crate::fix_version::FIXVersion;
-use crate::fixt;
 use crate::fixt::message::FIXTMessage;
-use crate::message::{self, Message, Meta, SetValueError, NOT_REQUIRED, REQUIRED};
-use crate::message_version::{self, MessageVersion};
+use crate::message::{Message, Meta, SetValueError, NOT_REQUIRED, REQUIRED};
+use crate::message_version::MessageVersion;
 
 pub struct NullMessage {}
 

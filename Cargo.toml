@@ -17,7 +17,7 @@ default = []
 load-testing = ["clap"]
 
 [dependencies]
-"fix-rs-macros" = { path = "fix-rs-macros", version = "0.2.1" }
+"fix-rs-macros" = { path = "fix-rs-macros"}
 "mio" = "0.6.6"
 "chrono" = "0.4.19"
 "time" = "0.3.4"

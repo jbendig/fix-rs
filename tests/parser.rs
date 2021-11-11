@@ -41,18 +41,18 @@ use fix_rs::message_version::{self,MessageVersion};
 const PARSE_MESSAGE_BY_STREAM: bool = true;
 const MAX_MESSAGE_SIZE: u64 = 4096;
 
-define_message!(LogonTest: b"L" => {
-    REQUIRED, encrypt_method: EncryptMethodField [FIX40..],
-    REQUIRED, heart_bt_int: HeartBtInt [FIX40..],
-    REQUIRED, msg_seq_num: MsgSeqNum [FIX40..],
-    NOT_REQUIRED, sending_time: SendingTime [FIX40..],
-    NOT_REQUIRED, sender_comp_id: SenderCompID [FIX40..],
-    NOT_REQUIRED, target_comp_id: TargetCompID [FIX40..],
-    NOT_REQUIRED, raw_data_length: RawDataLength [FIX40..],
-    NOT_REQUIRED, raw_data: RawData [FIX40..],
-    NOT_REQUIRED, msg_type_grp: NoMsgTypeGrp [FIX40..],
-    NOT_REQUIRED, text: Text [FIX40..],
-});
+// define_message!(LogonTest: b"L" => {
+//     REQUIRED, encrypt_method: EncryptMethodField [FIX40..],
+//     REQUIRED, heart_bt_int: HeartBtInt [FIX40..],
+//     REQUIRED, msg_seq_num: MsgSeqNum [FIX40..],
+//     NOT_REQUIRED, sending_time: SendingTime [FIX40..],
+//     NOT_REQUIRED, sender_comp_id: SenderCompID [FIX40..],
+//     NOT_REQUIRED, target_comp_id: TargetCompID [FIX40..],
+//     NOT_REQUIRED, raw_data_length: RawDataLength [FIX40..],
+//     NOT_REQUIRED, raw_data: RawData [FIX40..],
+//     NOT_REQUIRED, msg_type_grp: NoMsgTypeGrp [FIX40..],
+//     NOT_REQUIRED, text: Text [FIX40..],
+// });
 
 impl FIXTMessage for LogonTest {
     fn new_into_box(&self) -> Box<FIXTMessage + Send> {
