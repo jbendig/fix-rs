@@ -11,21 +11,19 @@
 
 use std::any::Any;
 
-use dictionary::fields::*;
-use field::Field;
-use field_tag::{self,FieldTag};
-use field_type::FieldType;
-use fix_version::FIXVersion;
-use fixt;
-use fixt::message::FIXTMessage;
-use message::{self,REQUIRED,NOT_REQUIRED,Message,Meta,SetValueError};
-use message_version::{self,MessageVersion};
+use crate::dictionary::fields::*;
+use crate::field::Field;
+use crate::field_tag::FieldTag;
+use crate::field_type::FieldType;
+use crate::fix_version::FIXVersion;
+use crate::fixt::message::FIXTMessage;
+use crate::message::{Message, Meta, SetValueError, NOT_REQUIRED, REQUIRED};
+use crate::message_version::MessageVersion;
 
-pub struct NullMessage {
-}
+pub struct NullMessage {}
 
 impl Message for NullMessage {
-    fn conditional_required_fields(&self,_version: MessageVersion) -> Vec<FieldTag> {
+    fn conditional_required_fields(&self, _version: MessageVersion) -> Vec<FieldTag> {
         unimplemented!();
     }
 
@@ -33,27 +31,27 @@ impl Message for NullMessage {
         unimplemented!();
     }
 
-    fn set_meta(&mut self,_meta: Meta) {
+    fn set_meta(&mut self, _meta: Meta) {
         unimplemented!();
     }
 
-    fn set_value(&mut self,_key: FieldTag,_value: &[u8]) -> Result<(),SetValueError> {
+    fn set_value(&mut self, _key: FieldTag, _value: &[u8]) -> Result<(), SetValueError> {
         unimplemented!();
     }
 
-    fn set_groups(&mut self,_key: FieldTag,_group: Vec<Box<Message>>) -> bool {
+    fn set_groups(&mut self, _key: FieldTag, _group: Vec<Box<dyn Message>>) -> bool {
         unimplemented!();
     }
 
-    fn as_any(&self) -> &Any {
+    fn as_any(&self) -> &dyn Any {
         unimplemented!();
     }
 
-    fn as_any_mut(&mut self) -> &mut Any {
+    fn as_any_mut(&mut self) -> &mut dyn Any {
         unimplemented!();
     }
 
-    fn new_into_box(&self) -> Box<Message + Send> {
+    fn new_into_box(&self) -> Box<dyn Message + Send> {
         unimplemented!();
     }
 
@@ -61,13 +59,18 @@ impl Message for NullMessage {
         b""
     }
 
-    fn read_body(&self,_fix_version: FIXVersion,_message_version: MessageVersion,_buf: &mut Vec<u8>) -> usize {
+    fn read_body(
+        &self,
+        _fix_version: FIXVersion,
+        _message_version: MessageVersion,
+        _buf: &mut Vec<u8>,
+    ) -> usize {
         unimplemented!();
     }
 }
 
 impl FIXTMessage for NullMessage {
-    fn new_into_box(&self) -> Box<FIXTMessage + Send> {
+    fn new_into_box(&self) -> Box<dyn FIXTMessage + Send> {
         unimplemented!();
     }
 
@@ -91,7 +94,7 @@ impl FIXTMessage for NullMessage {
         unimplemented!();
     }
 
-    fn set_is_poss_dup(&mut self,_is_poss_dup: bool) {
+    fn set_is_poss_dup(&mut self, _is_poss_dup: bool) {
         unimplemented!();
     }
 
@@ -103,14 +106,19 @@ impl FIXTMessage for NullMessage {
         unimplemented!();
     }
 
-    fn set_orig_sending_time(&mut self,_orig_sending_time: <<OrigSendingTime as Field>::Type as FieldType>::Type) {
+    fn set_orig_sending_time(
+        &mut self,
+        _orig_sending_time: <<OrigSendingTime as Field>::Type as FieldType>::Type,
+    ) {
         unimplemented!();
     }
 
-    fn setup_fixt_session_header(&mut self,
-                                 _msg_seq_num: Option<<<MsgSeqNum as Field>::Type as FieldType>::Type>,
-                                 _sender_comp_id: <<SenderCompID as Field>::Type as FieldType>::Type,
-                                 _target_comp_id: <<TargetCompID as Field>::Type as FieldType>::Type) {
+    fn setup_fixt_session_header(
+        &mut self,
+        _msg_seq_num: Option<<<MsgSeqNum as Field>::Type as FieldType>::Type>,
+        _sender_comp_id: <<SenderCompID as Field>::Type as FieldType>::Type,
+        _target_comp_id: <<TargetCompID as Field>::Type as FieldType>::Type,
+    ) {
         unimplemented!();
     }
 }

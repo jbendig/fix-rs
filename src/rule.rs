@@ -9,18 +9,25 @@
 // at your option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use field_tag::FieldTag;
-use fix_version::FIXVersion;
-use message::BuildMessage;
+use crate::field_tag::FieldTag;
+use crate::fix_version::FIXVersion;
+use crate::message::BuildMessage;
 
 //Special rules that describe what extra processing needs to be done to a field during parsing or
 //serialization.
 #[derive(Clone)]
 pub enum Rule {
     Nothing,
-    BeginGroup{builder_func: fn() -> Box<BuildMessage + Send>},
-    PrepareForBytes{bytes_tag: FieldTag},
-    ConfirmPreviousTag{previous_tag: FieldTag}, //TODO: Probably redundant to the PrepareForBytes definition. Should be automatically inferred.
-    RequiresFIXVersion{fix_version: FIXVersion}, //Used during serialization only.
+    BeginGroup {
+        builder_func: fn() -> Box<dyn BuildMessage + Send>,
+    },
+    PrepareForBytes {
+        bytes_tag: FieldTag,
+    },
+    ConfirmPreviousTag {
+        previous_tag: FieldTag,
+    }, //TODO: Probably redundant to the PrepareForBytes definition. Should be automatically inferred.
+    RequiresFIXVersion {
+        fix_version: FIXVersion,
+    }, //Used during serialization only.
 }
-

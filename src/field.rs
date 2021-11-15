@@ -9,19 +9,26 @@
 // at your option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use field_tag::FieldTag;
-use field_type::FieldType;
-use fix_version::FIXVersion;
-use message_version::MessageVersion;
-use rule::Rule;
+use crate::field_tag::FieldTag;
+use crate::field_type::FieldType;
+use crate::fix_version::FIXVersion;
+use crate::message_version::MessageVersion;
+use crate::rule::Rule;
 
 pub trait Field {
     type Type;
     fn rule() -> Rule;
     fn tag_bytes() -> &'static [u8];
     fn tag() -> FieldTag;
-    fn read(field: &<<Self as Field>::Type as FieldType>::Type,fix_version: FIXVersion,message_version: MessageVersion,buf: &mut Vec<u8>,required: bool) -> usize
-        where <Self as Field>::Type: FieldType;
+    fn read(
+        field: &<<Self as Field>::Type as FieldType>::Type,
+        fix_version: FIXVersion,
+        message_version: MessageVersion,
+        buf: &mut Vec<u8>,
+        required: bool,
+    ) -> usize
+    where
+        <Self as Field>::Type: FieldType;
 }
 
 #[macro_export]
@@ -55,7 +62,7 @@ macro_rules! define_fields {
                 }
             }
 
-            fn tag_bytes() -> &'static [u8] {
+            fn tag_bytes() -> &'static [u8]  {
                 Self::tag_bytes()
             }
 
@@ -99,7 +106,7 @@ macro_rules! define_fields {
                 };
 
                 //Write tag and value.
-                result += buf.write(Self::tag_bytes()).unwrap();
+                result += buf.write(&Self::tag_bytes()).unwrap();
                 buf.push($crate::constant::TAG_END);
                 result += <$field_type as $crate::field_type::FieldType>::read(field,fix_version,message_version,buf);
 
@@ -117,4 +124,3 @@ macro_rules! define_fields {
         }
     )*};
 }
-

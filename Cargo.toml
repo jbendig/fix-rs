@@ -10,21 +10,29 @@ readme = "README.md"
 keywords = ["fix", "protocol", "finance", "trading", "library"]
 categories = ["network-programming", ]
 license = "MIT/Apache-2.0"
+edition = "2021"
 
 [features]
 default = []
 load-testing = ["clap"]
 
 [dependencies]
-"fix-rs-macros" = { path = "fix-rs-macros", version = "0.2.1" }
+"fix-rs-macros" = { path = "fix-rs-macros"}
 "mio" = "0.6.6"
-"chrono" = "0.3.1"
-"time" = "0.1"
-"phf" = "0.7.21"
-"phf_macros" = "0.7.21"
-"clap" = { version = "~2.23.3", optional = true }
+"chrono" = "0.4.19"
+"time" = "0.3.4"
+"phf" = { version = "0.10.0", features = ["macros"] }
+"clap" = { version = "2.23.3", optional = true }
 
 [[bin]]
 name="fix-rs-lt"
 path="src/bin/fix-rs-lt.rs"
 required-features = ["load-testing"]
+
+[[bin]]
+name="example-client"
+path="examples/client.rs"
+
+[[bin]]
+name="example-server"
+path="examples/server.rs"

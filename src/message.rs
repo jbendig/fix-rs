@@ -10,42 +10,42 @@
 // except according to those terms.
 
 use std::any::Any;
-use std::collections::{HashMap,HashSet};
-use std::mem;
+use std::collections::{HashMap, HashSet};
 use std::io::Write;
+use std::mem;
 use std::ptr;
 
-use byte_buffer::ByteBuffer;
-use constant::VALUE_END;
-use field_tag::FieldTag;
-use fix_version::FIXVersion;
-use hash::BuildFieldHasher;
-use message_version::MessageVersion;
-use rule::Rule;
+use crate::byte_buffer::ByteBuffer;
+use crate::constant::VALUE_END;
+use crate::field_tag::FieldTag;
+use crate::fix_version::FIXVersion;
+use crate::hash::BuildFieldHasher;
+use crate::message_version::MessageVersion;
+use crate::rule::Rule;
 
-pub type FieldHashMap = HashMap<FieldTag,Rule,BuildFieldHasher>;
-pub type FieldHashSet = HashSet<FieldTag,BuildFieldHasher>;
+pub type FieldHashMap = HashMap<FieldTag, Rule, BuildFieldHasher>;
+pub type FieldHashSet = HashSet<FieldTag, BuildFieldHasher>;
 
 pub trait BuildMessage {
-    fn first_field(&self,version: MessageVersion) -> FieldTag;
-    fn field_count(&self,version: MessageVersion) -> usize;
-    fn fields(&mut self,version: MessageVersion) -> FieldHashMap;
-    fn required_fields(&self,version: MessageVersion) -> FieldHashSet;
+    fn first_field(&self, version: MessageVersion) -> FieldTag;
+    fn field_count(&self, version: MessageVersion) -> usize;
+    fn fields(&mut self, version: MessageVersion) -> FieldHashMap;
+    fn required_fields(&self, version: MessageVersion) -> FieldHashSet;
 
-    fn new_into_box(&self) -> Box<BuildMessage + Send>;
-    fn build(&self) -> Box<Message + Send>;
+    fn new_into_box(&self) -> Box<dyn BuildMessage + Send>;
+    fn build(&self) -> Box<dyn Message + Send>;
 }
 
 pub trait MessageBuildable {
-    fn builder(&self) -> Box<BuildMessage + Send>;
-    fn builder_func(&self) -> fn() -> Box<BuildMessage + Send>;
+    fn builder(&self) -> Box<dyn BuildMessage + Send>;
+    fn builder_func(&self) -> fn() -> Box<dyn BuildMessage + Send>;
 }
 
 pub trait MessageDetails {
     fn msg_type() -> &'static [u8];
 }
 
-#[derive(Clone,PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct Meta {
     pub begin_string: FIXVersion,
     pub body_length: u64,
@@ -59,26 +59,36 @@ pub enum SetValueError {
 }
 
 pub trait Message {
-    fn conditional_required_fields(&self,version: MessageVersion) -> Vec<FieldTag>;
+    fn conditional_required_fields(&self, version: MessageVersion) -> Vec<FieldTag>;
     fn meta(&self) -> &Option<Meta>;
-    fn set_meta(&mut self,meta: Meta);
-    fn set_value(&mut self,key: FieldTag,value: &[u8]) -> Result<(),SetValueError>;
-    fn set_groups(&mut self,key: FieldTag,groups: Vec<Box<Message>>) -> bool;
-    fn as_any(&self) -> &Any;
-    fn as_any_mut(&mut self) -> &mut Any;
-    fn new_into_box(&self) -> Box<Message + Send>;
+    fn set_meta(&mut self, meta: Meta);
+    fn set_value(&mut self, key: FieldTag, value: &[u8]) -> Result<(), SetValueError>;
+    fn set_groups(&mut self, key: FieldTag, groups: Vec<Box<dyn Message>>) -> bool;
+    fn as_any(&self) -> &dyn Any;
+    fn as_any_mut(&mut self) -> &mut dyn Any;
+    fn new_into_box(&self) -> Box<dyn Message + Send>;
     fn msg_type_header(&self) -> &'static [u8];
-    fn read_body(&self,fix_version: FIXVersion,message_version: MessageVersion,buf: &mut Vec<u8>) -> usize;
+    fn read_body(
+        &self,
+        fix_version: FIXVersion,
+        message_version: MessageVersion,
+        buf: &mut Vec<u8>,
+    ) -> usize;
 
-    fn read(&self,fix_version: FIXVersion,message_version: MessageVersion,buf: &mut ByteBuffer) -> usize {
+    fn read(
+        &self,
+        fix_version: FIXVersion,
+        message_version: MessageVersion,
+        buf: &mut ByteBuffer,
+    ) -> usize {
         const HEADER_PADDING_LEN: usize = 32;
 
         //Leave rooom at beginning of buffer for header.
         buf.clear();
-        buf.bytes.resize(HEADER_PADDING_LEN,0);
+        buf.bytes.resize(HEADER_PADDING_LEN, 0);
 
         //Read entire body first so we can get the body length.
-        self.read_body(fix_version,message_version,&mut buf.bytes);
+        self.read_body(fix_version, message_version, &mut buf.bytes);
 
         //Prepare header.
         let message_type = self.msg_type_header();
@@ -86,7 +96,7 @@ pub trait Message {
         let body_len_str = (buf.bytes.len() - HEADER_PADDING_LEN + message_type_len).to_string();
         let header_len = 2 + fix_version.begin_string().len() + 1 + //8=<FIXVersion>\x01
                          2 + body_len_str.as_bytes().len() + 1 +    //9=<BodyLength>\x01
-                         message_type_len;                          //35=<MessageType>\x01
+                         message_type_len; //35=<MessageType>\x01
 
         //If the header won't fit in the room reserved at the beginning, make room for it. This
         //is much slower but shouldn't happen in practice because BodyLength would have to be in
@@ -98,35 +108,40 @@ pub trait Message {
             let message_len = header_len + body_len + CHECKSUM_LEN;
 
             //Create a new buffer with room for the header.
-            let body_bytes = mem::replace(&mut buf.bytes,Vec::with_capacity(message_len));
+            let body_bytes = mem::replace(&mut buf.bytes, Vec::with_capacity(message_len));
 
             //Copy body from old buffer to new buffer.
             unsafe {
                 buf.bytes.set_len(message_len);
-                ptr::copy(body_bytes.as_ptr().offset(HEADER_PADDING_LEN as isize),
-                          buf.bytes.as_mut_ptr().offset(header_len as isize),
-                          body_len);
+                ptr::copy(
+                    body_bytes.as_ptr().offset(HEADER_PADDING_LEN as isize),
+                    buf.bytes.as_mut_ptr().offset(header_len as isize),
+                    body_len,
+                );
             }
         }
 
         //Write header to start of buffer.
         buf.valid_bytes_begin = HEADER_PADDING_LEN - header_len;
         unsafe {
-            unsafe fn copy_and_advance<T>(src: *const T,dst: &mut *mut T,count: usize) {
-                ptr::copy(src,*dst,count);
+            unsafe fn copy_and_advance<T>(src: *const T, dst: &mut *mut T, count: usize) {
+                ptr::copy(src, *dst, count);
                 *dst = dst.offset(count as isize);
             }
-            unsafe fn copy_slice_and_advance(src: &[u8],dst: &mut *mut u8) {
-                copy_and_advance(src.as_ptr(),dst,src.len());
+            unsafe fn copy_slice_and_advance(src: &[u8], dst: &mut *mut u8) {
+                copy_and_advance(src.as_ptr(), dst, src.len());
             }
 
-            let mut bytes_ptr = buf.bytes.as_mut_ptr().offset(buf.valid_bytes_begin as isize);
-            copy_slice_and_advance(b"8=",&mut bytes_ptr);
-            copy_slice_and_advance(fix_version.begin_string(),&mut bytes_ptr);
-            copy_slice_and_advance(b"\x019=",&mut bytes_ptr);
-            copy_slice_and_advance(body_len_str.as_bytes(),&mut bytes_ptr);
-            copy_slice_and_advance(b"\x01",&mut bytes_ptr);
-            copy_slice_and_advance(message_type,&mut bytes_ptr);
+            let mut bytes_ptr = buf
+                .bytes
+                .as_mut_ptr()
+                .offset(buf.valid_bytes_begin as isize);
+            copy_slice_and_advance(b"8=", &mut bytes_ptr);
+            copy_slice_and_advance(fix_version.begin_string(), &mut bytes_ptr);
+            copy_slice_and_advance(b"\x019=", &mut bytes_ptr);
+            copy_slice_and_advance(body_len_str.as_bytes(), &mut bytes_ptr);
+            copy_slice_and_advance(b"\x01", &mut bytes_ptr);
+            copy_slice_and_advance(message_type, &mut bytes_ptr);
         }
 
         //Calculate checksum.
@@ -155,12 +170,16 @@ pub trait Message {
         buf.len()
     }
 
-    fn debug(&self,fix_version: FIXVersion,message_version: MessageVersion) -> String {
+    fn debug(&self, fix_version: FIXVersion, message_version: MessageVersion) -> String {
         let mut buffer = ByteBuffer::with_capacity(512);
-        self.read(fix_version,message_version,&mut buffer);
+        self.read(fix_version, message_version, &mut buffer);
 
         //Replace SOH characters with | to be human readable.
-        let buffer: Vec<u8> = buffer.bytes().into_iter().map(|c| if *c == VALUE_END { b'|' } else { *c } ).collect();
+        let buffer: Vec<u8> = buffer
+            .bytes()
+            .into_iter()
+            .map(|c| if *c == VALUE_END { b'|' } else { *c })
+            .collect();
 
         String::from_utf8_lossy(&buffer[..]).into_owned()
     }
@@ -184,32 +203,49 @@ pub struct BuildMessageInternalCache {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! symbol_to_message_version {
-    ( FIX40 ) => { $crate::message_version::MessageVersion::FIX40 };
-    ( FIX41 ) => { $crate::message_version::MessageVersion::FIX41 };
-    ( FIX42 ) => { $crate::message_version::MessageVersion::FIX42 };
-    ( FIX43 ) => { $crate::message_version::MessageVersion::FIX43 };
-    ( FIX44 ) => { $crate::message_version::MessageVersion::FIX44 };
-    ( FIX50 ) => { $crate::message_version::MessageVersion::FIX50 };
-    ( FIX50SP1 ) => { $crate::message_version::MessageVersion::FIX50SP1 };
-    ( FIX50SP2 ) => { $crate::message_version::MessageVersion::FIX50SP2 };
+    ( FIX40 ) => {
+        $crate::message_version::MessageVersion::FIX40
+    };
+    ( FIX41 ) => {
+        $crate::message_version::MessageVersion::FIX41
+    };
+    ( FIX42 ) => {
+        $crate::message_version::MessageVersion::FIX42
+    };
+    ( FIX43 ) => {
+        $crate::message_version::MessageVersion::FIX43
+    };
+    ( FIX44 ) => {
+        $crate::message_version::MessageVersion::FIX44
+    };
+    ( FIX50 ) => {
+        $crate::message_version::MessageVersion::FIX50
+    };
+    ( FIX50SP1 ) => {
+        $crate::message_version::MessageVersion::FIX50SP1
+    };
+    ( FIX50SP2 ) => {
+        $crate::message_version::MessageVersion::FIX50SP2
+    };
 }
 
 #[doc(hidden)]
 #[macro_export]
 macro_rules! match_message_version {
     ( $version:ident, $minimum_version:tt ) => {{
-        match_message_version!($version,$minimum_version .. $minimum_version)
+        match_message_version!($version, $minimum_version..$minimum_version)
     }};
 
     ( $version:ident, $minimum_version:tt .. ) => {{
-        match_message_version!($version,$minimum_version .. FIX50SP2)
+        match_message_version!($version, $minimum_version..FIX50SP2)
     }};
 
     ( $version:ident, $minimum_version:tt .. $maximum_version:tt ) => {
-        if $version.as_value() >= symbol_to_message_version!($minimum_version).as_value() && $version.as_value() <= symbol_to_message_version!($maximum_version).as_value() {
+        if $version.as_value() >= symbol_to_message_version!($minimum_version).as_value()
+            && $version.as_value() <= symbol_to_message_version!($maximum_version).as_value()
+        {
             true
-        }
-        else {
+        } else {
             false
         }
     };
@@ -341,7 +377,7 @@ macro_rules! define_message {
                 }
             }
 
-            fn set_groups(&mut self,key: $crate::field_tag::FieldTag,groups: Vec<Box<$crate::message::Message>>) -> bool {
+            fn set_groups(&mut self,key: $crate::field_tag::FieldTag,groups: Vec<Box<dyn $crate::message::Message>>) -> bool {
                 use $crate::field::Field;
                 use $crate::field_type::FieldType;
 
@@ -354,15 +390,15 @@ macro_rules! define_message {
                 }
             }
 
-            fn as_any(&self) -> &::std::any::Any {
+            fn as_any(&self) -> &dyn ::std::any::Any {
                 self
             }
 
-            fn as_any_mut(&mut self) -> &mut ::std::any::Any {
+            fn as_any_mut(&mut self) -> &mut dyn ::std::any::Any {
                 self
             }
 
-            fn new_into_box(&self) -> Box<$crate::message::Message + Send> {
+            fn new_into_box(&self) -> Box<dyn $crate::message::Message + Send> {
                 Box::new($message_name::new())
             }
 
@@ -392,4 +428,3 @@ macro_rules! define_message {
         }
     };
 }
-

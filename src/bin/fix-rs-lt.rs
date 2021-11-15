@@ -43,7 +43,7 @@ use fix_rs::fix::Parser;
 use fix_rs::fix_version::FIXVersion;
 use fix_rs::fixt;
 use fix_rs::fixt::message::{BuildFIXTMessage,FIXTMessage};
-use fix_rs::message::{self,REQUIRED,NOT_REQUIRED,Message,SetValueError};
+use fix_rs::message::{self,REQUIRED,NOT_REQUIRED,Message,SetValueError, BuildMessage};
 use fix_rs::message_version::{self,MessageVersion};
 
 const SEND_MESSAGE_TIMEOUT_SECS: u64 = 10;
@@ -83,16 +83,16 @@ impl FieldType for EmptyFieldType {
     }
 }
 
-define_message!(Heartbeat: b"0" => {
-    //Used parts of Standard Header
-    REQUIRED, sender_comp_id: EmptySenderCompID [FIX40..],
-    REQUIRED, target_comp_id: EmptyTargetCompID [FIX40..],
-    REQUIRED, msg_seq_num: MsgSeqNum [FIX40..],
-    REQUIRED, sending_time: EmptySendingTime [FIX40..],
+// define_message!(Heartbeat: b"0" => {
+//     //Used parts of Standard Header
+//     REQUIRED, sender_comp_id: EmptySenderCompID [FIX40..],
+//     REQUIRED, target_comp_id: EmptyTargetCompID [FIX40..],
+//     REQUIRED, msg_seq_num: MsgSeqNum [FIX40..],
+//     REQUIRED, sending_time: EmptySendingTime [FIX40..],
 
-    //Other
-    NOT_REQUIRED, test_req_id: TestReqID [FIX40..],
-});
+//     //Other
+//     NOT_REQUIRED, test_req_id: TestReqID [FIX40..],
+// });
 
 impl FIXTMessage for Heartbeat {
     fn new_into_box(&self) -> Box<FIXTMessage + Send> {
@@ -143,17 +143,17 @@ impl FIXTMessage for Heartbeat {
     }
 }
 
-define_message!(TestRequest: b"1" => {
-    //Used parts of Standard Header
-    REQUIRED, sender_comp_id: SenderCompID [FIX40..],
-    REQUIRED, target_comp_id: TargetCompID [FIX40..],
-    NOT_REQUIRED, appl_ver_id: ApplVerID [FIX40..],
-    REQUIRED, msg_seq_num: MsgSeqNum [FIX40..],
-    REQUIRED, sending_time: StringSendingTime [FIX40..],
+// define_message!(TestRequest: b"1" => {
+//     //Used parts of Standard Header
+//     REQUIRED, sender_comp_id: SenderCompID [FIX40..],
+//     REQUIRED, target_comp_id: TargetCompID [FIX40..],
+//     NOT_REQUIRED, appl_ver_id: ApplVerID [FIX40..],
+//     REQUIRED, msg_seq_num: MsgSeqNum [FIX40..],
+//     REQUIRED, sending_time: StringSendingTime [FIX40..],
 
-    //Other
-    NOT_REQUIRED, test_req_id: TestReqID [FIX40..],
-});
+//     //Other
+//     NOT_REQUIRED, test_req_id: TestReqID [FIX40..],
+// });
 
 impl FIXTMessage for TestRequest {
     fn new_into_box(&self) -> Box<FIXTMessage + Send> {

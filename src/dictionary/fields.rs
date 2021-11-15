@@ -9,14 +9,40 @@
 // at your option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use dictionary::field_types::generic::{BoolTrueOrBlankFieldType,CharFieldType,CountryFieldType,CurrencyFieldType,DataFieldType,DayOfMonthFieldType,IntFieldType,LengthFieldType,LocalMktDateFieldType,MonthYearFieldType,NoneFieldType,RepeatingGroupFieldType,SeqNumFieldType,StringFieldType,UTCTimeOnlyFieldType,UTCTimestampFieldType};
-use dictionary::field_types::other as other_field_types;
-use dictionary::field_types::other::{ApplVerIDFieldType,BusinessRejectReasonFieldType,ComplexEventConditionFieldType,ComplexEventPriceBoundaryMethodFieldType,ComplexEventPriceTimeTypeFieldType,ComplexEventTypeFieldType,ContractMultiplierUnitFieldType,CPProgramFieldType,DefaultApplVerIDFieldType,EmailTypeFieldType,EncryptMethodFieldType,EventTypeFieldType,ExerciseStyleFieldType,FlowScheduleTypeFieldType,HandlInstFieldType,InstrmtAssignmentMethodFieldType,IssuerFieldType,ListMethodFieldType,MsgDirectionFieldType,NotRequiredSecurityIDSourceFieldType,NotRequiredSecurityTypeFieldType as SecurityTypeFieldType,NotRequiredSideFieldType,NotRequiredSymbolSfxFieldType as SymbolSfxFieldType,NotRequiredTimeUnitFieldType as TimeUnitFieldType,OptPayoutTypeFieldType,OrdTypeFieldType,PartyIDSourceFieldType,PartyRoleFieldType,PartySubIDTypeFieldType,PriceQuoteMethodFieldType,ProductFieldType,PutOrCallFieldType,RateSourceFieldType,RateSourceTypeFieldType,RequiredSecurityIDSourceFieldType,RequiredSideFieldType,RequiredStipulationTypeFieldType as StipulationTypeFieldType,RestructuringTypeFieldType,RoutingTypeFieldType,SecurityStatusFieldType,SeniorityFieldType,SessionRejectReasonFieldType,SettlMethodFieldType,SettlTypeFieldType,StrikePriceBoundaryMethodFieldType,StrikePriceDeterminationMethodFieldType,TimeInForceFieldType,UnderlyingCashTypeFieldType,UnderlyingFXRateCalcFieldType,UnderlyingPriceDeterminationMethodFieldType,UnderlyingSettlementTypeFieldType,UnitOfMeasureFieldType,ValuationMethodFieldType};
-use field_tag;
-use fix_version::FIXVersion;
-use message::{self,REQUIRED,NOT_REQUIRED};
-use message_version;
-use rule::Rule;
+use crate::dictionary::field_types::generic::{
+    BoolTrueOrBlankFieldType, CharFieldType, CountryFieldType, CurrencyFieldType, DataFieldType,
+    DayOfMonthFieldType, IntFieldType, LengthFieldType, LocalMktDateFieldType, MonthYearFieldType,
+    NoneFieldType, RepeatingGroupFieldType, SeqNumFieldType, StringFieldType, UTCTimeOnlyFieldType,
+    UTCTimestampFieldType,
+};
+use crate::dictionary::field_types::other as other_field_types;
+use crate::dictionary::field_types::other::{
+    ApplVerIDFieldType, BusinessRejectReasonFieldType, CPProgramFieldType,
+    ComplexEventConditionFieldType, ComplexEventPriceBoundaryMethodFieldType,
+    ComplexEventPriceTimeTypeFieldType, ComplexEventTypeFieldType, ContractMultiplierUnitFieldType,
+    DefaultApplVerIDFieldType, EmailTypeFieldType, EncryptMethodFieldType, EventTypeFieldType,
+    ExerciseStyleFieldType, FlowScheduleTypeFieldType, HandlInstFieldType,
+    InstrmtAssignmentMethodFieldType, IssuerFieldType, ListMethodFieldType, MsgDirectionFieldType,
+    NotRequiredSecurityIDSourceFieldType,
+    NotRequiredSecurityTypeFieldType as SecurityTypeFieldType, NotRequiredSideFieldType,
+    NotRequiredSymbolSfxFieldType as SymbolSfxFieldType,
+    NotRequiredTimeUnitFieldType as TimeUnitFieldType, OptPayoutTypeFieldType, OrdTypeFieldType,
+    PartyIDSourceFieldType, PartyRoleFieldType, PartySubIDTypeFieldType, PriceQuoteMethodFieldType,
+    ProductFieldType, PutOrCallFieldType, RateSourceFieldType, RateSourceTypeFieldType,
+    RequiredSecurityIDSourceFieldType, RequiredSideFieldType,
+    RequiredStipulationTypeFieldType as StipulationTypeFieldType, RestructuringTypeFieldType,
+    RoutingTypeFieldType, SecurityStatusFieldType, SeniorityFieldType,
+    SessionRejectReasonFieldType, SettlMethodFieldType, SettlTypeFieldType,
+    StrikePriceBoundaryMethodFieldType, StrikePriceDeterminationMethodFieldType,
+    TimeInForceFieldType, UnderlyingCashTypeFieldType, UnderlyingFXRateCalcFieldType,
+    UnderlyingPriceDeterminationMethodFieldType, UnderlyingSettlementTypeFieldType,
+    UnitOfMeasureFieldType, ValuationMethodFieldType,
+};
+use crate::field_tag;
+use crate::fix_rs_macros::BuildMessage;
+use crate::fix_version::FIXVersion;
+use crate::message::{NOT_REQUIRED, REQUIRED};
+use crate::rule::Rule;
 
 //TODO: Create implementations for all of these types.
 type PercentageFieldType = StringFieldType;
@@ -716,4 +742,3 @@ define_message!(UndSecAltIDGrp {
     REQUIRED, underlying_security_alt_id: UnderlyingSecurityAltID [FIX43..],
     REQUIRED, underlying_security_alt_id_source: UnderlyingSecurityAltIDSource [FIX43..],
 });
-

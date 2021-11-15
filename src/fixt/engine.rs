@@ -11,50 +11,56 @@
 
 #![allow(deprecated)]
 
-use mio::{Events,Poll,PollOpt,Ready,Token};
-use mio::channel::{channel,Receiver,Sender};
-use std::collections::HashMap;
+use mio::channel::{channel, Receiver, Sender};
 use mio::tcp::TcpListener;
+use mio::{Events, Poll, PollOpt, Ready, Token};
+use std::collections::HashMap;
 use std::fmt;
 use std::io;
 use std::mem;
+use std::net::{SocketAddr, ToSocketAddrs};
 use std::ops::Range;
-use std::net::{SocketAddr,ToSocketAddrs};
-use std::sync::{Arc,Mutex};
 use std::sync::mpsc::TryRecvError;
+use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::{Duration,Instant};
+use std::time::{Duration, Instant};
 
-use dictionary::messages::Logon;
-use fixt::engine_thread::{CONNECTION_COUNT_MAX,BASE_CONNECTION_TOKEN,INTERNAL_ENGINE_EVENT_TOKEN,InternalEngineToThreadEvent,internal_engine_thread};
-use fixt::message::{BuildFIXTMessage,FIXTMessage};
-use fix::ParseError;
-use fix_version::FIXVersion;
-use message_version::MessageVersion;
-use token_generator::TokenGenerator;
+use crate::dictionary::messages::Logon;
+use crate::fix::ParseError;
+use crate::fix_version::FIXVersion;
+use crate::fixt::engine_thread::{
+    internal_engine_thread, InternalEngineToThreadEvent, BASE_CONNECTION_TOKEN,
+    CONNECTION_COUNT_MAX, INTERNAL_ENGINE_EVENT_TOKEN,
+};
+use crate::fixt::message::{BuildFIXTMessage, FIXTMessage};
+use crate::message_version::MessageVersion;
+use crate::token_generator::TokenGenerator;
 
 const ENGINE_EVENT_TOKEN: Token = Token(0);
 
-#[derive(Clone,Copy,Debug,Eq,Hash,PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct Connection(pub usize);
 
 impl fmt::Display for Connection {
-    fn fmt(&self,f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f,"{}",self.0)
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
-#[derive(Clone,Copy,Debug,Eq,Hash,PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct Listener(pub usize);
 
 impl fmt::Display for Listener {
-    fn fmt(&self,f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f,"{}",self.0)
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
 pub enum ConnectionTerminatedReason {
-    BeginStrWrongError{ received: FIXVersion, expected: FIXVersion },
+    BeginStrWrongError {
+        received: FIXVersion,
+        expected: FIXVersion,
+    },
     InboundMsgSeqNumMaxExceededError,
     InboundMsgSeqNumLowerThanExpectedError,
     InboundResendRequestLoopError,
@@ -77,7 +83,7 @@ pub enum ConnectionTerminatedReason {
 }
 
 impl fmt::Debug for ConnectionTerminatedReason {
-    fn fmt(&self,f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             ConnectionTerminatedReason::BeginStrWrongError{ref received,ref expected} => {
                 let received_str = String::from_utf8_lossy(received.begin_string()).into_owned();
@@ -108,51 +114,111 @@ impl fmt::Debug for ConnectionTerminatedReason {
 }
 
 pub enum EngineEvent {
-    ConnectionFailed(Connection,io::Error), //Could not setup connection.
-    ConnectionSucceeded(Connection), //Connection completed and ready to begin logon.
-    ConnectionTerminated(Connection,ConnectionTerminatedReason), //Connection ended for ConnectionTerminatedReason reason.
-    ConnectionDropped(Listener,SocketAddr), //Connection was dropped by listener because of a lock of resources.
-    ConnectionAccepted(Listener,Connection,SocketAddr), //Listener accepted a new connection and is awaiting a Logon message.
-    ConnectionLoggingOn(Listener,Connection,Box<Logon>),
+    ConnectionFailed(Connection, io::Error), //Could not setup connection.
+    ConnectionSucceeded(Connection),         //Connection completed and ready to begin logon.
+    ConnectionTerminated(Connection, ConnectionTerminatedReason), //Connection ended for ConnectionTerminatedReason reason.
+    ConnectionDropped(Listener, SocketAddr), //Connection was dropped by listener because of a lock of resources.
+    ConnectionAccepted(Listener, Connection, SocketAddr), //Listener accepted a new connection and is awaiting a Logon message.
+    ConnectionLoggingOn(Listener, Connection, Box<Logon>),
     SessionEstablished(Connection), //Connection completed logon process successfully.
-    ListenerFailed(Listener,io::Error), //Could not setup listener.
-    ListenerAcceptFailed(Listener,io::Error), //Could not accept a connection with listener.
-    MessageReceived(Connection,Box<FIXTMessage + Send>), //New valid message was received.
-    MessageReceivedGarbled(Connection,ParseError), //New message could not be parsed correctly. (If not garbled (FIXT 1.1, page 40), a Reject will be issued first)
-    MessageReceivedDuplicate(Connection,Box<FIXTMessage + Send>), //Message with MsgSeqNum already seen was received.
-    MessageRejected(Connection,Box<FIXTMessage + Send>), //New message breaks session rules and was rejected.
-    ResendRequested(Connection,Range<u64>), //Range of messages by MsgSeqNum that are requested to be resent. [Range::start,Range::end)
+    ListenerFailed(Listener, io::Error), //Could not setup listener.
+    ListenerAcceptFailed(Listener, io::Error), //Could not accept a connection with listener.
+    MessageReceived(Connection, Box<dyn FIXTMessage + Send>), //New valid message was received.
+    MessageReceivedGarbled(Connection, ParseError), //New message could not be parsed correctly. (If not garbled (FIXT 1.1, page 40), a Reject will be issued first)
+    MessageReceivedDuplicate(Connection, Box<dyn FIXTMessage + Send>), //Message with MsgSeqNum already seen was received.
+    MessageRejected(Connection, Box<dyn FIXTMessage + Send>), //New message breaks session rules and was rejected.
+    ResendRequested(Connection, Range<u64>), //Range of messages by MsgSeqNum that are requested to be resent. [Range::start,Range::end)
     SequenceResetResetHasNoEffect(Connection),
     SequenceResetResetInThePast(Connection),
-    FatalError(&'static str,io::Error), //A critical error has occurred. No more events can be received and no more messages will be sent.
+    FatalError(&'static str, io::Error), //A critical error has occurred. No more events can be received and no more messages will be sent.
 }
 
 impl fmt::Debug for EngineEvent {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            EngineEvent::ConnectionFailed(connection,ref error) => write!(f,"EngineEvent::ConnectionFailed({:?},{:?})",connection,error),
-            EngineEvent::ConnectionSucceeded(connection) => write!(f,"EngineEvent::ConnectionSucceeded({:?})",connection),
-            EngineEvent::ConnectionTerminated(connection,ref reason) => write!(f,"EngineEvent::ConnectionTerminated({:?},{:?})",connection,reason),
-            EngineEvent::ConnectionDropped(connection,addr) => write!(f,"EngineEvent::ConnectionDropped({:?},{:?})",connection,addr),
-            EngineEvent::ConnectionAccepted(listener,connection,addr) => write!(f,"EngineEvent::ConnectionAccepted({:?},{:?},{:?})",listener,connection,addr),
-            EngineEvent::ConnectionLoggingOn(listener,connection,ref message) => write!(f,"EngineEvent::ConnectionLoggingOn({:?},{:?},{:?})",listener,connection,&**message as &FIXTMessage),
-            EngineEvent::SessionEstablished(connection) => write!(f,"EngineEvent::SessionEstablished({:?})",connection),
-            EngineEvent::ListenerFailed(listener,ref error) => write!(f,"EngineEvent::ListenerFailed({:?},{:?})",listener,error),
-            EngineEvent::ListenerAcceptFailed(listener,ref error) => write!(f,"EngineEvent::ListenerAcceptFailed({:?},{:?})",listener,error),
-            EngineEvent::MessageReceived(connection,ref message) => write!(f,"EngineEvent::MessageReceived({:?},{:?})",connection,message),
-            EngineEvent::MessageReceivedGarbled(connection,ref parse_error) => write!(f,"EngineEvent::MessageReceivedGarbled({:?},{:?})",connection,parse_error),
-            EngineEvent::MessageReceivedDuplicate(connection,ref message) => write!(f,"EngineEvent::MessageReceivedDuplicate({:?},{:?})",connection,message),
-            EngineEvent::MessageRejected(connection,ref message) => write!(f,"EngineEvent::MessageRejected({:?},{:?})",connection,message),
-            EngineEvent::ResendRequested(connection,ref range) => write!(f,"EngineEvent::ResendRequested({:?},{:?})",connection,range),
-            EngineEvent::SequenceResetResetHasNoEffect(connection) => write!(f,"EngineEvent:SequenceResetResetHasNoEffect({:?})",connection),
-            EngineEvent::SequenceResetResetInThePast(connection) => write!(f,"EngineEvent:SequenceResetResetInThePast({:?})",connection),
-            EngineEvent::FatalError(description,ref error) => write!(f,"EngineEvent::FatalError({:?},{:?})",description,error),
+            EngineEvent::ConnectionFailed(connection, ref error) => write!(
+                f,
+                "EngineEvent::ConnectionFailed({:?},{:?})",
+                connection, error
+            ),
+            EngineEvent::ConnectionSucceeded(connection) => {
+                write!(f, "EngineEvent::ConnectionSucceeded({:?})", connection)
+            }
+            EngineEvent::ConnectionTerminated(connection, ref reason) => write!(
+                f,
+                "EngineEvent::ConnectionTerminated({:?},{:?})",
+                connection, reason
+            ),
+            EngineEvent::ConnectionDropped(connection, addr) => write!(
+                f,
+                "EngineEvent::ConnectionDropped({:?},{:?})",
+                connection, addr
+            ),
+            EngineEvent::ConnectionAccepted(listener, connection, addr) => write!(
+                f,
+                "EngineEvent::ConnectionAccepted({:?},{:?},{:?})",
+                listener, connection, addr
+            ),
+            EngineEvent::ConnectionLoggingOn(listener, connection, ref message) => write!(
+                f,
+                "EngineEvent::ConnectionLoggingOn({:?},{:?},{:?})",
+                listener, connection, &**message as &dyn FIXTMessage
+            ),
+            EngineEvent::SessionEstablished(connection) => {
+                write!(f, "EngineEvent::SessionEstablished({:?})", connection)
+            }
+            EngineEvent::ListenerFailed(listener, ref error) => {
+                write!(f, "EngineEvent::ListenerFailed({:?},{:?})", listener, error)
+            }
+            EngineEvent::ListenerAcceptFailed(listener, ref error) => write!(
+                f,
+                "EngineEvent::ListenerAcceptFailed({:?},{:?})",
+                listener, error
+            ),
+            EngineEvent::MessageReceived(connection, ref message) => write!(
+                f,
+                "EngineEvent::MessageReceived({:?},{:?})",
+                connection, message
+            ),
+            EngineEvent::MessageReceivedGarbled(connection, ref parse_error) => write!(
+                f,
+                "EngineEvent::MessageReceivedGarbled({:?},{:?})",
+                connection, parse_error
+            ),
+            EngineEvent::MessageReceivedDuplicate(connection, ref message) => write!(
+                f,
+                "EngineEvent::MessageReceivedDuplicate({:?},{:?})",
+                connection, message
+            ),
+            EngineEvent::MessageRejected(connection, ref message) => write!(
+                f,
+                "EngineEvent::MessageRejected({:?},{:?})",
+                connection, message
+            ),
+            EngineEvent::ResendRequested(connection, ref range) => write!(
+                f,
+                "EngineEvent::ResendRequested({:?},{:?})",
+                connection, range
+            ),
+            EngineEvent::SequenceResetResetHasNoEffect(connection) => write!(
+                f,
+                "EngineEvent:SequenceResetResetHasNoEffect({:?})",
+                connection
+            ),
+            EngineEvent::SequenceResetResetInThePast(connection) => write!(
+                f,
+                "EngineEvent:SequenceResetResetInThePast({:?})",
+                connection
+            ),
+            EngineEvent::FatalError(description, ref error) => {
+                write!(f, "EngineEvent::FatalError({:?},{:?})", description, error)
+            }
         }
     }
 }
 
 pub enum ResendResponse {
-    Message(Option<MessageVersion>,Box<FIXTMessage + Send>),
+    Message(Option<MessageVersion>, Box<dyn FIXTMessage + Send>),
     Gap(Range<u64>),
 }
 
@@ -173,17 +239,32 @@ pub struct Engine {
 }
 
 impl Engine {
-    pub fn new(message_dictionary: HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>,
-               max_message_size: u64) -> Result<Engine,io::Error> {
-        let engine_poll = try!(Poll::new());
-        let (thread_to_engine_tx,thread_to_engine_rx) = channel::<EngineEvent>();
-        try!(engine_poll.register(&thread_to_engine_rx,ENGINE_EVENT_TOKEN,Ready::readable(),PollOpt::level()));
+    pub fn new(
+        message_dictionary: HashMap<&'static [u8], Box<dyn BuildFIXTMessage + Send>>,
+        max_message_size: u64,
+    ) -> Result<Engine, io::Error> {
+        let engine_poll = Poll::new()?;
+        let (thread_to_engine_tx, thread_to_engine_rx) = channel::<EngineEvent>();
+        engine_poll.register(
+            &thread_to_engine_rx,
+            ENGINE_EVENT_TOKEN,
+            Ready::readable(),
+            PollOpt::level(),
+        )?;
 
-        let poll = try!(Poll::new());
-        let (engine_to_thread_tx,engine_to_thread_rx) = channel::<InternalEngineToThreadEvent>();
-        try!(poll.register(&engine_to_thread_rx,INTERNAL_ENGINE_EVENT_TOKEN,Ready::readable(),PollOpt::level()));
+        let poll = Poll::new()?;
+        let (engine_to_thread_tx, engine_to_thread_rx) = channel::<InternalEngineToThreadEvent>();
+        poll.register(
+            &engine_to_thread_rx,
+            INTERNAL_ENGINE_EVENT_TOKEN,
+            Ready::readable(),
+            PollOpt::level(),
+        )?;
 
-        let token_generator = Arc::new(Mutex::new(TokenGenerator::new(BASE_CONNECTION_TOKEN.0,Some(CONNECTION_COUNT_MAX - BASE_CONNECTION_TOKEN.0))));
+        let token_generator = Arc::new(Mutex::new(TokenGenerator::new(
+            BASE_CONNECTION_TOKEN.0,
+            Some(CONNECTION_COUNT_MAX - BASE_CONNECTION_TOKEN.0),
+        )));
 
         Ok(Engine {
             token_generator: token_generator.clone(),
@@ -191,17 +272,26 @@ impl Engine {
             rx: thread_to_engine_rx,
             poll: engine_poll,
             thread_handle: Some(thread::spawn(move || {
-                internal_engine_thread(poll,token_generator,thread_to_engine_tx,engine_to_thread_rx,message_dictionary,max_message_size);
+                internal_engine_thread(
+                    poll,
+                    token_generator,
+                    thread_to_engine_tx,
+                    engine_to_thread_rx,
+                    message_dictionary,
+                    max_message_size,
+                );
             })),
         })
     }
 
-    pub fn add_connection<A: ToSocketAddrs>(&mut self,
-                                            fix_version: FIXVersion,
-                                            mut default_message_version: MessageVersion,
-                                            sender_comp_id: &[u8],
-                                            target_comp_id: &[u8],
-                                            address: A) -> Option<Connection> {
+    pub fn add_connection<A: ToSocketAddrs>(
+        &mut self,
+        fix_version: FIXVersion,
+        mut default_message_version: MessageVersion,
+        sender_comp_id: &[u8],
+        target_comp_id: &[u8],
+        address: A,
+    ) -> Option<Connection> {
         let address = match to_socket_addr(address) {
             Some(address) => address,
             None => return None,
@@ -225,44 +315,82 @@ impl Engine {
         };
 
         //Tell thread to setup this connection by connecting a socket and logging on.
-        self.tx.send(InternalEngineToThreadEvent::NewConnection(token.clone(),fix_version,default_message_version,sender_comp_id.to_vec(),target_comp_id.to_vec(),address)).unwrap();
+        self.tx
+            .send(InternalEngineToThreadEvent::NewConnection(
+                token.clone(),
+                fix_version,
+                default_message_version,
+                sender_comp_id.to_vec(),
+                target_comp_id.to_vec(),
+                address,
+            ))
+            .unwrap();
 
         let connection = Connection(token.0);
         Some(connection)
     }
 
-    pub fn add_listener<A: ToSocketAddrs>(&mut self,sender_comp_id: &[u8],address: A) -> Result<Option<Listener>,io::Error> {
+    pub fn add_listener<A: ToSocketAddrs>(
+        &mut self,
+        sender_comp_id: &[u8],
+        address: A,
+    ) -> Result<Option<Listener>, io::Error> {
         let address = match to_socket_addr(address) {
             Some(address) => address,
             None => return Ok(None),
         };
-        let listener = try!(TcpListener::bind(&address));
+        let listener = TcpListener::bind(&address)?;
 
         let token = match self.token_generator.lock().unwrap().create() {
             Some(token) => token,
             None => return Ok(None),
         };
 
-        self.tx.send(InternalEngineToThreadEvent::NewListener(token.clone(),sender_comp_id.to_vec(),listener)).unwrap();
+        self.tx
+            .send(InternalEngineToThreadEvent::NewListener(
+                token.clone(),
+                sender_comp_id.to_vec(),
+                listener,
+            ))
+            .unwrap();
 
         let listener = Listener(token.0);
         Ok(Some(listener))
     }
 
-    pub fn send_message<T: 'static + FIXTMessage + Send>(&mut self,connection: Connection,message: T) {
+    pub fn send_message<T: 'static + FIXTMessage + Send>(
+        &mut self,
+        connection: Connection,
+        message: T,
+    ) {
         let message = Box::new(message);
-        self.send_message_box(connection,message);
+        self.send_message_box(connection, message);
     }
 
-    pub fn send_message_box(&mut self,connection: Connection,message: Box<FIXTMessage + Send>) {
-        self.send_message_box_with_message_version(connection,None,message);
+    pub fn send_message_box(
+        &mut self,
+        connection: Connection,
+        message: Box<dyn FIXTMessage + Send>,
+    ) {
+        self.send_message_box_with_message_version(connection, None, message);
     }
 
-    pub fn send_message_box_with_message_version<MV: Into<Option<MessageVersion>>>(&mut self,connection: Connection,message_version: MV,message: Box<FIXTMessage + Send>) {
-        self.tx.send(InternalEngineToThreadEvent::SendMessage(Token(connection.0),message_version.into(),message)).unwrap();
+    pub fn send_message_box_with_message_version<MV: Into<Option<MessageVersion>>>(
+        &mut self,
+        connection: Connection,
+        message_version: MV,
+        message: Box<dyn FIXTMessage + Send>,
+    ) {
+        self.tx
+            .send(InternalEngineToThreadEvent::SendMessage(
+                Token(connection.0),
+                message_version.into(),
+                message,
+            ))
+            .unwrap();
     }
 
-    pub fn send_resend_response(&mut self,connection: Connection,response: Vec<ResendResponse>) {
+    pub fn send_resend_response(&mut self, connection: Connection, response: Vec<ResendResponse>) {
         if response.is_empty() {
             return;
         }
@@ -270,12 +398,12 @@ impl Engine {
         //Perform a quick sanity check to make sure the response is strictly increasing.
         {
             fn resend_response_end(response: &ResendResponse) -> u64 {
-               match *response {
-                    ResendResponse::Message(_,ref message) => message.msg_seq_num(),
+                match *response {
+                    ResendResponse::Message(_, ref message) => message.msg_seq_num(),
                     ResendResponse::Gap(ref range) => {
                         assert!(range.start <= range.end);
                         range.end
-                    },
+                    }
                 }
             }
 
@@ -289,35 +417,61 @@ impl Engine {
         }
 
         //Pass response on to actually be sent.
-        self.tx.send(InternalEngineToThreadEvent::ResendMessages(Token(connection.0),response)).unwrap();
+        self.tx
+            .send(InternalEngineToThreadEvent::ResendMessages(
+                Token(connection.0),
+                response,
+            ))
+            .unwrap();
     }
 
-    pub fn approve_new_connection<IMSN: Into<Option<u64>>>(&mut self,connection: Connection,message: Box<Logon>,inbound_msg_seq_num: IMSN) {
-        self.tx.send(InternalEngineToThreadEvent::ApproveNewConnection(connection,message,inbound_msg_seq_num.into().unwrap_or(2))).unwrap();
+    pub fn approve_new_connection<IMSN: Into<Option<u64>>>(
+        &mut self,
+        connection: Connection,
+        message: Box<Logon>,
+        inbound_msg_seq_num: IMSN,
+    ) {
+        self.tx
+            .send(InternalEngineToThreadEvent::ApproveNewConnection(
+                connection,
+                message,
+                inbound_msg_seq_num.into().unwrap_or(2),
+            ))
+            .unwrap();
     }
 
-    pub fn reject_new_connection(&mut self,connection: Connection,reason: Option<Vec<u8>>) {
-        self.tx.send(InternalEngineToThreadEvent::RejectNewConnection(connection,reason)).unwrap();
+    pub fn reject_new_connection(&mut self, connection: Connection, reason: Option<Vec<u8>>) {
+        self.tx
+            .send(InternalEngineToThreadEvent::RejectNewConnection(
+                connection, reason,
+            ))
+            .unwrap();
     }
 
-    pub fn logout(&mut self,connection: Connection) {
-        self.tx.send(InternalEngineToThreadEvent::Logout(Token(connection.0))).unwrap();
+    pub fn logout(&mut self, connection: Connection) {
+        self.tx
+            .send(InternalEngineToThreadEvent::Logout(Token(connection.0)))
+            .unwrap();
     }
 
-    pub fn poll<D: Into<Option<Duration>>>(&mut self,duration: D) -> Option<EngineEvent> {
+    pub fn poll<D: Into<Option<Duration>>>(&mut self, duration: D) -> Option<EngineEvent> {
         //Perform any book keeping needed to manage engine's state.
-        fn update_engine(engine: &mut Engine,event: &EngineEvent) {
+        fn update_engine(engine: &mut Engine, event: &EngineEvent) {
             match *event {
-                EngineEvent::ConnectionFailed(connection,_) |
-                EngineEvent::ConnectionTerminated(connection,_) => {
-                    engine.token_generator.lock().unwrap().remove(Token(connection.0));
-                },
-                _ => {},
+                EngineEvent::ConnectionFailed(connection, _)
+                | EngineEvent::ConnectionTerminated(connection, _) => {
+                    engine
+                        .token_generator
+                        .lock()
+                        .unwrap()
+                        .remove(Token(connection.0));
+                }
+                _ => {}
             }
         };
 
         if let Ok(event) = self.rx.try_recv() {
-            update_engine(self,&event);
+            update_engine(self, &event);
             return Some(event);
         }
 
@@ -326,18 +480,18 @@ impl Engine {
 
             while let Some(poll_duration) = poll_duration.checked_sub(now.elapsed()) {
                 let mut events = Events::with_capacity(1);
-                if self.poll.poll(&mut events,Some(poll_duration)).is_err() {
+                if self.poll.poll(&mut events, Some(poll_duration)).is_err() {
                     return None;
                 }
 
                 let result = self.rx.try_recv();
                 match result {
                     Ok(event) => {
-                        update_engine(self,&event);
+                        update_engine(self, &event);
                         return Some(event);
-                    },
+                    }
                     Err(e) if e == TryRecvError::Disconnected => return None,
-                    _ => {},
+                    _ => {}
                 }
             }
         }
@@ -351,8 +505,7 @@ impl Drop for Engine {
         //Shutdown thread and wait until it completes. No attempt is made to make connections
         //logout cleanly.
         self.tx.send(InternalEngineToThreadEvent::Shutdown).unwrap();
-        let thread_handle = mem::replace(&mut self.thread_handle,None);
+        let thread_handle = mem::replace(&mut self.thread_handle, None);
         let _ = thread_handle.unwrap().join();
     }
 }
-

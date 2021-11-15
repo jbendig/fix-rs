@@ -13,19 +13,19 @@ pub mod field_types;
 pub mod fields;
 pub mod messages;
 
-use std::collections::{HashMap,HashSet};
+use std::collections::{HashMap, HashSet};
 
-use fixt::message::BuildFIXTMessage;
+use crate::fixt::message::BuildFIXTMessage;
 
 #[macro_export]
 macro_rules! define_dictionary {
     ( $( $msg:ident ),* $(),* ) => {
-        fn build_dictionary() -> std::collections::HashMap<&'static [u8],Box<$crate::fixt::message::BuildFIXTMessage + Send>> {
-            let mut message_dictionary: std::collections::HashMap<&'static [u8],Box<$crate::fixt::message::BuildFIXTMessage + Send>> = std::collections::HashMap::new();
+        fn build_dictionary() -> std::collections::HashMap<&'static [u8],Box<dyn $crate::fixt::message::BuildFIXTMessage + Send>> {
+            let mut message_dictionary: std::collections::HashMap<&'static [u8],Box<dyn $crate::fixt::message::BuildFIXTMessage + Send>> = std::collections::HashMap::new();
 
             use $crate::fixt::message::FIXTMessageBuildable;
             $(
-            let builder: Box<$crate::fixt::message::BuildFIXTMessage + Send> = <$msg as Default>::default().builder();
+            let builder: Box<dyn $crate::fixt::message::BuildFIXTMessage + Send> = <$msg as Default>::default().builder();
             message_dictionary.insert(<$msg as $crate::message::MessageDetails>::msg_type(),builder);
             )*
 
@@ -39,7 +39,7 @@ macro_rules! define_dictionary {
         };
 
         #[allow(dead_code)]
-        fn message_to_enum(message: Box<$crate::fixt::message::FIXTMessage>) -> MessageEnum {
+        fn message_to_enum(message: Box<dyn $crate::fixt::message::FIXTMessage>) -> MessageEnum {
             if false {
             }
             $( else if message.as_any().is::<$msg>() {
@@ -55,14 +55,14 @@ macro_rules! define_dictionary {
 }
 
 pub trait CloneDictionary {
-    fn clone(&self) -> HashMap<&'static [u8],Box<BuildFIXTMessage + Send>>;
+    fn clone(&self) -> HashMap<&'static [u8], Box<dyn BuildFIXTMessage + Send>>;
 }
 
-impl CloneDictionary for HashMap<&'static [u8],Box<BuildFIXTMessage + Send>> {
-    fn clone(&self) -> HashMap<&'static [u8],Box<BuildFIXTMessage + Send>> {
-        let mut result = HashMap::<&'static [u8],Box<BuildFIXTMessage + Send>>::new();
-        for (key,value) in self {
-            result.insert(key,BuildFIXTMessage::new_into_box(&**value));
+impl CloneDictionary for HashMap<&'static [u8], Box<dyn BuildFIXTMessage + Send>> {
+    fn clone(&self) -> HashMap<&'static [u8], Box<dyn BuildFIXTMessage + Send>> {
+        let mut result = HashMap::<&'static [u8], Box<dyn BuildFIXTMessage + Send>>::new();
+        for (key, value) in self {
+            result.insert(key, BuildFIXTMessage::new_into_box(&**value));
         }
 
         result
@@ -70,15 +70,19 @@ impl CloneDictionary for HashMap<&'static [u8],Box<BuildFIXTMessage + Send>> {
 }
 
 pub fn administrative_msg_types() -> Vec<&'static [u8]> {
-    use self::messages::{Logon,Logout,Reject,ResendRequest,SequenceReset,TestRequest,Heartbeat};
+    use self::messages::{
+        Heartbeat, Logon, Logout, Reject, ResendRequest, SequenceReset, TestRequest,
+    };
 
-    vec![Logon::msg_type(),
-         Logout::msg_type(),
-         Reject::msg_type(),
-         ResendRequest::msg_type(),
-         SequenceReset::msg_type(),
-         TestRequest::msg_type(),
-         Heartbeat::msg_type()]
+    vec![
+        Logon::msg_type(),
+        Logout::msg_type(),
+        Reject::msg_type(),
+        ResendRequest::msg_type(),
+        SequenceReset::msg_type(),
+        TestRequest::msg_type(),
+        Heartbeat::msg_type(),
+    ]
 }
 
 pub fn standard_msg_types() -> HashSet<&'static [u8]> {
@@ -206,4 +210,3 @@ pub fn standard_msg_types() -> HashSet<&'static [u8]> {
 
     result
 }
-
