@@ -39,9 +39,9 @@ fn main() {
 
     //Setup a listener to accept new connections. The listener_id is used to interact with this
     //listener.
-    let sender_comp_id = b"Server"; //SenderCompID sent in every FIX message.
+    let target_comp_id = b"Exchange"; //SenderCompID sent in every FIX message.
     let addr = "127.0.0.1:7001"; //IP and port to listen on.
-    let listener_id = server.add_listener(sender_comp_id, addr);
+    let listener_id = server.add_listener(target_comp_id, addr);
 
     //Poll server for new events. Events include new connections, connection status updates,
     //received messages, errors, etc.
@@ -66,6 +66,10 @@ fn main() {
             }
             //Connection sent a Logon message and is awaiting approval or rejection.
             EngineEvent::ConnectionLoggingOn(listener_id, connection_id, logon) => {
+                println!(
+                    "auth info, user: {:?}, password: {:?}",
+                    logon.username, logon.password
+                );
                 if logon.username == b"some_user" && logon.password == b"some_password" {
                     let mut response_logon = Logon::new();
                     response_logon.encrypt_method = logon.encrypt_method.clone();

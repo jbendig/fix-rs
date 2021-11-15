@@ -50,6 +50,8 @@ fn main() {
     let message_version = MessageVersion::FIX50SP2; //Default to FIX 5.0. SP2 for outgoing messages.
     let sender_comp_id = b"Client"; //SenderCompID sent in every FIX message.
     let target_comp_id = b"Exchange"; //TargetCompID sent in every FIX message.
+    let username = String::from("some_user");
+    let password = String::from("some_password");
     let addr = "127.0.0.1:7001"; //IP and port to connect to.
     let connection_id = client
         .add_connection(
@@ -75,7 +77,10 @@ fn main() {
                 logon_message.encrypt_method = EncryptMethod::None;
                 logon_message.heart_bt_int = 5;
                 logon_message.default_appl_ver_id = message_version;
-                println!("message original is: {:?}", logon_message.msg_type());
+                logon_message.target_comp_id = target_comp_id.to_vec();
+                logon_message.sender_comp_id = sender_comp_id.to_vec();
+                logon_message.username = username.as_bytes().to_vec();
+                logon_message.password = password.as_bytes().to_vec();
                 client.send_message(connection_id, logon_message);
             }
             //Connection could not open TCP stream to server.

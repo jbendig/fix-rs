@@ -388,7 +388,6 @@ impl InternalConnection {
         //makes sure the Logon message supports all of the fields we support.
         let mut parser = Parser::new(message_dictionary, max_message_size);
         for msg_type in administrative_msg_types() {
-            println!("msg type: {:?}", msg_type);
             parser.set_default_message_type_version(msg_type, fix_version.max_message_version());
         }
 
@@ -904,6 +903,7 @@ impl InternalThread {
             //Engine wants to send a message over a connection.
             InternalEngineToThreadEvent::SendMessage(token, message_version, message) => {
                 if let Entry::Occupied(mut connection_entry) = self.connections.entry(token) {
+                    println!("outbound message: {:?}", message);
                     let mut outbound_message = OutboundMessage::from_box(message);
                     outbound_message.message_version = message_version;
                     connection_entry
@@ -1834,9 +1834,12 @@ impl InternalThread {
         //the message must be rejected and we should logout. See FIXT 1.1, page 52.
         //The first check is skipped when listener spawned connection is still receiving a Logon
         //message because it doesn't know who is connecting yet.
+        println!("info: message sender:{:?}, message target {:?}, connection sender: {:?}, connection target:{:?}", message.sender_comp_id(), message.target_comp_id(), connection.sender_comp_id, connection.target_comp_id);
         if *message.sender_comp_id() != connection.target_comp_id
             && !connection.status.is_receiving_logon()
         {
+            println!("result0");
+
             connection.initiate_logout(
                 timer,
                 LoggingOutType::Error(ConnectionTerminatedReason::SenderCompIDWrongError),
@@ -1860,10 +1863,13 @@ impl InternalThread {
             return Ok(());
         } else if *message.target_comp_id() != connection.sender_comp_id {
             if connection.status.is_receiving_logon() {
+                println!("result1");
                 //Since connection hasn't even logged out, just disconnect immediately.
                 connection.shutdown();
                 return Err(ConnectionTerminatedReason::TargetCompIDWrongError);
             } else {
+                println!("result2");
+
                 //Reject message and then logout.
                 connection.initiate_logout(
                     timer,
