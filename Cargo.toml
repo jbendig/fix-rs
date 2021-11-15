@@ -28,3 +28,11 @@ load-testing = ["clap"]
 name="fix-rs-lt"
 path="src/bin/fix-rs-lt.rs"
 required-features = ["load-testing"]
+
+[[bin]]
+name="example-client"
+path="examples/client.rs"
+
+[[bin]]
+name="example-server"
+path="examples/server.rs"

@@ -686,8 +686,9 @@ impl LocalMktDateFieldType {
     }
 
     pub fn new_empty() -> <LocalMktDateFieldType as FieldType>::Type {
+        println!("creating empty date typdfdfe");
         //Create a new time stamp that can be considered empty.
-        NaiveDate::from_ymd(-1, 1, 1)
+        NaiveDate::from_ymd(1971, 1, 1)
     }
 }
 
@@ -706,6 +707,7 @@ impl FieldType for LocalMktDateFieldType {
         let year = (slice_to_int::<i32>(&bytes[0..4]))?;
         let month = (slice_to_int::<u32>(&bytes[4..6]))?;
         let day = (slice_to_int::<u32>(&bytes[6..8]))?;
+        println!("year: {:?} month: {:?}, day: {:?}", year, month, day);
 
         *field = NaiveDate::from_ymd(year, month, day);
 
@@ -856,7 +858,7 @@ impl MonthYear {
 
     pub fn new_empty() -> MonthYear {
         MonthYear {
-            year: -1,
+            year: 1970,
             month: 1,
             remainder: None,
         }
@@ -1123,17 +1125,17 @@ impl UTCTimestampFieldType {
             .expect("Time went backwards");
         //Strip nanoseconds so only whole milliseconds remain (with truncation based rounding).
         //This is because UTCTimestamp does not support sub-millisecond precision.
-        let mut nsec = since_the_epoch.as_nanos();
-        nsec -= nsec % 1_000_000;
-
-        let naive = NaiveDateTime::from_timestamp(since_the_epoch.as_secs() as i64, nsec as u32);
+        let naive = NaiveDateTime::from_timestamp(
+            since_the_epoch.as_secs() as i64,
+            since_the_epoch.subsec_nanos(),
+        );
         DateTime::from_utc(naive, Utc)
     }
-
+    //should this be an option
     pub fn new_empty() -> <UTCTimestampFieldType as FieldType>::Type {
         //Create a new time stamp that can be considered empty. An Option<_> might be preferred
         //but that would make using the timestamp needlessly complicated.
-        DateTime::<Utc>::from_utc(NaiveDate::from_ymd(-1, 1, 1).and_hms(0, 0, 0), Utc)
+        DateTime::<Utc>::from_utc(NaiveDate::from_ymd(1970, 1, 1).and_hms(1, 1, 1), Utc)
     }
 }
 
@@ -1166,7 +1168,7 @@ impl FieldType for UTCTimestampFieldType {
         } else {
             return Err(SetValueError::WrongFormat);
         };
-
+        println!("year, month, date: {}, {}. {}", year, month, day);
         *field = DateTime::<Utc>::from_utc(
             NaiveDate::from_ymd(year, month, day).and_hms_milli(
                 hours,

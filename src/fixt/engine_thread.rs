@@ -220,6 +220,7 @@ enum TimeoutType {
 
 type MsgSeqNumType = <<MsgSeqNum as Field>::Type as FieldType>::Type;
 
+#[derive(Debug)]
 struct OutboundMessage {
     message: Box<dyn FIXTMessage + Send>,
     message_version: Option<MessageVersion>,
@@ -387,6 +388,7 @@ impl InternalConnection {
         //makes sure the Logon message supports all of the fields we support.
         let mut parser = Parser::new(message_dictionary, max_message_size);
         for msg_type in administrative_msg_types() {
+            println!("msg type: {:?}", msg_type);
             parser.set_default_message_type_version(msg_type, fix_version.max_message_version());
         }
 
@@ -470,6 +472,7 @@ impl InternalConnection {
 
                 //Setup message to go out and serialize it.
                 let mut message = self.outbound_messages.remove(0);
+
                 message.message.setup_fixt_session_header(
                     if message.auto_msg_seq_num {
                         let result = Some(self.outbound_msg_seq_num);
@@ -850,7 +853,6 @@ impl InternalThread {
                         return Ok(());
                     }
                 };
-
                 let connection = InternalConnection::new(
                     self.message_dictionary.clone(),
                     self.max_message_size,

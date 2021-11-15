@@ -250,7 +250,6 @@ fn set_message_value<T: Message + ?Sized>(
 
     Ok(())
 }
-
 pub struct Parser {
     message_dictionary: HashMap<&'static [u8], Box<dyn BuildFIXTMessage + Send>>,
     max_message_length: u64,
@@ -413,8 +412,8 @@ impl Parser {
             RepeatingGroup,
         }
 
-        //Start by walking the message_dictionary and collecting every possible message format --
         //including repeating and nested repeating groups.
+        //Start by walking the message_dictionary and collecting every possible message format --
         let mut all_messages = Vec::new();
         let mut builder_stack = Vec::from_iter(message_dictionary.iter().map(|(_, builder)| {
             (
@@ -824,6 +823,7 @@ impl Parser {
     ) -> Result<MessageEnd, ParseError> {
         //Validate that the first three tags of a message are, in order: BeginStr,
         //BodyLength, and MsgType.
+        println!("message value end");
         if self.found_tag_count == 0 {
             if self.current_tag != BEGINSTR_TAG {
                 return Err(ParseError::BeginStrNotFirstTag);
@@ -877,7 +877,9 @@ impl Parser {
                 return Err(ParseError::MessageSizeTooBig);
             }
         } else if self.found_tag_count == 2 {
+            println!("tag count: {:?}", self.found_tag_count);
             if self.current_tag != MSGTYPE_TAG {
+                println!("current tag: {:?}", self.current_tag);
                 return Err(ParseError::MsgTypeNotThirdTag);
             }
 
@@ -965,7 +967,7 @@ impl Parser {
 
             //Make sure checksum checks out when done reading a message.
             let is_message_end = if self.current_tag == CHECKSUM_TAG {
-                (self.validate_checksum());
+                (self.validate_checksum())?;
                 true
             } else {
                 false
@@ -1115,7 +1117,7 @@ impl Parser {
                     &mut *self.current_message,
                     self.current_tag,
                     &self.current_bytes[..],
-                ));
+                ))?;
             }
 
             if is_message_end {
@@ -1223,46 +1225,55 @@ impl Parser {
 
     fn parse_private(&mut self, index: &mut usize, message_bytes: &[u8]) -> Result<(), ParseError> {
         //Start by searching for the start of a message unless resuming.
+        println!("read bytes: {:?}", message_bytes);
         self.scan_for_message(index, message_bytes);
 
         //Resume loading any bytes using the fast track if we ran out in the last call.
-        (self.fast_track_read_bytes(index, &message_bytes));
+        (self.fast_track_read_bytes(index, &message_bytes))?;
 
         //Parse each byte in the message one by one.
         while *index < message_bytes.len() {
             let c = message_bytes[*index];
 
             //Perform basic checksum and body length updates.
-            (self.update_book_keeping(c));
+            (self.update_book_keeping(c))?;
 
             //Check if this byte indicates a new tag=value, the end of a tag, part of a tag, or part of
             //a value.
             match c {
                 //Byte indicates a tag has finished being read.
                 b'=' if self.current_tag.is_empty() => {
-                    (self.match_tag_end(index, message_bytes));
+                    (self.match_tag_end(index, message_bytes))?;
                 }
-                //Byte indicates a vale has finished being read. Now both the tag and value are known.
+                //Byte indicates a value has finished being read. Now both the tag and value are known.
                 b'\x01' => {
                     //SOH
+                    println!("index and bytes: {:?}, {:?}", index, message_bytes);
                     match self.match_value_end(index, message_bytes) {
                         Ok(ref result) if *result == MessageEnd::Yes => {
+                            // println!("result1");
                             //Message finished and index was already forwaded to the end of
                             //message_bytes or the beginning of the next message.
                             continue;
                         }
                         Ok(ref result) if *result == MessageEnd::YesButStop => {
+                            // println!("result2");
+
                             //Message finished but parsing has been suspended to handle a special
                             //case.
                             return Ok(());
                         }
                         Err(e) => {
+                            // println!("result3");
+
                             //An error occurred. Manually move index forward so this byte isn't
                             //reprocessed in the next call to parse().
                             *index += 1;
                             return Err(e);
                         }
-                        _ => {} //Still reading a message and it's going okay!
+                        _ => {
+                            // println!("result4");
+                        } //Still reading a message and it's going okay!
                     };
                 }
                 //Byte is part of a tag or value.

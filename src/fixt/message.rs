@@ -130,9 +130,7 @@ macro_rules! define_fixt_message {
         impl $message_name {
             #[allow(unreachable_code)]
             pub fn msg_type() -> &'static [u8] {
-                $( return $message_type )*; //Only one message type can be specified.
-
-                b""
+                $( return $message_type )*
             }
         }
 

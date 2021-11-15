@@ -146,14 +146,12 @@ pub fn build_message(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
     //Setup symbols.
     let message_name = ast.ident;
     let build_message_name = String::from("Build") + &message_name.to_string()[..];
-    let mut message_type_header = "b\"35=".to_string();
-    message_type_header += &String::from_utf8_lossy(&message_type[..]).into_owned()[..];
-    message_type_header += "\\x01\"";
-
+    let mut message_type_header = "35=".to_string();
+    let message_type_full = [&message_type[..], b"\x01"].concat(); //todo unnecessary copy
+    message_type_header += &String::from_utf8_lossy(&message_type_full[..]).into_owned()[..];
     //Convert symbols into tokens so quote's ToTokens trait doesn't quote them.
     let build_message_name = str_to_ident(&build_message_name[..]);
     let message_type_header = str_to_tokens(&message_type_header[..]);
-
     let mut tokens = quote! {
         impl #message_name {
             fn msg_type_header() -> &'static [u8] {
@@ -290,21 +288,14 @@ pub fn build_field(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // println!("tag: {}", tag);
     let tag_u64 = tag;
     let tag = tag.to_string();
-
-    let mut tag_bytes = "b\"".to_string();
-    tag_bytes += &tag[..];
-    tag_bytes += "\"";
-
     let field_name = ast.ident.to_token_stream(); //todo is this the write way?
                                                   // println!("field_name is:{}", field_name);
-    let tag = str_to_tokens(&tag[..]);
-    let tag_bytes = str_to_tokens(&tag_bytes[..]);
-    // println!("tag bytes: {}",tag_bytes);
-    // let tag_bytes = "aa".as_bytes();
+                                                  // let tag = str_to_tokens(&tag[..]);
+                                                  // let tag_bytes = "aa".as_bytes();
     let tokens = quote! {
         impl #field_name {
-            fn tag_bytes() -> &'static [u8] {
-                (#tag_bytes).as_bytes()
+            fn tag_bytes() -> &'static [u8]  {
+                (#tag).as_bytes()
             }
 
             fn tag() -> crate::field_tag::FieldTag {
@@ -312,6 +303,5 @@ pub fn build_field(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             }
         }
     };
-    // println!("reached here end");
     proc_macro::TokenStream::from(tokens)
 }
