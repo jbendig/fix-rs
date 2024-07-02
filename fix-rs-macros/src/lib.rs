@@ -9,7 +9,6 @@
 // at your option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(proc_macro)]
 #![crate_type = "proc-macro"]
 #![recursion_limit = "256"]
 
