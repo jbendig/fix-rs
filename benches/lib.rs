@@ -28,14 +28,12 @@ const MESSAGE_BYTES: &'static [u8] = b"8=FIX.4.2\x019=206\x0135=D\x0149=AFUNDMGR
 
 #[bench]
 fn parse_simple_message_bench(b: &mut Bencher) {
-    define_dictionary!(
-        NewOrderSingle,
-    );
+    define_dictionary!(NewOrderSingle,);
 
-    let mut parser = Parser::new(build_dictionary(),4096);
+    let mut parser = Parser::new(build_dictionary(), 4096);
     b.bytes = MESSAGE_BYTES.len() as u64;
     b.iter(|| {
-        let (bytes_read,result) = parser.parse(MESSAGE_BYTES);
+        let (bytes_read, result) = parser.parse(MESSAGE_BYTES);
         assert!(result.is_ok());
         assert!(bytes_read == MESSAGE_BYTES.len());
     });
@@ -43,23 +41,20 @@ fn parse_simple_message_bench(b: &mut Bencher) {
 
 #[bench]
 fn serialize_simple_message_bench(b: &mut Bencher) {
-    define_dictionary!(
-        NewOrderSingle,
-    );
+    define_dictionary!(NewOrderSingle,);
 
-    let mut parser = Parser::new(build_dictionary(),4096);
-    let (bytes_read,result) = parser.parse(MESSAGE_BYTES);
+    let mut parser = Parser::new(build_dictionary(), 4096);
+    let (bytes_read, result) = parser.parse(MESSAGE_BYTES);
     assert!(result.is_ok());
     assert!(bytes_read == MESSAGE_BYTES.len());
     match message_to_enum(parser.messages.remove(0)) {
         MessageEnum::NewOrderSingle(message) => {
             let mut data = ByteBuffer::with_capacity(512);
-            let mut serialize_func = || {
-                message.read(FIXVersion::FIXT_1_1,MessageVersion::FIX50SP2,&mut data) as u64
-            };
+            let mut serialize_func =
+                || message.read(FIXVersion::FIXT_1_1, MessageVersion::FIX50SP2, &mut data) as u64;
 
             b.bytes = serialize_func();
             b.iter(serialize_func);
-        },
+        }
     }
 }

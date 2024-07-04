@@ -425,4 +425,3 @@ macro_rules! define_enum_field_type_with_reserved {
         define_enum_field_type_with_reserved!( AS_BYTES_NOT_REQUIRED $base_type, $not_required_field_type { $( $base_type_field => $base_type_value,)* } );
     };
 }
-

@@ -18,9 +18,16 @@ use message::BuildMessage;
 #[derive(Clone)]
 pub enum Rule {
     Nothing,
-    BeginGroup{builder_func: fn() -> Box<BuildMessage + Send>},
-    PrepareForBytes{bytes_tag: FieldTag},
-    ConfirmPreviousTag{previous_tag: FieldTag}, //TODO: Probably redundant to the PrepareForBytes definition. Should be automatically inferred.
-    RequiresFIXVersion{fix_version: FIXVersion}, //Used during serialization only.
+    BeginGroup {
+        builder_func: fn() -> Box<dyn BuildMessage + Send>,
+    },
+    PrepareForBytes {
+        bytes_tag: FieldTag,
+    },
+    ConfirmPreviousTag {
+        previous_tag: FieldTag,
+    }, //TODO: Probably redundant to the PrepareForBytes definition. Should be automatically inferred.
+    RequiresFIXVersion {
+        fix_version: FIXVersion,
+    }, //Used during serialization only.
 }
-

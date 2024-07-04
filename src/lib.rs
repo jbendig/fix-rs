@@ -23,12 +23,6 @@
 //!
 //! [1]: http://www.fixtradingcommunity.org/
 
-#![feature(attr_literals)]
-#![feature(plugin)]
-#![feature(proc_macro)]
-
-#![plugin(phf_macros)]
-
 #![allow(unknown_lints)]
 
 extern crate chrono;
@@ -37,6 +31,8 @@ extern crate fix_rs_macros;
 extern crate mio;
 extern crate phf;
 extern crate time;
+#[macro_use]
+extern crate phf_macros;
 
 pub mod byte_buffer;
 #[macro_use]
@@ -55,6 +51,7 @@ pub mod message_version;
 mod network_read_retry;
 pub mod rule;
 mod token_generator;
+extern crate proc_macro;
 
 //Dictionary is put last because it needs the above macros.
 #[macro_use]

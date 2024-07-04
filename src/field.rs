@@ -20,8 +20,15 @@ pub trait Field {
     fn rule() -> Rule;
     fn tag_bytes() -> &'static [u8];
     fn tag() -> FieldTag;
-    fn read(field: &<<Self as Field>::Type as FieldType>::Type,fix_version: FIXVersion,message_version: MessageVersion,buf: &mut Vec<u8>,required: bool) -> usize
-        where <Self as Field>::Type: FieldType;
+    fn read(
+        field: &<<Self as Field>::Type as FieldType>::Type,
+        fix_version: FIXVersion,
+        message_version: MessageVersion,
+        buf: &mut Vec<u8>,
+        required: bool,
+    ) -> usize
+    where
+        <Self as Field>::Type: FieldType;
 }
 
 #[macro_export]
@@ -117,4 +124,3 @@ macro_rules! define_fields {
         }
     )*};
 }
-

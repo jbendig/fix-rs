@@ -11,7 +11,7 @@
 
 #![doc(hidden)]
 
-use std::hash::{BuildHasher,Hasher};
+use std::hash::{BuildHasher, Hasher};
 
 pub struct FieldHasher {
     value: u64,
@@ -22,11 +22,11 @@ impl Hasher for FieldHasher {
         self.value
     }
 
-    fn write(&mut self,_bytes: &[u8]) {
+    fn write(&mut self, _bytes: &[u8]) {
         unimplemented!()
     }
 
-    fn write_u64(&mut self,i: u64) {
+    fn write_u64(&mut self, i: u64) {
         //Just use the input directly as the hash. This seems laughable but:
         //1. The keys themselves are u64s.
         //2. We don't need HASHDOS protection because each key can only be encountered once and the
@@ -44,9 +44,6 @@ pub struct BuildFieldHasher;
 impl BuildHasher for BuildFieldHasher {
     type Hasher = FieldHasher;
     fn build_hasher(&self) -> Self::Hasher {
-        FieldHasher {
-            value: 0,
-        }
+        FieldHasher { value: 0 }
     }
 }
-

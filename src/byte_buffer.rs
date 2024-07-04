@@ -9,7 +9,7 @@
 // at your option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::io::{Read,Result,Write};
+use std::io::{Read, Result, Write};
 
 pub struct ByteBuffer {
     #[doc(hidden)]
@@ -31,7 +31,7 @@ impl ByteBuffer {
 
     pub fn with_capacity(capacity: usize) -> ByteBuffer {
         ByteBuffer {
-            bytes: vec![0;capacity],
+            bytes: vec![0; capacity],
             valid_bytes_begin: 0,
             valid_bytes_end: 0,
         }
@@ -46,7 +46,7 @@ impl ByteBuffer {
         self.valid_bytes_end = 0;
     }
 
-    pub fn clear_and_read<T: Read>(&mut self,reader: &mut T) -> Result<usize> {
+    pub fn clear_and_read<T: Read>(&mut self, reader: &mut T) -> Result<usize> {
         self.clear();
         let result = reader.read(&mut self.bytes[..]);
         if let Ok(bytes_read) = result {
@@ -57,8 +57,10 @@ impl ByteBuffer {
         result
     }
 
-    pub fn clear_and_read_all<F>(&mut self,read_all_func: F)
-        where F: Fn(&mut Vec<u8>) {
+    pub fn clear_and_read_all<F>(&mut self, read_all_func: F)
+    where
+        F: Fn(&mut Vec<u8>),
+    {
         self.bytes.clear();
         read_all_func(&mut self.bytes);
 
@@ -66,7 +68,7 @@ impl ByteBuffer {
         self.valid_bytes_end = self.bytes.len();
     }
 
-    pub fn consume(&mut self,count: usize) {
+    pub fn consume(&mut self, count: usize) {
         assert!(self.valid_bytes_begin + count <= self.valid_bytes_end);
         self.valid_bytes_begin += count;
     }
@@ -79,7 +81,7 @@ impl ByteBuffer {
         self.valid_bytes_end - self.valid_bytes_begin
     }
 
-    pub fn write<T: Write>(&mut self,writer: &mut T) -> Result<usize> {
+    pub fn write<T: Write>(&mut self, writer: &mut T) -> Result<usize> {
         let result = writer.write(self.bytes());
         if let Ok(bytes_written) = result {
             self.consume(bytes_written);

@@ -9,12 +9,38 @@
 // at your option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use dictionary::field_types::generic::{BoolTrueOrBlankFieldType,CharFieldType,CountryFieldType,CurrencyFieldType,DataFieldType,DayOfMonthFieldType,IntFieldType,LengthFieldType,LocalMktDateFieldType,MonthYearFieldType,NoneFieldType,RepeatingGroupFieldType,SeqNumFieldType,StringFieldType,UTCTimeOnlyFieldType,UTCTimestampFieldType};
+use dictionary::field_types::generic::{
+    BoolTrueOrBlankFieldType, CharFieldType, CountryFieldType, CurrencyFieldType, DataFieldType,
+    DayOfMonthFieldType, IntFieldType, LengthFieldType, LocalMktDateFieldType, MonthYearFieldType,
+    NoneFieldType, RepeatingGroupFieldType, SeqNumFieldType, StringFieldType, UTCTimeOnlyFieldType,
+    UTCTimestampFieldType,
+};
 use dictionary::field_types::other as other_field_types;
-use dictionary::field_types::other::{ApplVerIDFieldType,BusinessRejectReasonFieldType,ComplexEventConditionFieldType,ComplexEventPriceBoundaryMethodFieldType,ComplexEventPriceTimeTypeFieldType,ComplexEventTypeFieldType,ContractMultiplierUnitFieldType,CPProgramFieldType,DefaultApplVerIDFieldType,EmailTypeFieldType,EncryptMethodFieldType,EventTypeFieldType,ExerciseStyleFieldType,FlowScheduleTypeFieldType,HandlInstFieldType,InstrmtAssignmentMethodFieldType,IssuerFieldType,ListMethodFieldType,MsgDirectionFieldType,NotRequiredSecurityIDSourceFieldType,NotRequiredSecurityTypeFieldType as SecurityTypeFieldType,NotRequiredSideFieldType,NotRequiredSymbolSfxFieldType as SymbolSfxFieldType,NotRequiredTimeUnitFieldType as TimeUnitFieldType,OptPayoutTypeFieldType,OrdTypeFieldType,PartyIDSourceFieldType,PartyRoleFieldType,PartySubIDTypeFieldType,PriceQuoteMethodFieldType,ProductFieldType,PutOrCallFieldType,RateSourceFieldType,RateSourceTypeFieldType,RequiredSecurityIDSourceFieldType,RequiredSideFieldType,RequiredStipulationTypeFieldType as StipulationTypeFieldType,RestructuringTypeFieldType,RoutingTypeFieldType,SecurityStatusFieldType,SeniorityFieldType,SessionRejectReasonFieldType,SettlMethodFieldType,SettlTypeFieldType,StrikePriceBoundaryMethodFieldType,StrikePriceDeterminationMethodFieldType,TimeInForceFieldType,UnderlyingCashTypeFieldType,UnderlyingFXRateCalcFieldType,UnderlyingPriceDeterminationMethodFieldType,UnderlyingSettlementTypeFieldType,UnitOfMeasureFieldType,ValuationMethodFieldType};
+use dictionary::field_types::other::{
+    ApplVerIDFieldType, BusinessRejectReasonFieldType, CPProgramFieldType,
+    ComplexEventConditionFieldType, ComplexEventPriceBoundaryMethodFieldType,
+    ComplexEventPriceTimeTypeFieldType, ComplexEventTypeFieldType, ContractMultiplierUnitFieldType,
+    DefaultApplVerIDFieldType, EmailTypeFieldType, EncryptMethodFieldType, EventTypeFieldType,
+    ExerciseStyleFieldType, FlowScheduleTypeFieldType, HandlInstFieldType,
+    InstrmtAssignmentMethodFieldType, IssuerFieldType, ListMethodFieldType, MsgDirectionFieldType,
+    NotRequiredSecurityIDSourceFieldType,
+    NotRequiredSecurityTypeFieldType as SecurityTypeFieldType, NotRequiredSideFieldType,
+    NotRequiredSymbolSfxFieldType as SymbolSfxFieldType,
+    NotRequiredTimeUnitFieldType as TimeUnitFieldType, OptPayoutTypeFieldType, OrdTypeFieldType,
+    PartyIDSourceFieldType, PartyRoleFieldType, PartySubIDTypeFieldType, PriceQuoteMethodFieldType,
+    ProductFieldType, PutOrCallFieldType, RateSourceFieldType, RateSourceTypeFieldType,
+    RequiredSecurityIDSourceFieldType, RequiredSideFieldType,
+    RequiredStipulationTypeFieldType as StipulationTypeFieldType, RestructuringTypeFieldType,
+    RoutingTypeFieldType, SecurityStatusFieldType, SeniorityFieldType,
+    SessionRejectReasonFieldType, SettlMethodFieldType, SettlTypeFieldType,
+    StrikePriceBoundaryMethodFieldType, StrikePriceDeterminationMethodFieldType,
+    TimeInForceFieldType, UnderlyingCashTypeFieldType, UnderlyingFXRateCalcFieldType,
+    UnderlyingPriceDeterminationMethodFieldType, UnderlyingSettlementTypeFieldType,
+    UnitOfMeasureFieldType, ValuationMethodFieldType,
+};
 use field_tag;
 use fix_version::FIXVersion;
-use message::{self,REQUIRED,NOT_REQUIRED};
+use message::{self, NOT_REQUIRED, REQUIRED};
 use message_version;
 use rule::Rule;
 
@@ -394,39 +420,60 @@ define_fields!(
 //Repeating Groups (Sorted Alphabetically)
 
 define_message!(ComplexEvent {
-    REQUIRED, complex_event_type: ComplexEventType [FIX50SP2..],
-    NOT_REQUIRED, complex_opt_payout_amount: ComplexOptPayoutAmount [FIX50SP2..],
-    NOT_REQUIRED, complex_event_price: ComplexEventPrice [FIX50SP2..],
-    NOT_REQUIRED, complex_event_price_boundary_method: ComplexEventPriceBoundaryMethod [FIX50SP2..],
-    NOT_REQUIRED, complex_event_price_boundary_precision: ComplexEventPriceBoundaryPrecision [FIX50SP2..],
-    NOT_REQUIRED, complex_event_price_time_type: ComplexEventPriceTimeType [FIX50SP2..],
-    NOT_REQUIRED, complex_event_condition: ComplexEventCondition [FIX50SP2..], //TODO: Conditionally required only when there is more than one ComplexEvent.
-    NOT_REQUIRED, no_complex_event_dates: NoComplexEventDates [FIX50SP2..],
+    REQUIRED,
+    complex_event_type: ComplexEventType[FIX50SP2..],
+    NOT_REQUIRED,
+    complex_opt_payout_amount: ComplexOptPayoutAmount[FIX50SP2..],
+    NOT_REQUIRED,
+    complex_event_price: ComplexEventPrice[FIX50SP2..],
+    NOT_REQUIRED,
+    complex_event_price_boundary_method: ComplexEventPriceBoundaryMethod[FIX50SP2..],
+    NOT_REQUIRED,
+    complex_event_price_boundary_precision: ComplexEventPriceBoundaryPrecision[FIX50SP2..],
+    NOT_REQUIRED,
+    complex_event_price_time_type: ComplexEventPriceTimeType[FIX50SP2..],
+    NOT_REQUIRED,
+    complex_event_condition: ComplexEventCondition[FIX50SP2..], //TODO: Conditionally required only when there is more than one ComplexEvent.
+    NOT_REQUIRED,
+    no_complex_event_dates: NoComplexEventDates[FIX50SP2..],
 });
 
 define_message!(ComplexEventDate {
-    REQUIRED, complex_event_start_date: ComplexEventStartDate [FIX50SP2..],
-    REQUIRED, complex_event_end_date: ComplexEventEndDate [FIX50SP2..],
-    NOT_REQUIRED, no_complex_event_times: NoComplexEventTimes [FIX50SP2..],
+    REQUIRED,
+    complex_event_start_date: ComplexEventStartDate[FIX50SP2..],
+    REQUIRED,
+    complex_event_end_date: ComplexEventEndDate[FIX50SP2..],
+    NOT_REQUIRED,
+    no_complex_event_times: NoComplexEventTimes[FIX50SP2..],
 });
 
 define_message!(ComplexEventTime {
-    REQUIRED, complex_event_start_time: ComplexEventStartTime [FIX50SP2..],
-    REQUIRED, complex_event_end_time: ComplexEventEndTime [FIX50SP2..],
+    REQUIRED,
+    complex_event_start_time: ComplexEventStartTime[FIX50SP2..],
+    REQUIRED,
+    complex_event_end_time: ComplexEventEndTime[FIX50SP2..],
 });
 
 define_message!(EvntGrp {
-    REQUIRED, event_type: EventType [FIX44..],
-    NOT_REQUIRED, event_date: EventDate [FIX44..],
-    NOT_REQUIRED, event_time: EventTime [FIX50SP1..],
-    NOT_REQUIRED, event_px: EventPx [FIX44..],
-    NOT_REQUIRED, event_text: EventText [FIX44..],
+    REQUIRED,
+    event_type: EventType[FIX44..],
+    NOT_REQUIRED,
+    event_date: EventDate[FIX44..],
+    NOT_REQUIRED,
+    event_time: EventTime[FIX50SP1..],
+    NOT_REQUIRED,
+    event_px: EventPx[FIX44..],
+    NOT_REQUIRED,
+    event_text: EventText[FIX44..],
 });
 
 define_message!(HopGrp {
-    REQUIRED, hop_comp_id: HopCompID [FIX43..],
-    NOT_REQUIRED, hop_sending_time: HopSendingTime [FIX43..],
-    NOT_REQUIRED, hop_ref_id: HopRefID [FIX43..],
+    REQUIRED,
+    hop_comp_id: HopCompID[FIX43..],
+    NOT_REQUIRED,
+    hop_sending_time: HopSendingTime[FIX43..],
+    NOT_REQUIRED,
+    hop_ref_id: HopRefID[FIX43..],
 });
 
 define_message!(Instrument {
@@ -580,35 +627,52 @@ define_message!(InstrumentLeg {
 });
 
 define_message!(InstrumentParty {
-    REQUIRED, instrument_party_id: InstrumentPartyID [FIX50..],
-    REQUIRED, instrument_party_id_source: InstrumentPartyIDSource [FIX50..], //Conditionally required if InstrumentPartyID is specified, but InstrumentPartyID is required, so this is also required.
-    NOT_REQUIRED, instrument_party_role: InstrumentPartyRole [FIX50..],
-    NOT_REQUIRED, no_instrument_party_sub_ids: NoInstrumentPartySubIDs [FIX50..],
+    REQUIRED,
+    instrument_party_id: InstrumentPartyID[FIX50..],
+    REQUIRED,
+    instrument_party_id_source: InstrumentPartyIDSource[FIX50..], //Conditionally required if InstrumentPartyID is specified, but InstrumentPartyID is required, so this is also required.
+    NOT_REQUIRED,
+    instrument_party_role: InstrumentPartyRole[FIX50..],
+    NOT_REQUIRED,
+    no_instrument_party_sub_ids: NoInstrumentPartySubIDs[FIX50..],
 });
 
 define_message!(InstrumentPtysSubGrp {
-    REQUIRED, instrument_party_sub_id: InstrumentPartySubID [FIX50..],
-    REQUIRED, instrument_party_sub_id_type: InstrumentPartySubIDType [FIX50..],
+    REQUIRED,
+    instrument_party_sub_id: InstrumentPartySubID[FIX50..],
+    REQUIRED,
+    instrument_party_sub_id_type: InstrumentPartySubIDType[FIX50..],
 });
 
 define_message!(LegSecAltIDGrp {
-    REQUIRED, leg_security_alt_id: LegSecurityAltID [FIX44..],
-    REQUIRED, leg_security_alt_id_source: LegSecurityAltIDSource [FIX44..],
+    REQUIRED,
+    leg_security_alt_id: LegSecurityAltID[FIX44..],
+    REQUIRED,
+    leg_security_alt_id_source: LegSecurityAltIDSource[FIX44..],
 });
 
 define_message!(LinesOfTextGrp {
-    REQUIRED, text: Text [FIX40..],
-    NOT_REQUIRED, encoded_text_len: EncodedTextLen [FIX42..],
-    NOT_REQUIRED, encoded_text: EncodedText [FIX42..],
+    REQUIRED,
+    text: Text[FIX40..],
+    NOT_REQUIRED,
+    encoded_text_len: EncodedTextLen[FIX42..],
+    NOT_REQUIRED,
+    encoded_text: EncodedText[FIX42..],
 });
 
 define_message!(MsgTypeGrp {
-    REQUIRED, ref_msg_type: RefMsgType [FIX42..],
-    REQUIRED, msg_direction: MsgDirection [FIX42..],
-    NOT_REQUIRED, ref_appl_ver_id: RefApplVerID [FIX50..],
-    NOT_REQUIRED, ref_appl_ext_id: RefApplExtID [FIX50..],
-    NOT_REQUIRED, ref_cstm_appl_ver_id: RefCstmApplVerID [FIX50..],
-    NOT_REQUIRED, default_ver_indicator: DefaultVerIndicator [FIX50SP1..],
+    REQUIRED,
+    ref_msg_type: RefMsgType[FIX42..],
+    REQUIRED,
+    msg_direction: MsgDirection[FIX42..],
+    NOT_REQUIRED,
+    ref_appl_ver_id: RefApplVerID[FIX50..],
+    NOT_REQUIRED,
+    ref_appl_ext_id: RefApplExtID[FIX50..],
+    NOT_REQUIRED,
+    ref_cstm_appl_ver_id: RefCstmApplVerID[FIX50..],
+    NOT_REQUIRED,
+    default_ver_indicator: DefaultVerIndicator[FIX50SP1..],
 });
 
 define_message!(RateSourceGrp {
@@ -618,13 +682,17 @@ define_message!(RateSourceGrp {
 });
 
 define_message!(RoutingGrp {
-    REQUIRED, routing_type: RoutingType [FIX42..],
-    REQUIRED, routing_id: RoutingID [FIX42..],
+    REQUIRED,
+    routing_type: RoutingType[FIX42..],
+    REQUIRED,
+    routing_id: RoutingID[FIX42..],
 });
 
 define_message!(SecAltIDGrp {
-    REQUIRED, security_alt_id: SecurityAltID [FIX43..],
-    REQUIRED, security_alt_id_source: SecurityAltIDSource [FIX43..],
+    REQUIRED,
+    security_alt_id: SecurityAltID[FIX43..],
+    REQUIRED,
+    security_alt_id_source: SecurityAltIDSource[FIX43..],
 });
 
 define_message!(UnderlyingInstrument {
@@ -703,17 +771,22 @@ define_message!(UnderlyingInstrument {
 });
 
 define_message!(UndlyInstrumentPtysSubGrp {
-    REQUIRED, underlying_instrument_party_sub_id: UnderlyingInstrumentPartySubID [FIX50..],
-    REQUIRED, underlying_instrument_party_sub_id_type: UnderlyingInstrumentPartySubIDType [FIX50..],
+    REQUIRED,
+    underlying_instrument_party_sub_id: UnderlyingInstrumentPartySubID[FIX50..],
+    REQUIRED,
+    underlying_instrument_party_sub_id_type: UnderlyingInstrumentPartySubIDType[FIX50..],
 });
 
 define_message!(UnderlyingStipulation {
-    REQUIRED, underlying_stip_type: UnderlyingStipType [FIX44..],
-    REQUIRED, underlying_stip_value: UnderlyingStipValue [FIX44..],
+    REQUIRED,
+    underlying_stip_type: UnderlyingStipType[FIX44..],
+    REQUIRED,
+    underlying_stip_value: UnderlyingStipValue[FIX44..],
 });
 
 define_message!(UndSecAltIDGrp {
-    REQUIRED, underlying_security_alt_id: UnderlyingSecurityAltID [FIX43..],
-    REQUIRED, underlying_security_alt_id_source: UnderlyingSecurityAltIDSource [FIX43..],
+    REQUIRED,
+    underlying_security_alt_id: UnderlyingSecurityAltID[FIX43..],
+    REQUIRED,
+    underlying_security_alt_id_source: UnderlyingSecurityAltIDSource[FIX43..],
 });
-

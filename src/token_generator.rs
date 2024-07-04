@@ -23,7 +23,7 @@ pub struct TokenGenerator {
 }
 
 impl TokenGenerator {
-    pub fn new(reserved_end: usize,max_tokens: Option<usize>) -> TokenGenerator {
+    pub fn new(reserved_end: usize, max_tokens: Option<usize>) -> TokenGenerator {
         TokenGenerator {
             seed: reserved_end,
             reserved_end: reserved_end,
@@ -49,7 +49,7 @@ impl TokenGenerator {
         }
     }
 
-    pub fn remove(&mut self,token: Token) {
+    pub fn remove(&mut self, token: Token) {
         self.active_tokens.remove(&token);
     }
 }

@@ -9,10 +9,10 @@
 // at your option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cmp::{Ord,Ordering,PartialOrd};
+use std::cmp::{Ord, Ordering, PartialOrd};
 use std::fmt;
 
-#[derive(Clone,Copy,Eq,Hash,PartialEq)]
+#[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub struct FieldTag(pub u64);
 
 impl FieldTag {
@@ -34,14 +34,14 @@ impl FieldTag {
 }
 
 impl fmt::Debug for FieldTag {
-    fn fmt(&self,f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f,"{}",self.0)
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
 impl fmt::Display for FieldTag {
-    fn fmt(&self,f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f,"{}",self.0)
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
@@ -78,13 +78,13 @@ impl From<u64> for FieldTag {
 }
 
 impl PartialOrd for FieldTag {
-    fn partial_cmp(&self,other: &Self) -> Option<Ordering> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
 impl Ord for FieldTag {
-    fn cmp(&self,other: &Self) -> Ordering {
+    fn cmp(&self, other: &Self) -> Ordering {
         self.0.cmp(&other.0)
     }
 }

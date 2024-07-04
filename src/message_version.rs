@@ -9,9 +9,10 @@
 // at your option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[derive(Clone,Copy,Debug,PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 #[allow(non_camel_case_types)]
-pub enum MessageVersion { //Based on the ApplVerId(1128) field.
+pub enum MessageVersion {
+    //Based on the ApplVerId(1128) field.
     //Unsupported FIX27,
     //Unsupported FIX30,
     FIX40,
@@ -96,8 +97,7 @@ impl MessageVersion {
             MessageVersion::FIX44,
             MessageVersion::FIX50,
             MessageVersion::FIX50SP1,
-            MessageVersion::FIX50SP2
+            MessageVersion::FIX50SP2,
         ]
     }
 }
-

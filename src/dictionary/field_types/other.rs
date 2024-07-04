@@ -35,7 +35,7 @@ impl FieldType for ApplVerIDFieldType {
         None
     }
 
-    fn set_value(field: &mut Self::Type,bytes: &[u8]) -> Result<(),SetValueError> {
+    fn set_value(field: &mut Self::Type, bytes: &[u8]) -> Result<(), SetValueError> {
         if let Some(value) = ApplVerID::from_bytes(bytes) {
             *field = Some(value);
             return Ok(());
@@ -52,7 +52,12 @@ impl FieldType for ApplVerIDFieldType {
         0
     }
 
-    fn read(field: &Self::Type,_fix_version: FIXVersion,_message_version: MessageVersion,buf: &mut Vec<u8>) -> usize {
+    fn read(
+        field: &Self::Type,
+        _fix_version: FIXVersion,
+        _message_version: MessageVersion,
+        buf: &mut Vec<u8>,
+    ) -> usize {
         if let Some(field) = *field {
             let bytes_value = field.as_bytes();
             return buf.write(bytes_value).unwrap();
@@ -148,7 +153,7 @@ impl FieldType for DefaultApplVerIDFieldType {
         MessageVersion::FIX50
     }
 
-    fn set_value(field: &mut Self::Type,bytes: &[u8]) -> Result<(),SetValueError> {
+    fn set_value(field: &mut Self::Type, bytes: &[u8]) -> Result<(), SetValueError> {
         if let Some(value) = ApplVerID::from_bytes(bytes) {
             *field = value;
             return Ok(());
@@ -165,7 +170,12 @@ impl FieldType for DefaultApplVerIDFieldType {
         0
     }
 
-    fn read(field: &Self::Type,_fix_version: FIXVersion,_message_version: MessageVersion,buf: &mut Vec<u8>) -> usize {
+    fn read(
+        field: &Self::Type,
+        _fix_version: FIXVersion,
+        _message_version: MessageVersion,
+        buf: &mut Vec<u8>,
+    ) -> usize {
         let bytes_value = field.as_bytes();
         return buf.write(bytes_value).unwrap();
     }
@@ -848,7 +858,7 @@ define_enum_field_type!(
     FIELD_TYPE [NOT_REQUIRED,MUST_BE_CHAR] SettlMethodFieldType
 );
 
-#[derive(Clone,PartialEq)]
+#[derive(Clone, PartialEq)]
 pub enum SettlType {
     RegularOrFXSpotSettlement,
     Cash,
@@ -890,7 +900,7 @@ impl SettlType {
                     Ok(number) if number == 0 => {
                         //All of the following tenors require an integer > 0.
                         return None;
-                    },
+                    }
                     Ok(number) => number,
                 };
 
@@ -901,12 +911,12 @@ impl SettlType {
                     b'Y' => SettlType::Years(number),
                     _ => return None,
                 }
-            },
+            }
             _ => return None,
         })
     }
 
-    fn read(&self,buf: &mut Vec<u8>) -> usize {
+    fn read(&self, buf: &mut Vec<u8>) -> usize {
         match *self {
             SettlType::RegularOrFXSpotSettlement => buf.write(b"0").unwrap(),
             SettlType::Cash => buf.write(b"1").unwrap(),
@@ -921,21 +931,17 @@ impl SettlType {
             SettlType::BrokenDate => buf.write(b"B").unwrap(),
             SettlType::FXSpotNextSettlement => buf.write(b"C").unwrap(),
             SettlType::Days(number) => {
-                buf.write(b"D").unwrap() +
-                buf.write(number.to_string().as_bytes()).unwrap()
-            },
+                buf.write(b"D").unwrap() + buf.write(number.to_string().as_bytes()).unwrap()
+            }
             SettlType::Months(number) => {
-                buf.write(b"M").unwrap() +
-                buf.write(number.to_string().as_bytes()).unwrap()
-            },
+                buf.write(b"M").unwrap() + buf.write(number.to_string().as_bytes()).unwrap()
+            }
             SettlType::Weeks(number) => {
-                buf.write(b"W").unwrap() +
-                buf.write(number.to_string().as_bytes()).unwrap()
-            },
+                buf.write(b"W").unwrap() + buf.write(number.to_string().as_bytes()).unwrap()
+            }
             SettlType::Years(number) => {
-                buf.write(b"Y").unwrap() +
-                buf.write(number.to_string().as_bytes()).unwrap()
-            },
+                buf.write(b"Y").unwrap() + buf.write(number.to_string().as_bytes()).unwrap()
+            }
         }
     }
 }
@@ -949,10 +955,10 @@ impl FieldType for SettlTypeFieldType {
         None
     }
 
-    fn set_value(field: &mut Self::Type,bytes: &[u8]) -> Result<(),SetValueError> {
+    fn set_value(field: &mut Self::Type, bytes: &[u8]) -> Result<(), SetValueError> {
         if let Some(value) = SettlType::new(bytes) {
             *field = Some(value);
-            return Ok(())
+            return Ok(());
         }
 
         Err(SetValueError::OutOfRange)
@@ -966,9 +972,14 @@ impl FieldType for SettlTypeFieldType {
         0 //Unused for this type.
     }
 
-    fn read(field: &Self::Type,_fix_version: FIXVersion,_message_version: MessageVersion,buf: &mut Vec<u8>) -> usize {
+    fn read(
+        field: &Self::Type,
+        _fix_version: FIXVersion,
+        _message_version: MessageVersion,
+        buf: &mut Vec<u8>,
+    ) -> usize {
         if let Some(ref field) = *field {
-            return field.read(buf)
+            return field.read(buf);
         }
 
         0
